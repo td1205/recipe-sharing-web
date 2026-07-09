@@ -13,5 +13,29 @@
         <p>Email:<%= user.email%></p>
         <p>Vai trò:<%= user.role%></p>
     </div>
+    <hr>
+    <h2>Món ăn yêu thích của tôi</h2>
+    <% if(favouriteRecipes.length == 0) { %>
+        <p>Chưa có công thức yêu thích nào</p>
+    <% } else { %>
+        <ul>
+            <% favouriteRecipes.forEach(function(recipe) { %>
+                <li>
+                    <strong><%= recipe.title %></strong> 
+                    <br>
+                    <small>Chuẩn bị: <%= recipe.prep_time %> phút | Nấu: <%= recipe.cook_time %> phút</small>
+                    <br>
+                    <% if (recipe.image_url) { %>
+                        <img src="<%= recipe.image_url %>" alt="<%= recipe.title %>" style="max-width: 200px; height: auto;">
+                    <% } else { %>
+                        <p><em>Không có ảnh minh họa</em></p>
+                    <% } %>
+                    <p><a href="/recipe/<%= recipe.id %>">Xem chi tiết</a></p>
+                    
+                </li>
+                <br>
+            <% }); %>
+        </ul>
+    <% } %>
 </body>
 </html>

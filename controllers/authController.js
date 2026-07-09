@@ -56,6 +56,7 @@ function logout(req, res) {
 async function renderProfile(req,res){
   const userId = req.session.user.id;
   const [user] = await userModel.getUserById(userId)
-  res.render('auth/profile', {user})
+  const favouriteRecipes = await userModel.getFavouriteRecipesByUser(userId);
+  res.render('auth/profile', {user,favouriteRecipes})
 }
 module.exports = { getLoginPage, getRegisterPage, handleLogin, handleRegister, logout, renderProfile };
