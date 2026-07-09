@@ -2,8 +2,7 @@ const express = require('express')
 const path = require('path')
 const session = require('express-session')
 require('dotenv').config()
-
-
+const authRoutes = require("./routes/authRoutes");
 //Khởi tạo express
 const app= express()
 //import database
@@ -36,6 +35,9 @@ app.use(session({
 app.get('/',(req,res)=>{
     res.send("Server express đang hoạt động!")
 })
+
+// Sử dụng Routes cho phần Đăng ký / Đăng nhập
+app.use('/', authRoutes);
 //Khởi động server
 const PORT = 3000
 app.listen(PORT,()=>{
