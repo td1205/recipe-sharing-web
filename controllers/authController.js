@@ -38,12 +38,12 @@ async function handleRegister(req, res) {
   const [user] = await userModel.getUserByUsername(username);
   if (user !== undefined) {
     console.log("Tài khoản đã tồn tại");
-    return res.redirect("/register");
+    return res.render("auth/register", { error: "Tài khoản đã tồn tại!" });
   }
   const [userByEmail] = await userModel.getUserByEmail(email);
   if (userByEmail !== undefined) {
     console.log("Email đã được sử dụng");
-    return res.redirect("/register");
+    return res.render("auth/register", { error: "Email đã được sử dụng!" });
   }
   const hashedPassword = await bcrypt.hash(password, 10);
   await userModel.createUser(username, hashedPassword, email, fullname);
@@ -53,4 +53,9 @@ function logout(req, res) {
   req.session.destroy();
   return res.redirect("/login");
 }
-module.exports = { getLoginPage, getRegisterPage, handleLogin, handleRegister, logout };
+async function renderProfile(req,res){
+  const userId = req.session.user.id;
+  const [user] = await userModel.getUserById(userId)
+  res.render('auth/profile', {user})
+}
+module.exports = { getLoginPage, getRegisterPage, handleLogin, handleRegister, logout, renderProfile };
