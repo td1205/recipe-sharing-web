@@ -2,7 +2,7 @@ const express = require('express')
 const path = require('path')
 const session = require('express-session')
 require('dotenv').config()
-
+const authRoutes = require("./routes/authRoutes");
 
 //Khởi tạo express
 const app = express()
@@ -32,10 +32,12 @@ app.use(session({
         maxAge: 1000 * 60 * 60 * 24
     }
 }))
-//Tạo route thử nghiệm (Milestone ghép code)
-app.get('/', (req, res) => {
-    res.render('home')
-})
+const recipeRoutes = require("./routes/recipeRoutes");
+app.use("/", recipeRoutes);
+
+
+// Sử dụng Routes cho phần Đăng ký / Đăng nhập
+app.use('/', authRoutes);
 //Khởi động server
 const PORT = 3000
 app.listen(PORT, () => {

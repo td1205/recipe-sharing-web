@@ -7,7 +7,35 @@
             <main class="content">
                 <h2>Recipe Sharing Website</h2>
 
-                <p>Trang chủ đang được xây dựng...</p>
+                <div class="recipe-grid">
+                    <% if (recipes && recipes.length> 0) { %>
+                        <% recipes.forEach(recipe=> { %>
+                            <div class="recipe-card">
+                                <% if (recipe.image_url) { %>
+                                    <img src="<%= recipe.image_url %>" alt="<%= recipe.title %>" class="recipe-image">
+                                    <% } %>
+                                        <div class="recipe-info">
+                                            <h3>
+                                                <a href="/recipes/<%= recipe.id %>">
+                                                    <%= recipe.title %>
+                                                </a>
+                                            </h3>
+
+                                            <p class="recipe-desc">
+                                                <%= recipe.description %>
+                                            </p>
+                                            <div class="recipe-meta">
+                                                <span>Danh mục: <%= recipe.category_name || 'Khác' %></span>
+                                                <span>Người đăng: <%= recipe.author_name || 'Ẩn danh' %></span>
+                                            </div>
+                                        </div>
+                            </div>
+                            <% }) %>
+                                <% } else { %>
+                                    <p class="no-recipes">Chưa có công thức món ăn nào được chia sẻ.</p>
+                                    <% } %>
+                </div>
+
             </main>
 
             <%- include('partials/sidebar') %>
