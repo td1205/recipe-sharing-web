@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Categories</title>
+</head>
+
+<body>
+
+    <h1>Quản lý danh mục</h1>
+
+    <a href="/admin/categories/create">
+        Thêm danh mục
+    </a>
+
+    <table border="1" cellpadding="10">
+
+        <tr>
+            <th>ID</th>
+            <th>Tên</th>
+            <th>Mô tả</th>
+            <th>Thao tác</th>
+        </tr>
+
+        <% categories.forEach(category=> { %>
+
+            <tr>
+
+                <td>
+                    <%= category.id %>
+                </td>
+
+                <td>
+                    <%= category.name %>
+                </td>
+
+                <td>
+                    <%= category.description %>
+                </td>
+
+                <td>
+                    <a href="/admin/categories/edit/<%= category.id %>">
+                        Sửa
+                    </a>
+
+                    <form action="/admin/categories/delete/<%= category.id %>"
+                          method="POST"
+                          style="display:inline;">
+
+                        <button
+                            type="submit"
+                            onclick="return confirm('Bạn có chắc muốn xóa?')">
+                            Xóa
+                        </button>
+
+                    </form>
+                </td>
+
+            </tr>
+
+            <% }) %>
+
+    </table>
+
+</body>
+
+</html>

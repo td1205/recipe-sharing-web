@@ -8,15 +8,20 @@ require('dotenv').config()
 const app = express()
 //import database
 const pool = require('./models/db')
+//Cấu hình middleware để đọc dữ liệu từ form (POST request)
+app.use(express.urlencoded({ extended: true }))
+//Cấu hình middleware để đọc dữ liệu từ JSON
+app.use(express.json())
+
 //Cấu hình view engine là ejs
 app.set('view engine', 'ejs')
 app.set('views', './views')
 //Cấu hình thư mục chứa css và hình ảnh
 app.use(express.static('public'))
-//Cấu hình middleware để đọc dữ liệu từ form (POST request)
-app.use(express.urlencoded({ extended: true }))
-//Cấu hình middleware để đọc dữ liệu từ JSON
-app.use(express.json())
+
+//import routes
+const categoryRoutes = require("./routes/categoryRoutes");
+app.use(categoryRoutes);
 
 app.use(session({
     //Chuỗi kí tự mã hóa session

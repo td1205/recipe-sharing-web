@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Sửa danh mục</title>
+</head>
+
+<body>
+
+<h1>Sửa danh mục</h1>
+
+<form action="/admin/categories/edit/<%= category.id %>" method="POST">
+
+    <div>
+        <label>Tên</label><br>
+        <input
+            type="text"
+            name="name"
+            value="<%= category.name %>"
+            required>
+    </div>
+
+    <br>
+
+    <div>
+        <label>Mô tả</label><br>
+        <textarea
+            name="description"
+            rows="4"
+            cols="40"><%= category.description %></textarea>
+    </div>
+
+    <br>
+
+    <button type="submit">
+        Lưu
+    </button>
+
+</form>
+
+<br>
+
+<a href="/admin/categories">
+    Quay lại
+</a>
+
+</body>
+</html>
