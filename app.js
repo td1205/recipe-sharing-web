@@ -8,6 +8,7 @@ require('dotenv').config()
 const app = express()
 //import database
 const pool = require('./models/db')
+const categoryModel = require('./models/categoryModel')
 //Cấu hình middleware để đọc dữ liệu từ form (POST request)
 app.use(express.urlencoded({ extended: true }))
 //Cấu hình middleware để đọc dữ liệu từ JSON
@@ -38,9 +39,24 @@ app.use(session({
     }
 }))
 //Tạo route thử nghiệm (Milestone ghép code)
-app.get('/', (req, res) => {
-    res.render('home')
-})
+app.get('/', async (req, res) => {
+
+    try {
+
+        const categories = await categoryModel.getAll();
+
+        res.render("home", {
+            categories
+        });
+
+    } catch (err) {
+
+        console.error(err);
+        res.send("Lỗi tải trang chủ");
+
+    }
+
+});
 //Khởi động server
 const PORT = 3000
 app.listen(PORT, () => {
