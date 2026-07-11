@@ -124,3 +124,122 @@ footer {
     color: #777;
     font-style: italic;
 }
+.recipe-form {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.form-group {
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.form-group input, 
+.form-group select, 
+.form-group textarea {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.form-row {
+    display: flex;
+    gap: 15px;
+}
+
+.form-row .col {
+    flex: 1;
+}
+
+.form-section {
+    margin-top: 25px;
+    border-top: 2px solid #eee;
+    padding-top: 15px;
+}
+
+.form-section h3 {
+    margin-bottom: 15px;
+    color: #444;
+}
+
+.ingredient-row, .step-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    align-items: center;
+}
+
+.ingredient-row input {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.step-row span {
+    font-weight: bold;
+    color: #555;
+    min-width: 60px;
+}
+
+.step-row textarea {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    resize: vertical;
+}
+
+.btn-add {
+    background: #28a745;
+    color: #fff;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    margin-top: 5px;
+}
+
+.btn-remove {
+    background: #dc3545;
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.btn-submit {
+    background: #007bff;
+    color: #fff;
+    border: none;
+    padding: 12px 20px;
+    font-size: 1.1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 25px;
+}
+
+.btn-add:hover {
+    background: #218838;
+}
+
+.btn-remove:hover {
+    background: #c82333;
+}
+
+.btn-submit:hover {
+    background: #0069d9;
+}
