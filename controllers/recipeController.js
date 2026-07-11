@@ -1,5 +1,7 @@
 const recipeModel = require("../models/recipeModel");
 const categoryModel = require("../models/categoryModel");
+const commentModel = require("../models/commentModel");
+const ratingModel = require("../models/ratingModel");
 
 async function getHomePage(req, res) {
   try {
@@ -10,12 +12,12 @@ async function getHomePage(req, res) {
       recipeModel.getAllRecipes(search, categoryId),
       categoryModel.getAll()
     ]);
-    res.render("home", { 
-      recipes, 
-      categories, 
-      search, 
-      selectedCategory: categoryId, 
-      user: req.session.user 
+    res.render("home", {
+      recipes,
+      categories,
+      search,
+      selectedCategory: categoryId,
+      user: req.session.user
     });
   } catch (err) {
     console.error(err);
@@ -26,19 +28,31 @@ async function getHomePage(req, res) {
 async function getRecipeDetail(req, res) {
   try {
     const recipeId = req.params.id;
+
     const recipe = await recipeModel.getRecipeById(recipeId);
-    
+
     if (!recipe) {
       return res.status(404).send("Recipe not found");
     }
 
-    const [ingredients, steps, categories] = await Promise.all([
-      recipeModel.getIngredientsByRecipeId(recipeId),
-      recipeModel.getStepsByRecipeId(recipeId),
-      categoryModel.getAll()
-    ]);
+    const [ingredients, steps, categories, comments, rating] =
+      await Promise.all([
+        recipeModel.getIngredientsByRecipeId(recipeId),
+        recipeModel.getStepsByRecipeId(recipeId),
+        categoryModel.getAll(),
+        commentModel.getCommentsByRecipeId(recipeId),
+        ratingModel.getAverageRating(recipeId),
+      ]);
 
-    res.render("recipes/detail", { recipe, ingredients, steps, categories, user: req.session.user });
+    res.render("recipes/detail", {
+      recipe,
+      ingredients,
+      steps,
+      categories,
+      comments,
+      rating,
+      user: req.session.user,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).send("Server Error");
@@ -65,7 +79,7 @@ async function handleCreateRecipe(req, res) {
     }
 
     const { title, description, prep_time, cook_time, servings, image_url, category_id } = req.body;
-    
+
     const recipeData = {
       user_id: req.session.user.id,
       category_id: parseInt(category_id),
@@ -253,10 +267,10 @@ async function handleDeleteRecipe(req, res) {
   }
 }
 
-module.exports = { 
-  getHomePage, 
-  getRecipeDetail, 
-  getCreatePage, 
+module.exports = {
+  getHomePage,
+  getRecipeDetail,
+  getCreatePage,
   handleCreateRecipe,
   getEditPage,
   handleUpdateRecipe,

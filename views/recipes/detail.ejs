@@ -18,14 +18,16 @@
                             </strong></span>
                         <span>Ngày đăng: <%= new Date(recipe.created_at).toLocaleDateString('vi-VN') %></span>
                     </div>
-                    <% if (typeof user !== 'undefined' && user && (user.id === recipe.user_id || user.role === 'admin')) { %>
+                    <% if (typeof user !=='undefined' && user && (user.id===recipe.user_id || user.role==='admin' )) {
+                        %>
                         <div class="recipe-actions">
                             <a href="/recipes/edit/<%= recipe.id %>" class="btn-action-edit">Sửa công thức</a>
-                            <form action="/recipes/delete/<%= recipe.id %>" method="POST" style="display:inline;" onsubmit="return confirm('Bạn có chắc chắn muốn xóa công thức này?');">
+                            <form action="/recipes/delete/<%= recipe.id %>" method="POST" style="display:inline;"
+                                onsubmit="return confirm('Bạn có chắc chắn muốn xóa công thức này?');">
                                 <button type="submit" class="btn-action-delete">Xóa công thức</button>
                             </form>
                         </div>
-                    <% } %>
+                        <% } %>
                 </div>
 
                 <% if (recipe.image_url) { %>
@@ -56,6 +58,33 @@
                                     </strong>
                                 </div>
                             </div>
+                        </div>
+                        <div class="recipe-section">
+                            <h3>Đánh giá</h3>
+
+                            <p>
+                                ⭐ <%= rating.averageRating ? Number(rating.averageRating).toFixed(1) : "Chưa có" %>
+                                    / 5
+                                    (<%= rating.totalRatings %> lượt đánh giá)
+                            </p>
+
+                            <% // TODO: Replace with req.session.user after Auth module is merged %>
+<% if (true) { %>
+                                <form action="/recipes/<%= recipe.id %>/rate" method="POST">
+                                    <select name="star_count" required>
+                                        <option value="">Chọn số sao</option>
+                                        <option value="1">1 ⭐</option>
+                                        <option value="2">2 ⭐⭐</option>
+                                        <option value="3">3 ⭐⭐⭐</option>
+                                        <option value="4">4 ⭐⭐⭐⭐</option>
+                                        <option value="5">5 ⭐⭐⭐⭐⭐</option>
+                                    </select>
+
+                                    <button type="submit">
+                                        Gửi đánh giá
+                                    </button>
+                                </form>
+                                <% } %>
                         </div>
 
                         <div class="recipe-section">
@@ -90,6 +119,46 @@
                                                 <li>Không có thông tin các bước thực hiện.</li>
                                                 <% } %>
                             </ol>
+                        </div>
+                        <div class="recipe-section">
+                            <h3>Bình luận</h3>
+
+                            <% if (comments && comments.length> 0) { %>
+                                <% comments.forEach(comment=> { %>
+                                    <div class="comment-item">
+                                        <strong>
+                                            <%= comment.username %>
+                                        </strong>
+                                        <small>
+                                            <%= new Date(comment.created_at).toLocaleString("vi-VN") %>
+                                        </small>
+
+                                        <p>
+                                            <%= comment.content %>
+                                        </p>
+
+                                        <hr>
+                                    </div>
+                                    <% }) %>
+                                        <% } else { %>
+                                            <p>Chưa có bình luận nào.</p>
+                                            <% } %>
+
+                                                <% if (true) { %>
+                                                    <form action="/recipes/<%= recipe.id %>/comments" method="POST">
+                                                        <textarea name="content" rows="4"
+                                                            placeholder="Nhập bình luận..." required></textarea>
+
+                                                        <br>
+
+                                                        <button type="submit">
+                                                            Gửi bình luận
+                                                        </button>
+                                                    </form>
+                                                    <% } else { %>
+                                                        <p>Đăng nhập để bình luận.</p>
+                                                        <% } %>
+
                         </div>
             </main>
 
