@@ -1,15 +1,33 @@
 const db = require("./db");
 
 const Recipe = {
-  async getAllRecipes() {
-    const sql = `
+  async getAllRecipes(search = "", categoryId = null) {
+    let sql = `
       SELECT recipes.*, users.fullname AS author_name, categories.name AS category_name 
       FROM recipes 
       LEFT JOIN users ON recipes.user_id = users.id 
-      LEFT JOIN categories ON recipes.category_id = categories.id 
-      ORDER BY recipes.created_at DESC
+      LEFT JOIN categories ON recipes.category_id = categories.id
     `;
-    const [rows] = await db.execute(sql);
+    const params = [];
+    const conditions = [];
+
+    if (search && search.trim() !== "") {
+      conditions.push("(recipes.title LIKE ? OR recipes.description LIKE ?)");
+      params.push(`%${search}%`, `%${search}%`);
+    }
+
+    if (categoryId) {
+      conditions.push("recipes.category_id = ?");
+      params.push(categoryId);
+    }
+
+    if (conditions.length > 0) {
+      sql += " WHERE " + conditions.join(" AND ");
+    }
+
+    sql += " ORDER BY recipes.created_at DESC";
+
+    const [rows] = await db.execute(sql, params);
     return rows;
   },
 

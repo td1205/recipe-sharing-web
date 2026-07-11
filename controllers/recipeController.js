@@ -3,11 +3,20 @@ const categoryModel = require("../models/categoryModel");
 
 async function getHomePage(req, res) {
   try {
+    const search = req.query.search || "";
+    const categoryId = req.query.category ? parseInt(req.query.category) : null;
+
     const [recipes, categories] = await Promise.all([
-      recipeModel.getAllRecipes(),
+      recipeModel.getAllRecipes(search, categoryId),
       categoryModel.getAll()
     ]);
-    res.render("home", { recipes, categories, user: req.session.user });
+    res.render("home", { 
+      recipes, 
+      categories, 
+      search, 
+      selectedCategory: categoryId, 
+      user: req.session.user 
+    });
   } catch (err) {
     console.error(err);
     res.status(500).send("Server Error");

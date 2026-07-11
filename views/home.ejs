@@ -7,6 +7,17 @@
             <main class="content">
                 <h2>Recipe Sharing Website</h2>
 
+                <form action="/" method="GET" class="search-form">
+                    <% if (typeof selectedCategory !== 'undefined' && selectedCategory) { %>
+                        <input type="hidden" name="category" value="<%= selectedCategory %>">
+                    <% } %>
+                    <input type="text" name="search" placeholder="Tìm kiếm công thức món ăn..." value="<%= typeof search !== 'undefined' ? search : '' %>">
+                    <button type="submit">Tìm kiếm</button>
+                    <% if ((typeof search !== 'undefined' && search) || (typeof selectedCategory !== 'undefined' && selectedCategory)) { %>
+                        <a href="/" class="btn-clear-search">Xóa bộ lọc</a>
+                    <% } %>
+                </form>
+
                 <div class="recipe-grid">
                     <% if (recipes && recipes.length> 0) { %>
                         <% recipes.forEach(recipe=> { %>
