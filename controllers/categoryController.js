@@ -1,0 +1,79 @@
+const categoryModel = require("../models/categoryModel");
+
+exports.showCategories = async (req, res) => {
+    try {
+        const categories = await categoryModel.getAll();
+
+        res.render("admin/categories", {
+            categories
+        });
+    } catch (err) {
+        console.error(err);
+        res.send("Lỗi khi lấy danh mục");
+    }
+};
+
+exports.showCreate = (req, res) => {
+    res.render("admin/category-form");
+};
+
+exports.createCategory = async (req, res) => {
+    try {
+        const { name, description } = req.body;
+
+        await categoryModel.create(name, description);
+
+        res.redirect("/admin/categories");
+    } catch (err) {
+        console.error(err);
+        res.send("Lỗi khi thêm danh mục");
+    }
+};
+
+exports.showEdit = async (req, res) => {
+    try {
+        const category = await categoryModel.getById(req.params.id);
+
+        res.render("admin/category-edit", {
+            category
+        });
+
+    } catch (err) {
+        console.error(err);
+        res.send("Lỗi");
+    }
+};
+
+exports.updateCategory = async (req, res) => {
+    try {
+        const { name, description } = req.body;
+
+        await categoryModel.update(
+            req.params.id,
+            name,
+            description
+        );
+
+        res.redirect("/admin/categories");
+
+    } catch (err) {
+        console.error(err);
+        res.send("Lỗi cập nhật danh mục");
+    }
+};
+
+exports.deleteCategory = async (req, res) => {
+    try {
+
+        await categoryModel.remove(req.params.id);
+
+        res.redirect("/admin/categories");
+
+    } catch (err) {
+
+        console.error(err);
+
+        res.send("Lỗi xóa danh mục");
+
+    }
+};

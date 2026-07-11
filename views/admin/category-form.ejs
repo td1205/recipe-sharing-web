@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Thêm danh mục</title>
+</head>
+
+<body>
+
+    <h1>Thêm danh mục</h1>
+
+    <form action="/admin/categories/create" method="POST">
+
+        <div>
+            <label>Tên danh mục</label><br>
+            <input type="text" name="name" required>
+        </div>
+
+        <br>
+
+        <div>
+            <label>Mô tả</label><br>
+            <textarea name="description" rows="4" cols="40"></textarea>
+        </div>
+
+        <br>
+
+        <button type="submit">
+            Lưu
+        </button>
+
+    </form>
+
+    <br>
+
+    <a href="/admin/categories">
+        Quay lại
+    </a>
+
+</body>
+
+</html>

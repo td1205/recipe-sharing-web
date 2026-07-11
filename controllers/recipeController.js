@@ -1,9 +1,13 @@
 const recipeModel = require("../models/recipeModel");
+const categoryModel = require("../models/categoryModel");
 
 async function getHomePage(req, res) {
   try {
-    const recipes = await recipeModel.getAllRecipes();
-    res.render("home", { recipes, user: req.session.user });
+    const [recipes, categories] = await Promise.all([
+      recipeModel.getAllRecipes(),
+      categoryModel.getAll()
+    ]);
+    res.render("home", { recipes, categories, user: req.session.user });
   } catch (err) {
     console.error(err);
     res.status(500).send("Server Error");
@@ -19,12 +23,13 @@ async function getRecipeDetail(req, res) {
       return res.status(404).send("Recipe not found");
     }
 
-    const [ingredients, steps] = await Promise.all([
+    const [ingredients, steps, categories] = await Promise.all([
       recipeModel.getIngredientsByRecipeId(recipeId),
-      recipeModel.getStepsByRecipeId(recipeId)
+      recipeModel.getStepsByRecipeId(recipeId),
+      categoryModel.getAll()
     ]);
 
-    res.render("recipes/detail", { recipe, ingredients, steps, user: req.session.user });
+    res.render("recipes/detail", { recipe, ingredients, steps, categories, user: req.session.user });
   } catch (err) {
     console.error(err);
     res.status(500).send("Server Error");
