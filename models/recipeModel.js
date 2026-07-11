@@ -84,6 +84,62 @@ const Recipe = {
     } finally {
       conn.release();
     }
+  },
+  async updateRecipe(recipeId, recipeData, ingredients, steps) {
+    const conn = await db.getConnection();
+    try {
+      await conn.beginTransaction();
+
+      const sqlRecipe = `
+        UPDATE recipes 
+        SET category_id = ?, title = ?, description = ?, prep_time = ?, cook_time = ?, servings = ?, image_url = ?
+        WHERE id = ?
+      `;
+      await conn.execute(sqlRecipe, [
+        recipeData.category_id,
+        recipeData.title,
+        recipeData.description,
+        recipeData.prep_time,
+        recipeData.cook_time,
+        recipeData.servings,
+        recipeData.image_url,
+        recipeId
+      ]);
+
+      await conn.execute(`DELETE FROM ingredients WHERE recipe_id = ?`, [recipeId]);
+
+      if (ingredients && ingredients.length > 0) {
+        const sqlIngredient = `INSERT INTO ingredients (recipe_id, name, amount, unit) VALUES (?, ?, ?, ?)`;
+        for (const ing of ingredients) {
+          if (ing.name && ing.name.trim() !== "") {
+            await conn.execute(sqlIngredient, [recipeId, ing.name, ing.amount, ing.unit]);
+          }
+        }
+      }
+
+      await conn.execute(`DELETE FROM steps WHERE recipe_id = ?`, [recipeId]);
+
+      if (steps && steps.length > 0) {
+        const sqlStep = `INSERT INTO steps (recipe_id, step_number, instruction) VALUES (?, ?, ?)`;
+        for (const step of steps) {
+          if (step.instruction && step.instruction.trim() !== "") {
+            await conn.execute(sqlStep, [recipeId, step.step_number, step.instruction]);
+          }
+        }
+      }
+
+      await conn.commit();
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
+  },
+  async deleteRecipe(id) {
+    const sql = `DELETE FROM recipes WHERE id = ?`;
+    const [result] = await db.execute(sql, [id]);
+    return result;
   }
 };
 

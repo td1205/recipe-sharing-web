@@ -243,3 +243,39 @@ footer {
 .btn-submit:hover {
     background: #0069d9;
 }
+
+.recipe-actions {
+    margin-top: 15px;
+    display: flex;
+    gap: 10px;
+}
+
+.btn-action-edit {
+    display: inline-block;
+    background: #ffc107;
+    color: #212529;
+    text-decoration: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.btn-action-delete {
+    background: #dc3545;
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.btn-action-edit:hover {
+    background: #e0a800;
+}
+
+.btn-action-delete:hover {
+    background: #bd2130;
+}
