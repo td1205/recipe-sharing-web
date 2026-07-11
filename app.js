@@ -3,7 +3,10 @@ const path = require('path')
 const session = require('express-session')
 require('dotenv').config()
 const authRoutes = require("./routes/authRoutes");
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/develop
 //Khởi tạo express
 const app = express()
 //import database
