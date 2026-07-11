@@ -8,9 +8,14 @@
 
             <a href="/">Trang chủ</a>
 
-            <a href="#">Đăng công thức</a>
-
-            <a href="#">Đăng nhập</a>
+            <% if (typeof user !== 'undefined' && user) { %>
+                <a href="/recipes/create">Đăng công thức</a>
+                <a href="/profile">Chào, <%= user.username %>!</a>
+                <a href="/logout">Đăng xuất</a>
+            <% } else { %>
+                <a href="/login">Đăng nhập</a>
+                <a href="/register">Đăng ký</a>
+            <% } %>
 
         </nav>
 
