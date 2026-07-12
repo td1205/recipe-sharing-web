@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Người dùng</title>
+</head>
+<body>
+<h1>Quản lý người dùng</h1>
+    <table border="1" cellspacing="0" cellpadding="10">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Fullname</th>
+                <th>Role</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% users.forEach(function(u) { %>
+                <tr>
+                    <td><%= u.id %></td>
+                    <td><%= u.username %></td>
+                    <td><%= u.email %></td>
+                    <td><%= u.fullname %></td>
+                    <td><%= u.role %></td>
+                    <td>
+                        <% if(u.role !== 'admin') { %>
+                            <form action="/admin/users/delete/<%= u.id %>" method="POST">
+                                <button type="submit">Xóa User</button>
+                            </form>
+                        <% } %>
+                    </td>
+                </tr>
+            <% }) %>
+        </tbody>
+    </table>
+</body>
+</html>

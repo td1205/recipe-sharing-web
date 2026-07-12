@@ -32,7 +32,9 @@ async function handleRegister(req, res) {
   const { username, email, password, confirm_password, fullname } = req.body;
 
   if (password !== confirm_password) {
-    return res.render("auth/register", { error: "Mật khẩu xác nhận không khớp!" });
+    return res.render("auth/register", {
+      error: "Mật khẩu xác nhận không khớp!",
+    });
   }
 
   const [user] = await userModel.getUserByUsername(username);
@@ -53,10 +55,17 @@ function logout(req, res) {
   req.session.destroy();
   return res.redirect("/login");
 }
-async function renderProfile(req,res){
+async function renderProfile(req, res) {
   const userId = req.session.user.id;
-  const [user] = await userModel.getUserById(userId)
+  const [user] = await userModel.getUserById(userId);
   const favouriteRecipes = await userModel.getFavouriteRecipesByUser(userId);
-  res.render('auth/profile', {user,favouriteRecipes})
+  res.render("auth/profile", { user, favouriteRecipes });
 }
-module.exports = { getLoginPage, getRegisterPage, handleLogin, handleRegister, logout, renderProfile };
+module.exports = {
+  getLoginPage,
+  getRegisterPage,
+  handleLogin,
+  handleRegister,
+  logout,
+  renderProfile,
+};

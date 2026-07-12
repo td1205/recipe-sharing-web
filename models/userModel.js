@@ -25,4 +25,10 @@ async function getFavouriteRecipesByUser(userId) {
   const [rows] = await db.execute(sql, [userId]);
   return rows;
 }
-module.exports = { getUserByUsername, getUserByEmail, createUser, getUserById, getFavouriteRecipesByUser };
+module.exports = {
+  getUserByUsername,
+  getUserByEmail,
+  createUser,
+  getUserById,
+  getFavouriteRecipesByUser,
+};
