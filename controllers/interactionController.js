@@ -1,6 +1,8 @@
 const commentModel = require("../models/commentModel");
 const ratingModel = require("../models/ratingModel");
 const recipeModel = require("../models/recipeModel");
+const favoriteModel = require("../models/favoriteModel");
+const interactionModel = require("../models/interactionModel");
 
 // Add comment to a recipe
 async function addComment(req, res) {
@@ -31,10 +33,35 @@ async function addRating(req, res) {
             return res.redirect("/login");
         }
         const recipeId = req.params.id;
-        // TODO: Replace with req.session.user.id after Auth module is merged
+
         const userId = req.session.user.id;
         const { star_count } = req.body;
         await ratingModel.createOrUpdateRating(userId, recipeId, parseInt(star_count));
+        res.redirect(`/recipes/${recipeId}`);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Server Error");
+    }
+}
+ 
+// Toggle favorite
+async function toggleFavorite(req, res) {
+    try {
+        if (!req.session.user) {
+            return res.redirect("/login");
+        }
+
+        const recipeId = req.params.id;
+        const userId = req.session.user.id;
+
+        const isFav = await favoriteModel.isFavorite(userId, recipeId);
+
+        if (isFav) {
+            await favoriteModel.removeFavorite(userId, recipeId);
+        } else {
+            await favoriteModel.addFavorite(userId, recipeId);
+        }
+
         res.redirect(`/recipes/${recipeId}`);
     } catch (err) {
         console.error(err);
@@ -53,16 +80,41 @@ async function showRecipeDetail(req, res) {
         const comments = await commentModel.getCommentsByRecipeId(recipeId);
         const rating = await ratingModel.getAverageRating(recipeId);
         let userRating = null;
+        let isFav = false;
         if (req.session.user) {
             userRating = await ratingModel.getUserRating(req.session.user.id, recipeId);
+            isFav = await favoriteModel.isFavorite(req.session.user.id, recipeId);
         }
         res.render("recipes/detail", {
             recipe,
             comments,
             rating,
             userRating,
+            isFav,
             user: req.session.user,
         });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Server Error");
+    }
+}
+
+// Admin comments
+async function adminComments(req, res) {
+    try {
+        const comments = await interactionModel.getAllComments();
+        res.render("admin/comments", { comments });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Server Error");
+    }
+}
+
+// Delete comment (admin)
+async function deleteComment(req, res) {
+    try {
+        await interactionModel.deleteComment(req.params.id);
+        res.redirect("/admin/comments");
     } catch (err) {
         console.error(err);
         res.status(500).send("Server Error");
@@ -72,5 +124,8 @@ async function showRecipeDetail(req, res) {
 module.exports = {
     addComment,
     addRating,
+    toggleFavorite,
     showRecipeDetail,
+    adminComments,
+    deleteComment,
 };

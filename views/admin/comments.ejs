@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manage Comments</title>
+</head>
+<body>
+    <h2>Quản lý bình luận</h2>
+
+    <table border="1" cellpadding="10">
+        <tr>
+            <th>ID</th>
+            <th>User</th>
+            <th>Công thức</th>
+            <th>Bình luận</th>
+            <th>Ngày</th>
+            <th></th>
+        </tr>
+
+        <% comments.forEach(comment => { %>
+            <tr>
+                <td><%= comment.id %></td>
+                <td><%= comment.username %></td>
+                <td><%= comment.title %></td>
+                <td><%= comment.content %></td>
+                <td><%= comment.created_at %></td>
+                <td>
+                    <form action="/admin/comments/delete/<%= comment.id %>" method="POST">
+                        <button type="submit" onclick="return confirm('Bạn có chắc muốn xóa?')">Xóa</button>
+                    </form>
+                </td>
+            </tr>
+        <% }) %>
+    </table>
+</body>
+</html>

@@ -67,8 +67,13 @@
                                     / 5
                                     (<%= rating.totalRatings %> lượt đánh giá)
                             </p>
-
                             <% if (typeof user !== 'undefined' && user) { %>
+                                <form action="/recipes/<%= recipe.id %>/favorite" method="POST" style="margin-bottom: 15px;">
+                                    <button type="submit" class="btn-favorite <%= (typeof isFav !== 'undefined' && isFav) ? 'is-fav' : 'not-fav' %>">
+                                        <%= (typeof isFav !== 'undefined' && isFav) ? "💔 Bỏ thích công thức" : "❤️ Thích công thức" %>
+                                    </button>
+                                </form>
+
                                 <form action="/recipes/<%= recipe.id %>/rate" method="POST" class="rating-form">
                                     <select name="star_count" required>
                                         <option value="">Chọn số sao</option>
@@ -81,7 +86,7 @@
                                     <button type="submit" class="btn-rate">Gửi đánh giá</button>
                                 </form>
                             <% } else { %>
-                                <p class="login-prompt"><a href="/login">Đăng nhập</a> để gửi đánh giá món ăn.</p>
+                                <p class="login-prompt"><a href="/login">Đăng nhập</a> để gửi đánh giá hoặc thích món ăn.</p>
                             <% } %>
                         </div>
 

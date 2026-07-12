@@ -460,3 +460,42 @@ footer {
     line-height: 1.6;
     color: #444;
 }
+
+/* Favorite button styling */
+.btn-favorite {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    font-size: 1rem;
+    font-weight: bold;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 15px 0;
+}
+
+.btn-favorite.not-fav {
+    background-color: #fff;
+    color: #e0245e;
+    border: 2px solid #e0245e;
+}
+
+.btn-favorite.not-fav:hover {
+    background-color: #fff1f5;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(224, 36, 94, 0.1);
+}
+
+.btn-favorite.is-fav {
+    background-color: #e0245e;
+    color: #fff;
+    border: 2px solid #e0245e;
+}
+
+.btn-favorite.is-fav:hover {
+    background-color: #c51f50;
+    border-color: #c51f50;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(224, 36, 94, 0.2);
+}
