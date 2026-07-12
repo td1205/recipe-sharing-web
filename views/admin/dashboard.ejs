@@ -1,38 +1,1 @@
-<%- include('../partials/header') %>
-<%- include('../partials/navbar') %>
-
-<div class="container">
-    <main class="content">
-        <div class="admin-header" style="margin-bottom: 25px;">
-            <h2>Dashboard Quản lý</h2>
-            <p style="color: #64748b; margin-top: 5px;">Xin chào Admin</p>
-        </div>
-
-        <div class="stats-grid">
-            <div class="stat-card">
-                <h3>Người dùng</h3>
-                <div class="number"><%= stats.users %></div>
-            </div>
-
-            <div class="stat-card">
-                <h3>Công thức</h3>
-                <div class="number"><%= stats.recipes %></div>
-            </div>
-
-            <div class="stat-card">
-                <h3>Danh mục</h3>
-                <div class="number"><%= stats.categories %></div>
-            </div>
-
-            <div class="stat-card">
-                <h3>Bình luận</h3>
-                <div class="number"><%= stats.comments %></div>
-            </div>
-        </div>
-    </main>
-
-    <% const activeTab = 'dashboard'; %>
-    <%- include('../partials/admin-sidebar', { activeTab }) %>
-</div>
-
-<%- include('../partials/footer') %>
+<%- include('../partials/header') %><%- include('../partials/navbar') %><div class="container">    <main class="content">        <div class="admin-header" >            <h2>Dashboard Quản lý</h2>            <p class="admin-subtitle">Xin chào Admin</p>        </div>        <div class="stats-grid">            <div class="stat-card">                <h3>Người dùng</h3>                <div class="number"><%= stats.users %></div>            </div>            <div class="stat-card">                <h3>Công thức</h3>                <div class="number"><%= stats.recipes %></div>            </div>            <div class="stat-card">                <h3>Danh mục</h3>                <div class="number"><%= stats.categories %></div>            </div>            <div class="stat-card">                <h3>Bình luận</h3>                <div class="number"><%= stats.comments %></div>            </div>        </div>    </main>    <% const activeTab = 'dashboard'; %>    <%- include('../partials/admin-sidebar', { activeTab }) %></div><%- include('../partials/footer') %>

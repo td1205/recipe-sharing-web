@@ -1,44 +1,1 @@
-<%- include('../partials/header') %>
-<%- include('../partials/navbar') %>
-
-<div class="container">
-    <main class="content">
-        <div class="admin-header" style="margin-bottom: 25px;">
-            <h2>Quản lý bình luận</h2>
-        </div>
-
-        <table class="admin-table">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Người dùng</th>
-                    <th>Công thức</th>
-                    <th>Nội dung bình luận</th>
-                    <th>Ngày tạo</th>
-                    <th>Thao tác</th>
-                </tr>
-            </thead>
-            <tbody>
-                <% comments.forEach(comment => { %>
-                    <tr>
-                        <td><%= comment.id %></td>
-                        <td><strong><%= comment.username %></strong></td>
-                        <td><a href="/recipes/<%= comment.recipe_id %>" style="color: #F28944; text-decoration: none; font-weight: 500;"><%= comment.title %></a></td>
-                        <td><%= comment.content %></td>
-                        <td><%= new Date(comment.created_at).toLocaleString("vi-VN") %></td>
-                        <td>
-                            <form action="/admin/comments/delete/<%= comment.id %>" method="POST" style="display:inline;" onsubmit="return confirm('Bạn có chắc muốn xóa bình luận này?');">
-                                <button type="submit" class="btn-action-delete" style="padding: 6px 12px; font-size: 12px;">Xóa</button>
-                            </form>
-                        </td>
-                    </tr>
-                <% }) %>
-            </tbody>
-        </table>
-    </main>
-
-    <% const activeTab = 'comments'; %>
-    <%- include('../partials/admin-sidebar', { activeTab }) %>
-</div>
-
-<%- include('../partials/footer') %>
+<%- include('../partials/header') %><%- include('../partials/navbar') %><div class="container">    <main class="content">        <div class="admin-header" >            <h2>Quản lý bình luận</h2>        </div>        <table class="admin-table">            <thead>                <tr>                    <th>ID</th>                    <th>Người dùng</th>                    <th>Công thức</th>                    <th>Nội dung bình luận</th>                    <th>Ngày tạo</th>                    <th>Thao tác</th>                </tr>            </thead>            <tbody>                <% comments.forEach(comment => { %>                    <tr>                        <td><%= comment.id %></td>                        <td><strong><%= comment.username %></strong></td>                        <td><a href="/recipes/<%= comment.recipe_id %>" class="recipe-link"><%= comment.title %></a></td>                        <td><%= comment.content %></td>                        <td><%= new Date(comment.created_at).toLocaleString("vi-VN") %></td>                        <td>                            <form action="/admin/comments/delete/<%= comment.id %>" method="POST" class="inline-form" onsubmit="return confirm('Bạn có chắc muốn xóa bình luận này?');">                                <button type="submit" class="btn-action-delete" >Xóa</button>                            </form>                        </td>                    </tr>                <% }) %>            </tbody>        </table>    </main>    <% const activeTab = 'comments'; %>    <%- include('../partials/admin-sidebar', { activeTab }) %></div><%- include('../partials/footer') %>

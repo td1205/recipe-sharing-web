@@ -1,148 +1,1 @@
-<%- include('../partials/header') %>
-<%- include('../partials/navbar') %>
-
-<div class="container">
-    <main class="content">
-        <h2>Chỉnh sửa Công thức Món ăn</h2>
-        
-        <form action="/recipes/edit/<%= recipe.id %>" method="POST" class="recipe-form">
-            <div class="form-group">
-                <label>Tên món ăn</label>
-                <input type="text" name="title" value="<%= recipe.title %>" required>
-            </div>
-
-            <div class="form-group">
-                <label>Danh mục</label>
-                <select name="category_id" required>
-                    <% categories.forEach(cat => { %>
-                        <option value="<%= cat.id %>" <%= recipe.category_id === cat.id ? 'selected' : '' %>><%= cat.name %></option>
-                    <% }) %>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>Mô tả ngắn</label>
-                <textarea name="description" rows="3" required><%= recipe.description %></textarea>
-            </div>
-
-            <div class="form-group">
-                <label>Link ảnh món ăn</label>
-                <input type="url" name="image_url" value="<%= recipe.image_url %>">
-            </div>
-
-            <div class="form-row">
-                <div class="form-group col">
-                    <label>Chuẩn bị (phút)</label>
-                    <input type="number" name="prep_time" min="0" value="<%= recipe.prep_time %>">
-                </div>
-                <div class="form-group col">
-                    <label>Chế biến (phút)</label>
-                    <input type="number" name="cook_time" min="0" value="<%= recipe.cook_time %>">
-                </div>
-                <div class="form-group col">
-                    <label>Khẩu phần (người)</label>
-                    <input type="number" name="servings" min="1" value="<%= recipe.servings %>">
-                </div>
-            </div>
-
-            <div class="form-section">
-                <h3>Nguyên liệu</h3>
-                <div id="ingredients-list">
-                    <% if (ingredients && ingredients.length > 0) { %>
-                        <% ingredients.forEach(ing => { %>
-                            <div class="ingredient-row">
-                                <input type="text" name="ing_name" value="<%= ing.name %>" placeholder="Tên nguyên liệu" required>
-                                <input type="text" name="ing_amount" value="<%= ing.amount %>" placeholder="Số lượng" required>
-                                <input type="text" name="ing_unit" value="<%= ing.unit %>" placeholder="Đơn vị" required>
-                                <button type="button" class="btn-remove" onclick="removeRow(this)">Xóa</button>
-                            </div>
-                        <% }) %>
-                    <% } else { %>
-                        <div class="ingredient-row">
-                            <input type="text" name="ing_name" placeholder="Tên nguyên liệu (VD: Thịt bò)" required>
-                            <input type="text" name="ing_amount" placeholder="Số lượng (VD: 300)" required>
-                            <input type="text" name="ing_unit" placeholder="Đơn vị (VD: gram)" required>
-                            <button type="button" class="btn-remove" onclick="removeRow(this)">Xóa</button>
-                        </div>
-                    <% } %>
-                </div>
-                <button type="button" class="btn-add" onclick="addIngredient()">+ Thêm nguyên liệu</button>
-            </div>
-
-            <div class="form-section">
-                <h3>Các bước thực hiện</h3>
-                <div id="steps-list">
-                    <% if (steps && steps.length > 0) { %>
-                        <% steps.forEach((step, index) => { %>
-                            <div class="step-row">
-                                <span class="step-num">Bước <%= index + 1 %>:</span>
-                                <textarea name="step_instruction" rows="2" placeholder="Hướng dẫn chi tiết..." required><%= step.instruction %></textarea>
-                                <button type="button" class="btn-remove" onclick="removeRow(this)">Xóa</button>
-                            </div>
-                        <% }) %>
-                    <% } else { %>
-                        <div class="step-row">
-                            <span class="step-num">Bước 1:</span>
-                            <textarea name="step_instruction" rows="2" placeholder="Hướng dẫn chi tiết bước này..." required></textarea>
-                            <button type="button" class="btn-remove" onclick="removeRow(this)">Xóa</button>
-                        </div>
-                    <% } %>
-                </div>
-                <button type="button" class="btn-add" onclick="addStep()">+ Thêm bước</button>
-            </div>
-
-            <button type="submit" class="btn-submit">Lưu thay đổi</button>
-        </form>
-    </main>
-
-    <%- include('../partials/sidebar') %>
-</div>
-
-<script>
-function addIngredient() {
-    const list = document.getElementById('ingredients-list');
-    const row = document.createElement('div');
-    row.className = 'ingredient-row';
-    row.innerHTML = `
-        <input type="text" name="ing_name" placeholder="Tên nguyên liệu" required>
-        <input type="text" name="ing_amount" placeholder="Số lượng" required>
-        <input type="text" name="ing_unit" placeholder="Đơn vị" required>
-        <button type="button" class="btn-remove" onclick="removeRow(this)">Xóa</button>
-    `;
-    list.appendChild(row);
-}
-
-function addStep() {
-    const list = document.getElementById('steps-list');
-    const rowCount = list.getElementsByClassName('step-row').length;
-    const row = document.createElement('div');
-    row.className = 'step-row';
-    row.innerHTML = `
-        <span class="step-num">Bước ${rowCount + 1}:</span>
-        <textarea name="step_instruction" rows="2" placeholder="Hướng dẫn chi tiết bước này..." required></textarea>
-        <button type="button" class="btn-remove" onclick="removeRow(this)">Xóa</button>
-    `;
-    list.appendChild(row);
-    updateStepNumbers();
-}
-
-function removeRow(btn) {
-    const row = btn.parentElement;
-    const list = row.parentElement;
-    if (list.children.length > 1) {
-        row.remove();
-        if (list.id === 'steps-list') {
-            updateStepNumbers();
-        }
-    }
-}
-
-function updateStepNumbers() {
-    const steps = document.getElementById('steps-list').getElementsByClassName('step-row');
-    for (let i = 0; i < steps.length; i++) {
-        steps[i].querySelector('.step-num').innerText = `Bước ${i + 1}:`;
-    }
-}
-</script>
-
-<%- include('../partials/footer') %>
+<%- include('../partials/header') %><%- include('../partials/navbar') %><div class="container">    <main class="content">        <h2>Chỉnh sửa Công thức Món ăn</h2>        <form action="/recipes/edit/<%= recipe.id %>" method="POST" class="recipe-form">            <div class="form-group">                <label>Tên món ăn</label>                <input type="text" name="title" value="<%= recipe.title %>" required>            </div>            <div class="form-group">                <label>Danh mục</label>                <select name="category_id" required>                    <% categories.forEach(cat => { %>                        <option value="<%= cat.id %>" <%= recipe.category_id === cat.id ? 'selected' : '' %>><%= cat.name %></option>                    <% }) %>                </select>            </div>            <div class="form-group">                <label>Mô tả ngắn</label>                <textarea name="description" rows="3" required><%= recipe.description %></textarea>            </div>            <div class="form-group">                <label>Link ảnh món ăn</label>                <input type="url" name="image_url" value="<%= recipe.image_url %>">            </div>            <div class="form-row">                <div class="form-group col">                    <label>Chuẩn bị (phút)</label>                    <input type="number" name="prep_time" min="0" value="<%= recipe.prep_time %>">                </div>                <div class="form-group col">                    <label>Chế biến (phút)</label>                    <input type="number" name="cook_time" min="0" value="<%= recipe.cook_time %>">                </div>                <div class="form-group col">                    <label>Khẩu phần (người)</label>                    <input type="number" name="servings" min="1" value="<%= recipe.servings %>">                </div>            </div>            <div class="form-section">                <h3>Nguyên liệu</h3>                <div id="ingredients-list">                    <% if (ingredients && ingredients.length > 0) { %>                        <% ingredients.forEach(ing => { %>                            <div class="ingredient-row">                                <input type="text" name="ing_name" value="<%= ing.name %>" placeholder="Tên nguyên liệu" required>                                <input type="text" name="ing_amount" value="<%= ing.amount %>" placeholder="Số lượng" required>                                <input type="text" name="ing_unit" value="<%= ing.unit %>" placeholder="Đơn vị" required>                                <button type="button" class="btn-remove" onclick="removeRow(this)">Xóa</button>                            </div>                        <% }) %>                    <% } else { %>                        <div class="ingredient-row">                            <input type="text" name="ing_name" placeholder="Tên nguyên liệu (VD: Thịt bò)" required>                            <input type="text" name="ing_amount" placeholder="Số lượng (VD: 300)" required>                            <input type="text" name="ing_unit" placeholder="Đơn vị (VD: gram)" required>                            <button type="button" class="btn-remove" onclick="removeRow(this)">Xóa</button>                        </div>                    <% } %>                </div>                <button type="button" class="btn-add" onclick="addIngredient()">+ Thêm nguyên liệu</button>            </div>            <div class="form-section">                <h3>Các bước thực hiện</h3>                <div id="steps-list">                    <% if (steps && steps.length > 0) { %>                        <% steps.forEach((step, index) => { %>                            <div class="step-row">                                <span class="step-num">Bước <%= index + 1 %>:</span>                                <textarea name="step_instruction" rows="2" placeholder="Hướng dẫn chi tiết..." required><%= step.instruction %></textarea>                                <button type="button" class="btn-remove" onclick="removeRow(this)">Xóa</button>                            </div>                        <% }) %>                    <% } else { %>                        <div class="step-row">                            <span class="step-num">Bước 1:</span>                            <textarea name="step_instruction" rows="2" placeholder="Hướng dẫn chi tiết bước này..." required></textarea>                            <button type="button" class="btn-remove" onclick="removeRow(this)">Xóa</button>                        </div>                    <% } %>                </div>                <button type="button" class="btn-add" onclick="addStep()">+ Thêm bước</button>            </div>            <button type="submit" class="btn-submit">Lưu thay đổi</button>        </form>    </main>    <%- include('../partials/sidebar') %></div><script>function addIngredient() {    const list = document.getElementById('ingredients-list');    const row = document.createElement('div');    row.className = 'ingredient-row';    row.innerHTML = `        <input type="text" name="ing_name" placeholder="Tên nguyên liệu" required>        <input type="text" name="ing_amount" placeholder="Số lượng" required>        <input type="text" name="ing_unit" placeholder="Đơn vị" required>        <button type="button" class="btn-remove" onclick="removeRow(this)">Xóa</button>    `;    list.appendChild(row);}function addStep() {    const list = document.getElementById('steps-list');    const rowCount = list.getElementsByClassName('step-row').length;    const row = document.createElement('div');    row.className = 'step-row';    row.innerHTML = `        <span class="step-num">Bước ${rowCount + 1}:</span>        <textarea name="step_instruction" rows="2" placeholder="Hướng dẫn chi tiết bước này..." required></textarea>        <button type="button" class="btn-remove" onclick="removeRow(this)">Xóa</button>    `;    list.appendChild(row);    updateStepNumbers();}function removeRow(btn) {    const row = btn.parentElement;    const list = row.parentElement;    if (list.children.length > 1) {        row.remove();        if (list.id === 'steps-list') {            updateStepNumbers();        }    }}function updateStepNumbers() {    const steps = document.getElementById('steps-list').getElementsByClassName('step-row');    for (let i = 0; i < steps.length; i++) {        steps[i].querySelector('.step-num').innerText = `Bước ${i + 1}:`;    }}</script><%- include('../partials/footer') %>

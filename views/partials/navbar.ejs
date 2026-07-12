@@ -1,16 +1,11 @@
 <header>
-
     <div class="navbar">
-
-        <h2>🍲 Recipe Sharing</h2>
-
+        <h2 style="display: flex; align-items: center; gap: 8px;"> <img src="https://cdn-icons-png.flaticon.com/512/1065/1065711.png" alt="Logo" style="width: 32px; height: 32px;">Recipe Sharing</h2>
         <nav>
-
             <a href="/">Trang chủ</a>
-
             <% if (typeof user !== 'undefined' && user) { %>
                 <% if (user.role === 'admin') { %>
-                    <a href="/admin/dashboard" style="color: #F28944; font-weight: 600;">Trang Quản trị</a>
+                    <a href="/admin/dashboard">Trang Quản trị</a>
                 <% } %>
                 <a href="/recipes/create">Đăng công thức</a>
                 <a href="/profile">Chào, <%= user.username %>!</a>
@@ -19,9 +14,6 @@
                 <a href="/login">Đăng nhập</a>
                 <a href="/register">Đăng ký</a>
             <% } %>
-
         </nav>
-
     </div>
-
-</header>
+</header>   

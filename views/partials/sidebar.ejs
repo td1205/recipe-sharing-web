@@ -1,23 +1,1 @@
-<aside class="sidebar">
-
-    <h3>Danh mục</h3>
-
-    <ul>
-
-        <li>
-            <a href="/<%= (typeof search !== 'undefined' && search) ? '?search=' + encodeURIComponent(search) : '' %>" class="<%= (typeof selectedCategory === 'undefined' || !selectedCategory) ? 'active' : '' %>">Tất cả</a>
-        </li>
-
-        <% categories.forEach(category=> { %>
-
-            <li>
-                <a href="/?category=<%= category.id %><%= (typeof search !== 'undefined' && search) ? '&search=' + encodeURIComponent(search) : '' %>" class="<%= (typeof selectedCategory !== 'undefined' && selectedCategory === category.id) ? 'active' : '' %>">
-                    <%= category.name %>
-                </a>
-            </li>
-
-            <% }) %>
-
-    </ul>
-
-</aside>
+<aside class="sidebar">    <h3>Danh mục</h3>    <ul>        <li>            <a href="/<%= (typeof search !== 'undefined' && search) ? '?search=' + encodeURIComponent(search) : '' %>" class="<%= (typeof selectedCategory === 'undefined' || !selectedCategory) ? 'active' : '' %>">Tất cả</a>        </li>        <% categories.forEach(category=> { %>            <li>                <a href="/?category=<%= category.id %><%= (typeof search !== 'undefined' && search) ? '&search=' + encodeURIComponent(search) : '' %>" class="<%= (typeof selectedCategory !== 'undefined' && selectedCategory === category.id) ? 'active' : '' %>">                    <%= category.name %>                </a>            </li>            <% }) %>    </ul></aside>
