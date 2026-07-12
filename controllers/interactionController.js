@@ -2,6 +2,7 @@ const commentModel = require("../models/commentModel");
 const ratingModel = require("../models/ratingModel");
 const recipeModel = require("../models/recipeModel");
 const favoriteModel = require("../models/favoriteModel");
+const interactionModel = require("../models/interactionModel");
 
 // Add comment to a recipe
 async function addComment(req, res) {
@@ -79,16 +80,41 @@ async function showRecipeDetail(req, res) {
         const comments = await commentModel.getCommentsByRecipeId(recipeId);
         const rating = await ratingModel.getAverageRating(recipeId);
         let userRating = null;
+        let isFav = false;
         if (req.session.user) {
             userRating = await ratingModel.getUserRating(req.session.user.id, recipeId);
+            isFav = await favoriteModel.isFavorite(req.session.user.id, recipeId);
         }
         res.render("recipes/detail", {
             recipe,
             comments,
             rating,
             userRating,
+            isFav,
             user: req.session.user,
         });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Server Error");
+    }
+}
+
+// Admin comments
+async function adminComments(req, res) {
+    try {
+        const comments = await interactionModel.getAllComments();
+        res.render("admin/comments", { comments });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Server Error");
+    }
+}
+
+// Delete comment (admin)
+async function deleteComment(req, res) {
+    try {
+        await interactionModel.deleteComment(req.params.id);
+        res.redirect("/admin/comments");
     } catch (err) {
         console.error(err);
         res.status(500).send("Server Error");
@@ -100,4 +126,6 @@ module.exports = {
     addRating,
     toggleFavorite,
     showRecipeDetail,
+    adminComments,
+    deleteComment,
 };

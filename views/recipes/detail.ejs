@@ -69,8 +69,8 @@
                             </p>
                             <% if (user) { %>
                                 <form action="/recipes/<%= recipe.id %>/favorite" method="POST">
-                                    <button type="submit">
-                                        ❤️ Thích công thức
+                                    <button type="submit" class="btn-favorite <%= (typeof isFav !== 'undefined' && isFav) ? 'is-fav' : 'not-fav' %>">
+                                        <%= (typeof isFav !== 'undefined' && isFav) ? "💔 Bỏ thích công thức" : "❤️ Thích công thức" %>
                                     </button>
                                 </form>
                                 <% } %>

@@ -2,6 +2,7 @@ const recipeModel = require("../models/recipeModel");
 const categoryModel = require("../models/categoryModel");
 const commentModel = require("../models/commentModel");
 const ratingModel = require("../models/ratingModel");
+const favoriteModel = require("../models/favoriteModel");
 
 async function getHomePage(req, res) {
   try {
@@ -44,6 +45,11 @@ async function getRecipeDetail(req, res) {
         ratingModel.getAverageRating(recipeId),
       ]);
 
+    let isFav = false;
+    if (req.session.user) {
+      isFav = await favoriteModel.isFavorite(req.session.user.id, recipeId);
+    }
+
     res.render("recipes/detail", {
       recipe,
       ingredients,
@@ -51,6 +57,7 @@ async function getRecipeDetail(req, res) {
       categories,
       comments,
       rating,
+      isFav,
       user: req.session.user,
     });
   } catch (err) {

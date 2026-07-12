@@ -7,6 +7,7 @@ const authRoutes = require("./routes/authRoutes");
 const recipeRoutes = require("./routes/recipeRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const interactionRoutes = require("./routes/interactionRoutes");
+const adminRoutes = require("./routes/admin");
 
 const app = express()
 
@@ -31,6 +32,7 @@ app.use("/", recipeRoutes);
 app.use('/', authRoutes);
 app.use(categoryRoutes);
 app.use("/", interactionRoutes);
+app.use("/admin", adminRoutes);
 
 const PORT = 3000
 app.listen(PORT, () => {
