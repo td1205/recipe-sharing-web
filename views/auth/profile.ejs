@@ -1,41 +1,64 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hồ sơ</title>
-</head>
-<body>
-    <h1>Hồ sơ của tôi</h1>
-    <div>
-        <p>Họ và tên:<%= user.fullname%></p>
-        <p>Tài khoản:<%= user.username%></p>
-        <p>Email:<%= user.email%></p>
-        <p>Vai trò:<%= user.role%></p>
-    </div>
-    <hr>
-    <h2>Món ăn yêu thích của tôi</h2>
-    <% if(favouriteRecipes.length == 0) { %>
-        <p>Chưa có công thức yêu thích nào</p>
-    <% } else { %>
-        <ul>
-            <% favouriteRecipes.forEach(function(recipe) { %>
-                <li>
-                    <strong><%= recipe.title %></strong> 
-                    <br>
-                    <small>Chuẩn bị: <%= recipe.prep_time %> phút | Nấu: <%= recipe.cook_time %> phút</small>
-                    <br>
-                    <% if (recipe.image_url) { %>
-                        <img src="<%= recipe.image_url %>" alt="<%= recipe.title %>" style="max-width: 200px; height: auto;">
-                    <% } else { %>
-                        <p><em>Không có ảnh minh họa</em></p>
-                    <% } %>
-                    <p><a href="/recipe/<%= recipe.id %>">Xem chi tiết</a></p>
-                    
-                </li>
-                <br>
-            <% }); %>
-        </ul>
-    <% } %>
-</body>
-</html>
+<%- include('../partials/header') %>
+<%- include('../partials/navbar') %>
+
+<div class="container">
+    <main class="content">
+        <div class="profile-header" style="margin-bottom: 25px;">
+            <h2>Hồ sơ của tôi</h2>
+        </div>
+
+        <div class="profile-card">
+            <div class="profile-avatar">
+                <%= user.fullname.charAt(0).toUpperCase() %>
+            </div>
+            <div class="profile-info-list">
+                <div class="profile-info-item">
+                    <span class="info-label">Họ và tên</span>
+                    <span class="info-value"><%= user.fullname %></span>
+                </div>
+                <div class="profile-info-item">
+                    <span class="info-label">Tài khoản</span>
+                    <span class="info-value"><%= user.username %></span>
+                </div>
+                <div class="profile-info-item">
+                    <span class="info-label">Email</span>
+                    <span class="info-value"><%= user.email %></span>
+                </div>
+                <div class="profile-info-item">
+                    <span class="info-label">Vai trò</span>
+                    <span class="info-value" style="text-transform: capitalize;"><%= user.role %></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="favorite-section" style="margin-top: 40px;">
+            <h3>Món ăn yêu thích của tôi</h3>
+            <% if(favouriteRecipes.length == 0) { %>
+                <p class="no-recipes" style="margin-top: 15px;">Chưa có công thức yêu thích nào</p>
+            <% } else { %>
+                <div class="recipe-grid">
+                    <% favouriteRecipes.forEach(function(recipe) { %>
+                        <div class="recipe-card">
+                            <% if (recipe.image_url) { %>
+                                <img src="<%= recipe.image_url %>" alt="<%= recipe.title %>" class="recipe-image">
+                            <% } %>
+                            <div class="recipe-info">
+                                <h3>
+                                    <a href="/recipes/<%= recipe.id %>">
+                                        <%= recipe.title %>
+                                    </a>
+                                </h3>
+                                <div class="recipe-meta">
+                                    <span class="recipe-time">⏱️ <%= (recipe.prep_time || 0) + (recipe.cook_time || 0) %> phút</span>
+                                    <span class="recipe-domain"><%= recipe.category_name || 'Món ăn' %></span>
+                                </div>
+                            </div>
+                        </div>
+                    <% }); %>
+                </div>
+            <% } %>
+        </div>
+    </main>
+</div>
+
+<%- include('../partials/footer') %>

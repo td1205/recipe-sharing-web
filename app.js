@@ -2,48 +2,45 @@ const express = require('express')
 const path = require('path')
 const session = require('express-session')
 require('dotenv').config()
+
 const authRoutes = require("./routes/authRoutes");
 const adminRoutes = require("./routes/adminRoutes");
-//Khởi tạo express
-const app= express()
-//import database
-const pool = require('./models/db')
-//Cấu hình view engine là ejs
-app.set('view engine','ejs')
-app.set('views',path.join(__dirname,'views'))
-//Cấu hình thư mục chứa css và hình ảnh
-app.use(express.static(path.join(__dirname,'public')))
-//Cấu hình middleware để đọc dữ liệu từ form (POST request)
-app.use(express.urlencoded({extended:true}))
-//Cấu hình middleware để đọc dữ liệu từ JSON
+const recipeRoutes = require("./routes/recipeRoutes");
+const categoryRoutes = require("./routes/categoryRoutes");
+const interactionRoutes = require("./routes/interactionRoutes");
+const adminCommentRoutes = require("./routes/admin");
+
+// Khởi tạo express
+const app = express()
+
+// Cấu hình view engine là ejs
+app.set('view engine', 'ejs')
+app.set('views', path.join(__dirname, 'views'))
+
+// Cấu hình thư mục chứa css và hình ảnh
+app.use(express.static(path.join(__dirname, 'public')))
+
+// Cấu hình middleware để đọc dữ liệu từ form (POST request)
+app.use(express.urlencoded({ extended: true }))
 app.use(express.json())
 
 app.use(session({
-    //Chuỗi kí tự mã hóa session
-    secret:'recipe_secret_key_123',
-    //Không lưu lại session nếu không có thay đổi
+    secret: 'recipe_secret_key_123',
     resave: false,
-    //Không tạo session rác khi người dùng chưa đăng nhập
     saveUninitialized: false,
-    cookie:{
-        //Để false vì web ở localhost, không có https
+    cookie: {
         secure: false,
-        //Thời gian tồn tại của session (1 ngày)
-        maxAge: 1000*60*60*24   
+        maxAge: 1000 * 60 * 60 * 24
     }
 }))
-//Tạo route thử nghiệm (Milestone ghép code)
-app.get('/',(req,res)=>{
-    res.send("Server express đang hoạt động!")
-})
 
-// Sử dụng Routes cho phần Đăng ký / Đăng nhập
+app.use("/", recipeRoutes);
 app.use('/', authRoutes);
-
+app.use(categoryRoutes);
+app.use("/", interactionRoutes);
 app.use('/admin', adminRoutes);
-
-//Khởi động server
+app.use('/admin', adminCommentRoutes);
 const PORT = 3000
-app.listen(PORT,()=>{
+app.listen(PORT, () => {
     console.log(`Server đang chạy tại cổng ${PORT}`)
 })

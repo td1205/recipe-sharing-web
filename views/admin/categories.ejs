@@ -1,0 +1,50 @@
+<%- include('../partials/header') %>
+<%- include('../partials/navbar') %>
+
+<div class="container">
+    <main class="content">
+        <div class="admin-header" style="margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center;">
+            <h2>Quản lý danh mục</h2>
+            <a href="/admin/categories/create" class="btn-submit" style="text-decoration: none; padding: 10px 20px; border-radius: 20px; font-size: 14px; font-weight: 600; background: #F28944; color: #fff;">
+                + Thêm danh mục
+            </a>
+        </div>
+
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Tên danh mục</th>
+                    <th>Mô tả</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% categories.forEach(category=> { %>
+                    <tr>
+                        <td><%= category.id %></td>
+                        <td><strong><%= category.name %></strong></td>
+                        <td><%= category.description || 'Chưa có mô tả' %></td>
+                        <td>
+                            <div style="display: flex; gap: 8px;">
+                                <a href="/admin/categories/edit/<%= category.id %>" class="btn-action-edit" style="padding: 6px 12px; font-size: 12px; text-decoration: none;">
+                                    Sửa
+                                </a>
+                                <form action="/admin/categories/delete/<%= category.id %>" method="POST" style="display:inline;" onsubmit="return confirm('Bạn có chắc muốn xóa danh mục này?');">
+                                    <button type="submit" class="btn-action-delete" style="padding: 6px 12px; font-size: 12px;">
+                                        Xóa
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </main>
+
+    <% const activeTab = 'categories'; %>
+    <%- include('../partials/admin-sidebar', { activeTab }) %>
+</div>
+
+<%- include('../partials/footer') %>
