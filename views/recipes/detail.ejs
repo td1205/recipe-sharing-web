@@ -68,9 +68,8 @@
                                     (<%= rating.totalRatings %> lượt đánh giá)
                             </p>
 
-                            <% // TODO: Replace with req.session.user after Auth module is merged %>
-<% if (true) { %>
-                                <form action="/recipes/<%= recipe.id %>/rate" method="POST">
+                            <% if (typeof user !== 'undefined' && user) { %>
+                                <form action="/recipes/<%= recipe.id %>/rate" method="POST" class="rating-form">
                                     <select name="star_count" required>
                                         <option value="">Chọn số sao</option>
                                         <option value="1">1 ⭐</option>
@@ -79,12 +78,11 @@
                                         <option value="4">4 ⭐⭐⭐⭐</option>
                                         <option value="5">5 ⭐⭐⭐⭐⭐</option>
                                     </select>
-
-                                    <button type="submit">
-                                        Gửi đánh giá
-                                    </button>
+                                    <button type="submit" class="btn-rate">Gửi đánh giá</button>
                                 </form>
-                                <% } %>
+                            <% } else { %>
+                                <p class="login-prompt"><a href="/login">Đăng nhập</a> để gửi đánh giá món ăn.</p>
+                            <% } %>
                         </div>
 
                         <div class="recipe-section">
@@ -144,20 +142,14 @@
                                             <p>Chưa có bình luận nào.</p>
                                             <% } %>
 
-                                                <% if (true) { %>
-                                                    <form action="/recipes/<%= recipe.id %>/comments" method="POST">
-                                                        <textarea name="content" rows="4"
-                                                            placeholder="Nhập bình luận..." required></textarea>
-
-                                                        <br>
-
-                                                        <button type="submit">
-                                                            Gửi bình luận
-                                                        </button>
+                                                <% if (typeof user !== 'undefined' && user) { %>
+                                                    <form action="/recipes/<%= recipe.id %>/comments" method="POST" class="comment-form">
+                                                        <textarea name="content" rows="3" placeholder="Chia sẻ ý kiến của bạn về món ăn này..." required></textarea>
+                                                        <button type="submit" class="btn-comment">Gửi bình luận</button>
                                                     </form>
-                                                    <% } else { %>
-                                                        <p>Đăng nhập để bình luận.</p>
-                                                        <% } %>
+                                                <% } else { %>
+                                                    <p class="login-prompt"><a href="/login">Đăng nhập</a> để viết bình luận.</p>
+                                                <% } %>
 
                         </div>
             </main>

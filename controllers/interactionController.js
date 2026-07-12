@@ -10,9 +10,7 @@ async function addComment(req, res) {
             return res.redirect("/login");
         }
         const recipeId = req.params.id;
-        // TODO: Replace with req.session.user.id after Auth module is merged
-        
-        const userId = 1;
+        const userId = req.session.user.id;
         const { content } = req.body;
         if (!content || content.trim() === "") {
             return res.redirect(`/recipes/${recipeId}`);
