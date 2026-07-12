@@ -1,6 +1,7 @@
 const commentModel = require("../models/commentModel");
 const ratingModel = require("../models/ratingModel");
 const recipeModel = require("../models/recipeModel");
+const favoriteModel = require("../models/favoriteModel");
 
 // Add comment to a recipe
 async function addComment(req, res) {
@@ -10,9 +11,7 @@ async function addComment(req, res) {
             return res.redirect("/login");
         }
         const recipeId = req.params.id;
-        // TODO: Replace with req.session.user.id after Auth module is merged
-        
-        const userId = 1;
+        const userId = req.session.user.id;
         const { content } = req.body;
         if (!content || content.trim() === "") {
             return res.redirect(`/recipes/${recipeId}`);
@@ -33,10 +32,35 @@ async function addRating(req, res) {
             return res.redirect("/login");
         }
         const recipeId = req.params.id;
-        // TODO: Replace with req.session.user.id after Auth module is merged
+
         const userId = req.session.user.id;
         const { star_count } = req.body;
         await ratingModel.createOrUpdateRating(userId, recipeId, parseInt(star_count));
+        res.redirect(`/recipes/${recipeId}`);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Server Error");
+    }
+}
+ 
+// Toggle favorite
+async function toggleFavorite(req, res) {
+    try {
+        if (!req.session.user) {
+            return res.redirect("/login");
+        }
+
+        const recipeId = req.params.id;
+        const userId = req.session.user.id;
+
+        const isFav = await favoriteModel.isFavorite(userId, recipeId);
+
+        if (isFav) {
+            await favoriteModel.removeFavorite(userId, recipeId);
+        } else {
+            await favoriteModel.addFavorite(userId, recipeId);
+        }
+
         res.redirect(`/recipes/${recipeId}`);
     } catch (err) {
         console.error(err);
@@ -74,5 +98,6 @@ async function showRecipeDetail(req, res) {
 module.exports = {
     addComment,
     addRating,
+    toggleFavorite,
     showRecipeDetail,
 };

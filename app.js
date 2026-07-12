@@ -6,6 +6,7 @@ require('dotenv').config()
 const authRoutes = require("./routes/authRoutes");
 const recipeRoutes = require("./routes/recipeRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
+const interactionRoutes = require("./routes/interactionRoutes");
 
 const app = express()
 
@@ -29,6 +30,7 @@ app.use(session({
 app.use("/", recipeRoutes);
 app.use('/', authRoutes);
 app.use(categoryRoutes);
+app.use("/", interactionRoutes);
 
 const PORT = 3000
 app.listen(PORT, () => {
