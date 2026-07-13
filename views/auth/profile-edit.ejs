@@ -1,0 +1,58 @@
+<%- include('../partials/header') %>
+<%- include('../partials/navbar') %>
+<div class="container">
+    <main class="content">
+        <div class="profile-header">
+            <h2>Chỉnh sửa <%= isAdminEditing ? 'Người dùng' : 'thông tin cá nhân' %></h2>
+            <a href="<%= isAdminEditing ? '/admin/users' : '/profile' %>" class="btn-auth btn-back-profile">Quay lại</a>
+        </div>
+        
+        <div class="profile-card profile-card-edit">
+            <% if(typeof error !== "undefined"){ %>
+                <div class="error-msg">
+                    <%= error %>
+                </div>
+            <%} %>
+            <% if(typeof success !== "undefined"){ %>
+                <div class="success-msg">
+                    <%= success %>
+                </div>
+            <% } %>
+
+            <form action="<%= isAdminEditing ? '/admin/users/edit/' + editUser.id : '/profile/edit' %>" method="POST">
+                <div class="form-group">
+                    <label>Tên đăng nhập (Tài khoản)</label>
+                    <input type="text" value="<%= editUser.username %>" disabled class="input-disabled-edit">
+                </div>
+                <div class="form-group">
+                    <label>Họ và tên</label>
+                    <input type="text" name="fullname" value="<%= editUser.fullname %>" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email" value="<%= editUser.email %>" required>
+                </div>
+                
+                <% if(isAdminEditing) { %>
+                <div class="form-group">
+                    <label>Vai trò</label>
+                    <select name="role" required class="select-role-edit">
+                        <option value="user" <%= editUser.role === 'user' ? 'selected' : '' %>>Người dùng (User)</option>
+                        <option value="admin" <%= editUser.role === 'admin' ? 'selected' : '' %>>Quản trị viên (Admin)</option>
+                    </select>
+                </div>
+                <% } %>
+                
+                <div class="text-right-mt20">
+                    <button type="submit" class="btn-auth">Cập nhật thông tin</button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <% if (isAdminEditing) { %>
+        <% const activeTab = 'users'; %>
+        <%- include('../partials/admin-sidebar', { activeTab }) %>
+    <% } %>
+</div>
+<%- include('../partials/footer') %>
