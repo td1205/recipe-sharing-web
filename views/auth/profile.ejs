@@ -1,1 +1,23 @@
-<%- include('../partials/header') %><%- include('../partials/navbar') %><div class="container">    <main class="content">        <div class="profile-header" >            <h2>Hồ sơ của tôi</h2>        </div>        <div class="profile-card">            <div class="profile-avatar">                <%= user.fullname.charAt(0).toUpperCase() %>            </div>            <div class="profile-info-list">                <div class="profile-info-item">                    <span class="info-label">Họ và tên</span>                    <span class="info-value"><%= user.fullname %></span>                </div>                <div class="profile-info-item">                    <span class="info-label">Tài khoản</span>                    <span class="info-value"><%= user.username %></span>                </div>                <div class="profile-info-item">                    <span class="info-label">Email</span>                    <span class="info-value"><%= user.email %></span>                </div>                <div class="profile-info-item">                    <span class="info-label">Vai trò</span>                    <span class="info-value capitalize"><%= user.role %></span>                </div>            </div>        </div>        <div class="favorite-section mt-40">            <h3>Món ăn yêu thích của tôi</h3>            <% if(favouriteRecipes.length == 0) { %>                <p class="no-recipes mt-15">Chưa có công thức yêu thích nào</p>            <% } else { %>                <div class="recipe-grid">                    <% favouriteRecipes.forEach(function(recipe) { %>                        <div class="recipe-card">                            <% if (recipe.image_url) { %>                                <img src="<%= recipe.image_url %>" alt="<%= recipe.title %>" class="recipe-image">                            <% } %>                            <div class="recipe-info">                                <h3>                                    <a href="/recipes/<%= recipe.id %>">                                        <%= recipe.title %>                                    </a>                                </h3>                                <div class="recipe-meta">                                    <span class="recipe-time"><%= (recipe.prep_time || 0) + (recipe.cook_time || 0) %> phút</span>                                    <span class="recipe-domain"><%= recipe.category_name || 'Món ăn' %></span>                                </div>                            </div>                        </div>                    <% }); %>                </div>            <% } %>        </div>    </main></div><%- include('../partials/footer') %>
+<%- include('../partials/header') %><%- include('../partials/navbar') %><div class="container">
+  <main class="content">
+    <div class="profile-header profile-header-flex">
+      <h2>Hồ sơ của tôi</h2><a href="/profile/edit" class="btn-action-edit btn-edit-profile">Chỉnh sửa thông tin</a>
+    </div>
+    <div class="profile-card">
+      <div class="profile-avatar"> <%= user.fullname.charAt(0).toUpperCase() %> </div>
+      <div class="profile-info-list">
+        <div class="profile-info-item"> <span class="info-label">Họ và tên</span> <span class="info-value"><%= user.fullname %></span> </div>
+        <div class="profile-info-item"> <span class="info-label">Tài khoản</span> <span class="info-value"><%= user.username %></span> </div>
+        <div class="profile-info-item"> <span class="info-label">Email</span> <span class="info-value"><%= user.email %></span> </div>
+        <div class="profile-info-item"> <span class="info-label">Vai trò</span> <span class="info-value capitalize"><%= user.role %></span> </div>
+      </div>
+    </div>
+    <div class="favorite-section mt-40">
+      <h3>Món ăn yêu thích của tôi</h3> <% if(favouriteRecipes.length == 0) { %> <p class="no-recipes mt-15">Chưa có công thức yêu thích nào</p> <% } else { %> <div class="recipe-grid"> <% favouriteRecipes.forEach(function(recipe) { %> <div class="recipe-card"> <% if (recipe.image_url) { %> <img src="<%= recipe.image_url %>" alt="<%= recipe.title %>" class="recipe-image"> <% } %> <div class="recipe-info">
+            <h3> <a href="/recipes/<%= recipe.id %>"> <%= recipe.title %> </a> </h3>
+            <div class="recipe-meta"> <span class="recipe-time"><%= (recipe.prep_time || 0) + (recipe.cook_time || 0) %> phút</span> <span class="recipe-domain"><%= recipe.category_name || 'Món ăn' %></span> </div>
+          </div>
+        </div> <% }); %> </div> <% } %>
+    </div>
+  </main>
+</div><%- include('../partials/footer') %>

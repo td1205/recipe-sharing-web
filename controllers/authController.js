@@ -35,7 +35,9 @@ async function handleLogin(req, res) {
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) {
     console.log("Sai mật khẩu");
-    return res.redirect("/login");
+    return res.render("auth/login", {
+      error: "Sai mật khẩu hoặc tên đăng nhập!",
+    });
   }
   req.session.user = {
     id: user.id,
@@ -122,7 +124,34 @@ async function handleForgotPassword(req, res) {
   });
 }
 
+function getEditProfilePage(req, res) {
+  res.render("auth/profile-edit", { editUser: req.session.user, isAdminEditing: false });
+}
+
+async function handleEditProfile(req, res) {
+  const { fullname, email } = req.body;
+  const userId = req.session.user.id;
+
+  const [userByEmail] = await userModel.getUserByEmail(email);
+  if (userByEmail && userByEmail.id !== userId) {
+    return res.render("auth/profile-edit", {
+      error: "Email đã được sử dụng bởi người khác!",
+      editUser: req.session.user,
+      isAdminEditing: false,
+    });
+  }
+
+  await userModel.updateUserProfile(userId, fullname, email);
+
+  req.session.user.fullname = fullname;
+  req.session.user.email = email;
+
+  res.redirect("/profile");
+}
+
 module.exports = {
+  getEditProfilePage,
+  handleEditProfile,
   getLoginPage,
   getRegisterPage,
   handleLogin,

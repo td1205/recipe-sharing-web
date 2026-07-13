@@ -1,1 +1,46 @@
-const db = require("./db");async function countUsers() {  const sql = `SELECT COUNT(*) AS total FROM users`;  const [rows] = await db.execute(sql);  return rows[0].total;}async function countRecipes() {  const sql = `SELECT COUNT(*) AS total FROM recipes`;  const [rows] = await db.execute(sql);  return rows[0].total;}async function countCategories() {  const sql = `SELECT COUNT(*) AS total FROM categories`;  const [rows] = await db.execute(sql);  return rows[0].total;}async function countComments() {  const sql = `SELECT COUNT(*) AS total FROM comments`;  const [rows] = await db.execute(sql);  return rows[0].total;}async function getAllUsers() {  const sql = `SELECT * FROM users`;  const [rows] = await db.execute(sql);  return rows;}async function deleteUser(id) {  const sql = `DELETE FROM users WHERE id = ?`;  const [result] = await db.execute(sql, [id]);  return result;}module.exports = {  countUsers,  countRecipes,  countCategories,  countComments,  getAllUsers,  deleteUser,};
+const db = require("./db");
+async function countUsers() {
+  const sql = `SELECT COUNT(*) AS total FROM users`;
+  const [rows] = await db.execute(sql);
+  return rows[0].total;
+}
+async function countRecipes() {
+  const sql = `SELECT COUNT(*) AS total FROM recipes`;
+  const [rows] = await db.execute(sql);
+  return rows[0].total;
+}
+async function countCategories() {
+  const sql = `SELECT COUNT(*) AS total FROM categories`;
+  const [rows] = await db.execute(sql);
+  return rows[0].total;
+}
+async function countComments() {
+  const sql = `SELECT COUNT(*) AS total FROM comments`;
+  const [rows] = await db.execute(sql);
+  return rows[0].total;
+}
+async function getAllUsers() {
+  const sql = `SELECT * FROM users`;
+  const [rows] = await db.execute(sql);
+  return rows;
+}
+async function deleteUser(id) {
+  const sql = `DELETE FROM users WHERE id = ?`;
+  const [result] = await db.execute(sql, [id]);
+  return result;
+}
+
+async function updateUserByAdmin(id, fullname, email, role) {
+  const sql = `UPDATE users SET fullname = ?, email = ?, role = ? WHERE id = ?`;
+  const [result] = await db.execute(sql, [fullname, email, role, id]);
+  return result;
+}
+module.exports = {
+  countUsers,
+  countRecipes,
+  countCategories,
+  countComments,
+  getAllUsers,
+  deleteUser,
+  updateUserByAdmin,
+};
