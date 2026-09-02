@@ -1,27 +1,27 @@
-const db = require("./db");
+const db = require('./db');
 async function getAll() {
-  const [rows] = await db.query("SELECT * FROM categories ORDER BY id DESC");
+  const [rows] = await db.query('SELECT * FROM categories ORDER BY id DESC');
   return rows;
 }
 async function getById(id) {
-  const [rows] = await db.query("SELECT * FROM categories WHERE id = ?", [id]);
+  const [rows] = await db.query('SELECT * FROM categories WHERE id = ?', [id]);
   return rows[0];
 }
 async function create(name, description) {
-  await db.query("INSERT INTO categories(name, description) VALUES (?, ?)", [
+  await db.query('INSERT INTO categories(name, description) VALUES (?, ?)', [
     name,
     description,
   ]);
 }
 async function update(id, name, description) {
-  await db.query("UPDATE categories SET name=?, description=? WHERE id=?", [
+  await db.query('UPDATE categories SET name=?, description=? WHERE id=?', [
     name,
     description,
     id,
   ]);
 }
 async function remove(id) {
-  await db.query("DELETE FROM categories WHERE id=?", [id]);
+  await db.query('DELETE FROM categories WHERE id=?', [id]);
 }
 module.exports = {
   getAll,

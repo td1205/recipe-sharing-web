@@ -1,4 +1,4 @@
-const db = require("./db");
+const db = require('./db');
 async function countUsers() {
   const sql = `SELECT COUNT(*) AS total FROM users`;
   const [rows] = await db.execute(sql);

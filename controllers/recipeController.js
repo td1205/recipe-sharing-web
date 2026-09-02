@@ -1,17 +1,17 @@
-const recipeModel = require("../models/recipeModel");
-const categoryModel = require("../models/categoryModel");
-const commentModel = require("../models/commentModel");
-const ratingModel = require("../models/ratingModel");
-const favoriteModel = require("../models/favoriteModel");
+const recipeModel = require('../models/recipeModel');
+const categoryModel = require('../models/categoryModel');
+const commentModel = require('../models/commentModel');
+const ratingModel = require('../models/ratingModel');
+const favoriteModel = require('../models/favoriteModel');
 async function getHomePage(req, res) {
   try {
-    const search = req.query.search || "";
+    const search = req.query.search || '';
     const categoryId = req.query.category ? parseInt(req.query.category) : null;
     const [recipes, categories] = await Promise.all([
       recipeModel.getAllRecipes(search, categoryId),
       categoryModel.getAll(),
     ]);
-    res.render("home", {
+    res.render('home', {
       recipes,
       categories,
       search,
@@ -20,7 +20,7 @@ async function getHomePage(req, res) {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).send("Server Error");
+    res.status(500).send('Server Error');
   }
 }
 async function getRecipeDetail(req, res) {
@@ -28,7 +28,7 @@ async function getRecipeDetail(req, res) {
     const recipeId = req.params.id;
     const recipe = await recipeModel.getRecipeById(recipeId);
     if (!recipe) {
-      return res.status(404).send("Recipe not found");
+      return res.status(404).send('Recipe not found');
     }
     const [ingredients, steps, categories, comments, rating] =
       await Promise.all([
@@ -42,7 +42,7 @@ async function getRecipeDetail(req, res) {
     if (req.session.user) {
       isFav = await favoriteModel.isFavorite(req.session.user.id, recipeId);
     }
-    res.render("recipes/detail", {
+    res.render('recipes/detail', {
       recipe,
       ingredients,
       steps,
@@ -54,25 +54,25 @@ async function getRecipeDetail(req, res) {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).send("Server Error");
+    res.status(500).send('Server Error');
   }
 }
 async function getCreatePage(req, res) {
   try {
     if (!req.session.user) {
-      return res.redirect("/login");
+      return res.redirect('/login');
     }
     const categories = await categoryModel.getAll();
-    res.render("recipes/create", { categories, user: req.session.user });
+    res.render('recipes/create', { categories, user: req.session.user });
   } catch (err) {
     console.error(err);
-    res.status(500).send("Server Error");
+    res.status(500).send('Server Error');
   }
 }
 async function handleCreateRecipe(req, res) {
   try {
     if (!req.session.user) {
-      return res.redirect("/login");
+      return res.redirect('/login');
     }
     const {
       title,
@@ -128,34 +128,34 @@ async function handleCreateRecipe(req, res) {
       });
     }
     await recipeModel.createRecipe(recipeData, ingredients, steps);
-    res.redirect("/");
+    res.redirect('/');
   } catch (err) {
     console.error(err);
-    res.status(500).send("Server Error");
+    res.status(500).send('Server Error');
   }
 }
 async function getEditPage(req, res) {
   try {
     if (!req.session.user) {
-      return res.redirect("/login");
+      return res.redirect('/login');
     }
     const recipeId = req.params.id;
     const recipe = await recipeModel.getRecipeById(recipeId);
     if (!recipe) {
-      return res.status(404).send("Recipe not found");
+      return res.status(404).send('Recipe not found');
     }
     if (
       recipe.user_id !== req.session.user.id &&
-      req.session.user.role !== "admin"
+      req.session.user.role !== 'admin'
     ) {
-      return res.redirect("/");
+      return res.redirect('/');
     }
     const [ingredients, steps, categories] = await Promise.all([
       recipeModel.getIngredientsByRecipeId(recipeId),
       recipeModel.getStepsByRecipeId(recipeId),
       categoryModel.getAll(),
     ]);
-    res.render("recipes/edit", {
+    res.render('recipes/edit', {
       recipe,
       ingredients,
       steps,
@@ -164,24 +164,24 @@ async function getEditPage(req, res) {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).send("Server Error");
+    res.status(500).send('Server Error');
   }
 }
 async function handleUpdateRecipe(req, res) {
   try {
     if (!req.session.user) {
-      return res.redirect("/login");
+      return res.redirect('/login');
     }
     const recipeId = req.params.id;
     const recipe = await recipeModel.getRecipeById(recipeId);
     if (!recipe) {
-      return res.status(404).send("Recipe not found");
+      return res.status(404).send('Recipe not found');
     }
     if (
       recipe.user_id !== req.session.user.id &&
-      req.session.user.role !== "admin"
+      req.session.user.role !== 'admin'
     ) {
-      return res.redirect("/");
+      return res.redirect('/');
     }
     const {
       title,
@@ -239,30 +239,30 @@ async function handleUpdateRecipe(req, res) {
     res.redirect(`/recipes/${recipeId}`);
   } catch (err) {
     console.error(err);
-    res.status(500).send("Server Error");
+    res.status(500).send('Server Error');
   }
 }
 async function handleDeleteRecipe(req, res) {
   try {
     if (!req.session.user) {
-      return res.redirect("/login");
+      return res.redirect('/login');
     }
     const recipeId = req.params.id;
     const recipe = await recipeModel.getRecipeById(recipeId);
     if (!recipe) {
-      return res.status(404).send("Recipe not found");
+      return res.status(404).send('Recipe not found');
     }
     if (
       recipe.user_id !== req.session.user.id &&
-      req.session.user.role !== "admin"
+      req.session.user.role !== 'admin'
     ) {
-      return res.redirect("/");
+      return res.redirect('/');
     }
     await recipeModel.deleteRecipe(recipeId);
-    res.redirect("/");
+    res.redirect('/');
   } catch (err) {
     console.error(err);
-    res.status(500).send("Server Error");
+    res.status(500).send('Server Error');
   }
 }
 module.exports = {

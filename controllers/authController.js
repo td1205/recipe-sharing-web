@@ -1,155 +1,247 @@
-const userModel = require("../models/userModel");
-const bcrypt = require("bcrypt");
+const userModel = require('../models/userModel');
+const bcrypt = require('bcrypt');
+const nodemailer = require('nodemailer');
 
 function validatePassword(password) {
   if (password.length < 8) {
-    return "Mật khẩu phải chứa ít nhất 8 ký tự!";
+    return 'Mật khẩu phải chứa ít nhất 8 ký tự!';
   }
   if (!/[0-9]/.test(password)) {
-    return "Mật khẩu phải chứa ít nhất 1 chữ số!";
+    return 'Mật khẩu phải chứa ít nhất 1 chữ số!';
   }
   if (!/[a-zA-Z]/.test(password)) {
-    return "Mật khẩu phải chứa ít nhất 1 chữ cái!";
+    return 'Mật khẩu phải chứa ít nhất 1 chữ cái!';
   }
   if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-    return "Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt (ví dụ: !, @, #, $, %...)!";
+    return 'Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt (ví dụ: !, @, #, $, %...)!';
   }
   return null;
 }
 
 function getLoginPage(req, res) {
-  res.render("auth/login");
+  res.render('auth/login');
 }
 
 function getRegisterPage(req, res) {
-  res.render("auth/register");
+  res.render('auth/register');
 }
 
 async function handleLogin(req, res) {
-  const { username, password } = req.body;
-  const [user] = await userModel.getUserByUsername(username);
-  if (user == undefined) {
-    console.log("Tài khoản không tồn tại");
-    return res.redirect("/login");
-  }
-  const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) {
-    console.log("Sai mật khẩu");
-    return res.render("auth/login", {
-      error: "Sai mật khẩu hoặc tên đăng nhập!",
+  try {
+    const { username, password } = req.body;
+    const [user] = await userModel.getUserByUsername(username);
+    if (user == undefined) {
+      return res.render('auth/login', { error: 'Tài khoản không tồn tại!' });
+    }
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.render('auth/login', {
+        error: 'Sai mật khẩu hoặc tên đăng nhập!',
+      });
+    }
+    req.session.user = {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+    };
+    return res.redirect('/');
+  } catch (error) {
+    console.error('Lỗi handleLogin:', error);
+    return res.render('auth/login', {
+      error: 'Lỗi hệ thống, vui lòng thử lại!',
     });
   }
-  req.session.user = {
-    id: user.id,
-    username: user.username,
-    email: user.email,
-    role: user.role,
-  };
-  return res.redirect("/");
 }
 
 async function handleRegister(req, res) {
-  const { username, email, password, confirm_password, fullname } = req.body;
+  try {
+    const { username, email, password, confirm_password, fullname } = req.body;
 
-  if (password !== confirm_password) {
-    return res.render("auth/register", {
-      error: "Mật khẩu xác nhận không khớp!",
+    if (password !== confirm_password) {
+      return res.render('auth/register', {
+        error: 'Mật khẩu xác nhận không khớp!',
+      });
+    }
+
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      return res.render('auth/register', { error: passwordError });
+    }
+
+    const [user] = await userModel.getUserByUsername(username);
+    if (user !== undefined) {
+      return res.render('auth/register', { error: 'Tài khoản đã tồn tại!' });
+    }
+    const [userByEmail] = await userModel.getUserByEmail(email);
+    if (userByEmail !== undefined) {
+      return res.render('auth/register', { error: 'Email đã được sử dụng!' });
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await userModel.createUser(username, hashedPassword, email, fullname);
+    return res.redirect('/login');
+  } catch (error) {
+    console.error('Lỗi handleRegister:', error);
+    return res.render('auth/register', {
+      error: 'Lỗi hệ thống, vui lòng thử lại!',
     });
   }
-
-  const passwordError = validatePassword(password);
-  if (passwordError) {
-    return res.render("auth/register", {
-      error: passwordError,
-    });
-  }
-
-  const [user] = await userModel.getUserByUsername(username);
-  if (user !== undefined) {
-    console.log("Tài khoản đã tồn tại");
-    return res.render("auth/register", { error: "Tài khoản đã tồn tại!" });
-  }
-  const [userByEmail] = await userModel.getUserByEmail(email);
-  if (userByEmail !== undefined) {
-    console.log("Email đã được sử dụng");
-    return res.render("auth/register", { error: "Email đã được sử dụng!" });
-  }
-  const hashedPassword = await bcrypt.hash(password, 10);
-  await userModel.createUser(username, hashedPassword, email, fullname);
-  return res.redirect("/login");
 }
 
 function logout(req, res) {
   req.session.destroy();
-  return res.redirect("/login");
+  return res.redirect('/login');
 }
 
 async function renderProfile(req, res) {
-  const userId = req.session.user.id;
-  const [user] = await userModel.getUserById(userId);
-  const favouriteRecipes = await userModel.getFavouriteRecipesByUser(userId);
-  res.render("auth/profile", { user, favouriteRecipes });
+  try {
+    const userId = req.session.user.id;
+    const [user] = await userModel.getUserById(userId);
+    const favouriteRecipes = await userModel.getFavouriteRecipesByUser(userId);
+    res.render('auth/profile', { user, favouriteRecipes });
+  } catch (error) {
+    console.error('Lỗi renderProfile:', error);
+    res.status(500).send('Lỗi hệ thống!');
+  }
 }
 
 function getForgotPasswordPage(req, res) {
-  res.render("auth/forgot-password");
+  res.render('auth/forgot-password');
 }
 
 async function handleForgotPassword(req, res) {
-  const { email, password, confirm_password } = req.body;
+  try {
+    const { email } = req.body;
+    const [userByEmail] = await userModel.getUserByEmail(email);
+    if (!userByEmail) {
+      return res.render('auth/forgot-password', {
+        error: 'Không tìm thấy tài khoản nào với Email này!',
+      });
+    }
+    req.session.resetEmail = email;
+    const otp = Math.floor(100000 + Math.random() * 900000);
+    await userModel.updateOTP(email, otp);
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_APP_PASSWORD,
+      },
+    });
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'MÃ XÁC NHẬN ĐỔI MẬT KHẨU',
+      text: `Mã OTP của bạn là: ${otp}. Mã này sẽ dùng để lấy lại mật khẩu.`,
+    };
+    await transporter.sendMail(mailOptions);
+    console.log('Đã gửi email OTP thành công tới:', email);
 
-  if (password !== confirm_password) {
-    return res.render("auth/forgot-password", {
-      error: "Mật khẩu xác nhận không khớp!",
+    console.log(
+      'handleForgotPassword: ' + req.session.resetEmail + '\nOTP: ' + otp,
+    );
+    req.session.save((err) => {
+      if (err) {
+        console.error('Lỗi lưu session:', err);
+        return res.render('auth/forgot-password', {
+          error: 'Lỗi khi lưu phiên!',
+        });
+      }
+      return res.redirect('/otp');
+    });
+  } catch (error) {
+    console.error('Lỗi handleForgotPassword:', error);
+    return res.render('auth/forgot-password', {
+      error: 'Lỗi hệ thống, vui lòng thử lại!',
     });
   }
-
-  const passwordError = validatePassword(password);
-  if (passwordError) {
-    return res.render("auth/forgot-password", {
-      error: passwordError,
-    });
-  }
-
-  const [userByEmail] = await userModel.getUserByEmail(email);
-  if (!userByEmail) {
-    return res.render("auth/forgot-password", {
-      error: "Không tìm thấy tài khoản nào với Email này!",
-    });
-  }
-  const hashedPassword = await bcrypt.hash(password, 10);
-  await userModel.updatePasswordByEmail(email, hashedPassword);
-  return res.render("auth/login", {
-    success: "Đổi mật khẩu thành công! Vui lòng đăng nhập lại.",
-  });
 }
 
 function getEditProfilePage(req, res) {
-  res.render("auth/profile-edit", { editUser: req.session.user, isAdminEditing: false });
+  res.render('auth/profile-edit', {
+    editUser: req.session.user,
+    isAdminEditing: false,
+  });
 }
 
 async function handleEditProfile(req, res) {
-  const { fullname, email } = req.body;
-  const userId = req.session.user.id;
+  try {
+    const { fullname, email } = req.body;
+    const userId = req.session.user.id;
+    const [userByEmail] = await userModel.getUserByEmail(email);
+    if (userByEmail && userByEmail.id !== userId) {
+      return res.render('auth/profile-edit', {
+        error: 'Email đã được sử dụng bởi người khác!',
+        editUser: req.session.user,
+        isAdminEditing: false,
+      });
+    }
+    await userModel.updateUserProfile(userId, fullname, email);
+    req.session.user.fullname = fullname;
+    req.session.user.email = email;
+    res.redirect('/profile');
+  } catch (error) {
+    console.error('Lỗi handleEditProfile:', error);
+    res.status(500).send('Lỗi hệ thống!');
+  }
+}
 
-  const [userByEmail] = await userModel.getUserByEmail(email);
-  if (userByEmail && userByEmail.id !== userId) {
-    return res.render("auth/profile-edit", {
-      error: "Email đã được sử dụng bởi người khác!",
-      editUser: req.session.user,
-      isAdminEditing: false,
+async function getChangePasswordPage(req, res) {
+  res.render('auth/change-password');
+}
+
+async function handleChangePassword(req, res) {
+  try {
+    const email = req.session.resetEmail;
+    const { password, confirm_password } = req.body;
+    if (password !== confirm_password) {
+      return res.render('auth/change-password', {
+        error: 'Mật khẩu xác nhận không khớp!',
+      });
+    }
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      return res.render('auth/change-password', { error: passwordError });
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await userModel.updatePasswordByEmail(email, hashedPassword);
+    req.session.destroy();
+    return res.render('auth/login', {
+      success: 'Đổi mật khẩu thành công! Vui lòng đăng nhập lại.',
+    });
+  } catch (error) {
+    console.error('Lỗi handleChangePassword:', error);
+    return res.render('auth/change-password', {
+      error: 'Lỗi hệ thống, vui lòng thử lại!',
     });
   }
+}
 
-  await userModel.updateUserProfile(userId, fullname, email);
+async function getOTPPage(req, res) {
+  res.render('auth/otp');
+}
 
-  req.session.user.fullname = fullname;
-  req.session.user.email = email;
-
-  res.redirect("/profile");
+async function handleOTP(req, res) {
+  try {
+    const email = req.session.resetEmail;
+    const otp = req.body.otp;
+    const trueotp = await userModel.getOTPbyEmail(email);
+    if (otp == trueotp) {
+      req.session.otp = true;
+      console.log('OTP=' + otp + '\nTrue OTP=' + trueotp);
+      return res.redirect('/change-password');
+    } else {
+      return res.render('auth/otp', { error: 'Sai mã OTP!' });
+    }
+  } catch (error) {
+    console.error('Lỗi handleOTP:', error);
+    return res.render('auth/otp', { error: 'Lỗi hệ thống, vui lòng thử lại!' });
+  }
 }
 
 module.exports = {
+  getOTPPage,
+  handleOTP,
   getEditProfilePage,
   handleEditProfile,
   getLoginPage,
@@ -160,4 +252,6 @@ module.exports = {
   renderProfile,
   getForgotPasswordPage,
   handleForgotPassword,
+  getChangePasswordPage,
+  handleChangePassword,
 };

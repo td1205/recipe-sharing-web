@@ -1,29 +1,29 @@
-const authMiddleware = require("../middlewares/authMiddleware");
-const adminController = require("../controllers/adminController");
-const express = require("express");
+const authMiddleware = require('../middlewares/authMiddleware');
+const adminController = require('../controllers/adminController');
+const express = require('express');
 const router = express.Router();
 router.get(
-  "/dashboard",
+  '/dashboard',
   authMiddleware.isAdmin,
   adminController.renderDashboard,
 );
 router.get(
-  "/users",
+  '/users',
   authMiddleware.isAdmin,
   adminController.renderUserManagement,
 );
 router.post(
-  "/users/delete/:id",
+  '/users/delete/:id',
   authMiddleware.isAdmin,
   adminController.handleDeleteUser,
 );
 router.get(
-  "/users/edit/:id",
+  '/users/edit/:id',
   authMiddleware.isAdmin,
   adminController.getEditUserPage,
 );
 router.post(
-  "/users/edit/:id",
+  '/users/edit/:id',
   authMiddleware.isAdmin,
   adminController.handleEditUser,
 );

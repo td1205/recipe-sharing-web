@@ -1,4 +1,4 @@
-const db = require("./db");
+const db = require('./db');
 async function getCommentsByRecipeId(recipeId) {
   const [rows] = await db.query(
     `SELECT comments.*, users.username

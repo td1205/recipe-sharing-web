@@ -1,4 +1,4 @@
-const db = require("./db");
+const db = require('./db');
 const User = {};
 async function getUserByUsername(username) {
   const sql = `SELECT * FROM users WHERE username =?`;
@@ -36,11 +36,20 @@ async function updateUserInfo(id, fullname, email) {
   return result;
 }
 async function updateUserProfile(id, fullname, email) {
-  const sql = "UPDATE users SET fullname = ?, email = ? WHERE id = ?";
+  const sql = 'UPDATE users SET fullname = ?, email = ? WHERE id = ?';
   const [result] = await db.execute(sql, [fullname, email, id]);
   return result;
 }
-
+async function updateOTP(email, otp) {
+  const sql = 'UPDATE users SET otp=? where email=?';
+  const [result] = await db.execute(sql, [otp, email]);
+  return result;
+}
+async function getOTPbyEmail(email) {
+  const sql = 'SELECT otp FROM users WHERE email=?';
+  const [rows] = await db.execute(sql, [email]);
+  return rows[0].otp;
+}
 module.exports = {
   updateUserProfile,
   getUserByUsername,
@@ -50,4 +59,6 @@ module.exports = {
   getFavouriteRecipesByUser,
   updatePasswordByEmail,
   updateUserInfo,
+  updateOTP,
+  getOTPbyEmail,
 };

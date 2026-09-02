@@ -1,6 +1,6 @@
-const db = require("./db");
+const db = require('./db');
 const Recipe = {
-  async getAllRecipes(search = "", categoryId = null) {
+  async getAllRecipes(search = '', categoryId = null) {
     let sql = `
       SELECT recipes.*, users.fullname AS author_name, categories.name AS category_name,
              AVG(ratings.star_count) AS avg_rating, COUNT(ratings.id) AS total_ratings
@@ -11,18 +11,18 @@ const Recipe = {
     `;
     const params = [];
     const conditions = [];
-    if (search && search.trim() !== "") {
-      conditions.push("(recipes.title LIKE ? OR recipes.description LIKE ?)");
+    if (search && search.trim() !== '') {
+      conditions.push('(recipes.title LIKE ? OR recipes.description LIKE ?)');
       params.push(`%${search}%`, `%${search}%`);
     }
     if (categoryId) {
-      conditions.push("recipes.category_id = ?");
+      conditions.push('recipes.category_id = ?');
       params.push(categoryId);
     }
     if (conditions.length > 0) {
-      sql += " WHERE " + conditions.join(" AND ");
+      sql += ' WHERE ' + conditions.join(' AND ');
     }
-    sql += " GROUP BY recipes.id ORDER BY recipes.created_at DESC";
+    sql += ' GROUP BY recipes.id ORDER BY recipes.created_at DESC';
     const [rows] = await db.execute(sql, params);
     return rows;
   },
@@ -69,7 +69,7 @@ const Recipe = {
       if (ingredients && ingredients.length > 0) {
         const sqlIngredient = `INSERT INTO ingredients (recipe_id, name, amount, unit) VALUES (?, ?, ?, ?)`;
         for (const ing of ingredients) {
-          if (ing.name && ing.name.trim() !== "") {
+          if (ing.name && ing.name.trim() !== '') {
             await conn.execute(sqlIngredient, [
               recipeId,
               ing.name,
@@ -82,7 +82,7 @@ const Recipe = {
       if (steps && steps.length > 0) {
         const sqlStep = `INSERT INTO steps (recipe_id, step_number, instruction) VALUES (?, ?, ?)`;
         for (const step of steps) {
-          if (step.instruction && step.instruction.trim() !== "") {
+          if (step.instruction && step.instruction.trim() !== '') {
             await conn.execute(sqlStep, [
               recipeId,
               step.step_number,
@@ -125,7 +125,7 @@ const Recipe = {
       if (ingredients && ingredients.length > 0) {
         const sqlIngredient = `INSERT INTO ingredients (recipe_id, name, amount, unit) VALUES (?, ?, ?, ?)`;
         for (const ing of ingredients) {
-          if (ing.name && ing.name.trim() !== "") {
+          if (ing.name && ing.name.trim() !== '') {
             await conn.execute(sqlIngredient, [
               recipeId,
               ing.name,
@@ -139,7 +139,7 @@ const Recipe = {
       if (steps && steps.length > 0) {
         const sqlStep = `INSERT INTO steps (recipe_id, step_number, instruction) VALUES (?, ?, ?)`;
         for (const step of steps) {
-          if (step.instruction && step.instruction.trim() !== "") {
+          if (step.instruction && step.instruction.trim() !== '') {
             await conn.execute(sqlStep, [
               recipeId,
               step.step_number,

@@ -1,4 +1,4 @@
-const db = require("./db");
+const db = require('./db');
 async function getAllComments() {
   const [rows] = await db.query(`
         SELECT
@@ -18,7 +18,7 @@ async function getAllComments() {
   return rows;
 }
 async function deleteComment(id) {
-  await db.query("DELETE FROM comments WHERE id = ?", [id]);
+  await db.query('DELETE FROM comments WHERE id = ?', [id]);
 }
 module.exports = {
   getAllComments,

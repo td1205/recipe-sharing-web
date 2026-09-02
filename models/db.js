@@ -1,9 +1,9 @@
-const mysql = require("mysql2/promise");
+const mysql = require('mysql2/promise');
 const pool = mysql.createPool({
-  host: process.env.DB_HOST || "localhost",
-  user: process.env.DB_USER || "root",
-  database: process.env.DB_NAME || "recipe_db",
-  password: process.env.DB_PASSWORD || "dtdt@nhe",
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  database: process.env.DB_NAME || 'recipe_db',
+  password: process.env.DB_PASSWORD || 'dtdt@nhe',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
@@ -11,10 +11,10 @@ const pool = mysql.createPool({
 pool
   .getConnection()
   .then((connection) => {
-    console.log("Kết nối CSDL thành công!");
+    console.log('Kết nối CSDL thành công!');
     connection.release();
   })
   .catch((err) => {
-    console.error("Lỗi kết nối CSDL", err.message);
+    console.error('Lỗi kết nối CSDL', err.message);
   });
 module.exports = pool;

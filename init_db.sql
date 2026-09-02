@@ -98,6 +98,10 @@ INSERT IGNORE INTO categories (id, name, description) VALUES
 (8, 'Món Hấp', 'Các món hấp thanh đạm, giữ nguyên vị ngọt tự nhiên');
 
 -- 10. Dữ liệu mẫu cho công thức (recipes)
+-- Tạo tài khoản admin mặc định (user_id = 1) để gán cho các công thức
+INSERT IGNORE INTO users (id, username, password, email, fullname, role) VALUES 
+(1, 'admin', '$2b$10$wY.uV7Zk5k8Q.GjH.0Y/2uU5C/8jX1l8gZq5m1M7wH0D4o1H1M8', 'admin@example.com', 'Quản trị viên', 'admin');
+
 -- Giả định sử dụng user_id = 1 (Tài khoản admin mặc định trong hệ thống)
 INSERT IGNORE INTO recipes (id, user_id, category_id, title, description, prep_time, cook_time, servings, image_url) VALUES
 (3, 1, 2, 'Gà kho gừng', 'Món gà kho gừng ấm nồng, cay nhẹ là món ăn cực kỳ quen thuộc và đưa cơm trong bữa ăn gia đình Việt.', 20, 30, 3, 'https://cdn.tgdd.vn/Files/2021/12/24/1406516/tong-hop-cong-thuc-nau-an-theo-cach-che-bien-de-lam-tai-nha-202112241205239944.jpg'),

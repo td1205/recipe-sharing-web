@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Xác minh OTP</title>
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body class="auth-page">
+    <div class="auth-container">
+      <h1>Xác minh OTP</h1>
+      
+      <% if(typeof error !== "undefined"){ %>
+      <div class="error-msg"><%= error %></div>
+      <%} %>
+      
+      <% if(typeof success !== "undefined"){ %>
+      <div class="success-msg"><%= success %></div>
+      <% } %>
+      
+      <form action="/otp" method="POST" onsubmit="return gopOTP();">
+        <div class="form-group">
+          <label>Mã OTP</label>
+          <div class="otp-wrapper">
+            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" required />
+            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" required />
+            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" required />
+            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" required />
+            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" required />
+            <input type="text" class="otp-input" maxlength="1" inputmode="numeric" required />
+          </div>
+          <input type="hidden" name="otp" id="otp" />
+          <span class="input-hint">Nhập mã OTP gồm 6 chữ số được gửi tới email của bạn.</span>
+        </div>
+        <button type="submit" class="btn-auth">Xác nhận</button>
+      </form>
+      
+      <div class="auth-footer">
+        <a href="/login">Quay lại trang đăng nhập</a>
+      </div>
+    </div>
+    <script src="/js/auth.js"></script>
+  </body>
+</html>

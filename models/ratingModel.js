@@ -1,4 +1,4 @@
-const db = require("./db");
+const db = require('./db');
 async function createOrUpdateRating(userId, recipeId, starCount) {
   const [rows] = await db.query(
     `SELECT id
