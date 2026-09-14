@@ -1,4 +1,4 @@
-const userModel = require('../models/userModel');
+const userModel = require('../repositories/userRepository');
 function isAuthenticated(req, res, next) {
   if (req.session.user) {
     next();

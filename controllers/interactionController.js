@@ -1,8 +1,8 @@
-const commentModel = require('../models/commentModel');
-const ratingModel = require('../models/ratingModel');
-const recipeModel = require('../models/recipeModel');
-const favoriteModel = require('../models/favoriteModel');
-const interactionModel = require('../models/interactionModel');
+const commentModel = require('../repositories/commentRepository');
+const ratingModel = require('../repositories/ratingRepository');
+const recipeModel = require('../repositories/recipeRepository');
+const favoriteModel = require('../repositories/favoriteRepository');
+const interactionModel = require('../repositories/interactionRepository');
 async function addComment(req, res) {
   try {
     if (!req.session.user) {

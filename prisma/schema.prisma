@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model categories {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique(map: "name") @db.VarChar(100)
+  description String?   @db.Text
+  created_at  DateTime? @default(now()) @db.Timestamp(0)
+  recipes     recipes[]
+}
+
+model comments {
+  id         Int       @id @default(autoincrement())
+  user_id    Int
+  recipe_id  Int
+  content    String    @db.Text
+  created_at DateTime? @default(now()) @db.Timestamp(0)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "comments_ibfk_1")
+  recipes    recipes   @relation(fields: [recipe_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "comments_ibfk_2")
+
+  @@index([recipe_id], map: "recipe_id")
+  @@index([user_id], map: "user_id")
+}
+
+model favorites {
+  id         Int       @id @default(autoincrement())
+  user_id    Int
+  recipe_id  Int
+  created_at DateTime? @default(now()) @db.Timestamp(0)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "favorites_ibfk_1")
+  recipes    recipes   @relation(fields: [recipe_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "favorites_ibfk_2")
+
+  @@unique([user_id, recipe_id], map: "unique_user_recipe")
+  @@index([recipe_id], map: "recipe_id")
+}
+
+model ingredients {
+  id        Int     @id @default(autoincrement())
+  recipe_id Int
+  name      String  @db.VarChar(255)
+  amount    String? @db.VarChar(50)
+  unit      String? @db.VarChar(50)
+  recipes   recipes @relation(fields: [recipe_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "ingredients_ibfk_1")
+
+  @@index([recipe_id], map: "recipe_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model ratings {
+  id         Int       @id @default(autoincrement())
+  user_id    Int
+  recipe_id  Int
+  star_count Int
+  created_at DateTime? @default(now()) @db.Timestamp(0)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "ratings_ibfk_1")
+  recipes    recipes   @relation(fields: [recipe_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "ratings_ibfk_2")
+
+  @@index([recipe_id], map: "recipe_id")
+  @@index([user_id], map: "user_id")
+}
+
+model recipes {
+  id          Int           @id @default(autoincrement())
+  user_id     Int
+  category_id Int
+  title       String        @db.VarChar(255)
+  description String?       @db.Text
+  prep_time   Int
+  cook_time   Int
+  servings    Int
+  image_url   String?       @db.VarChar(255)
+  created_at  DateTime?     @default(now()) @db.Timestamp(0)
+  comments    comments[]
+  favorites   favorites[]
+  ingredients ingredients[]
+  ratings     ratings[]
+  users       users         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "recipes_ibfk_1")
+  categories  categories    @relation(fields: [category_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "recipes_ibfk_2")
+  steps       steps[]
+
+  @@index([category_id], map: "category_id")
+  @@index([user_id], map: "user_id")
+}
+
+model sessions {
+  session_id String  @id @db.VarChar(128)
+  expires    Int     @db.UnsignedInt
+  data       String? @db.MediumText
+}
+
+model steps {
+  id          Int     @id @default(autoincrement())
+  recipe_id   Int
+  step_number Int
+  instruction String  @db.Text
+  recipes     recipes @relation(fields: [recipe_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "steps_ibfk_1")
+
+  @@index([recipe_id], map: "recipe_id")
+}
+
+model users {
+  id           Int         @id @default(autoincrement())
+  username     String      @unique(map: "username") @db.VarChar(100)
+  password     String      @db.VarChar(255)
+  email        String      @unique(map: "email") @db.VarChar(100)
+  fullname     String?     @db.VarChar(255)
+  role         String?     @default("user") @db.VarChar(50)
+  created_at   DateTime?   @default(now()) @db.Timestamp(0)
+  otp          String?     @db.Char(6)
+  OTPExpiredAt DateTime?   @db.DateTime(0)
+  OTPIsUsed    Boolean?    @default(dbgenerated("b'0'")) @db.Bit(1)
+  comments     comments[]
+  favorites    favorites[]
+  ratings      ratings[]
+  recipes      recipes[]
+}

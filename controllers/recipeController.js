@@ -1,8 +1,8 @@
-const recipeModel = require('../models/recipeModel');
-const categoryModel = require('../models/categoryModel');
-const commentModel = require('../models/commentModel');
-const ratingModel = require('../models/ratingModel');
-const favoriteModel = require('../models/favoriteModel');
+const recipeModel = require('../repositories/recipeRepository');
+const categoryModel = require('../repositories/categoryRepository');
+const commentModel = require('../repositories/commentRepository');
+const ratingModel = require('../repositories/ratingRepository');
+const favoriteModel = require('../repositories/favoriteRepository');
 async function getHomePage(req, res) {
   try {
     const search = req.query.search || '';

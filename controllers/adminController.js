@@ -1,5 +1,5 @@
-const adminModel = require('../models/adminModel');
-const userModel = require('../models/userModel');
+const adminModel = require('../repositories/adminRepository');
+const userModel = require('../repositories/userRepository');
 async function renderDashboard(req, res) {
   try {
     const [totalUsers, totalRecipes, totalCategories, totalComments] =

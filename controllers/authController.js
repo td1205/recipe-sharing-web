@@ -1,7 +1,8 @@
-const userModel = require('../models/userModel');
+const userModel = require('../repositories/userRepository');
 const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer');
-
+const { sendMail } = require('../utils/mailHelper');
+const authService = require('../services/authService');
 function validatePassword(password) {
   if (password.length < 8) {
     return 'Mật khẩu phải chứa ít nhất 8 ký tự!';
@@ -29,23 +30,27 @@ function getRegisterPage(req, res) {
 async function handleLogin(req, res) {
   try {
     const { username, password } = req.body;
-    const [user] = await userModel.getUserByUsername(username);
-    if (user == undefined) {
-      return res.render('auth/login', { error: 'Tài khoản không tồn tại!' });
-    }
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
+    const result = await authService.login(username, password);
+
+    if (!result.success) {
       return res.render('auth/login', {
-        error: 'Sai mật khẩu hoặc tên đăng nhập!',
+        error: result.error,
       });
     }
+    const user = result.user;
     req.session.user = {
       id: user.id,
       username: user.username,
       email: user.email,
       role: user.role,
     };
-    return res.redirect('/');
+    req.session.save((err) => {
+      if (err) {
+        console.error('Lỗi lưu session:', err);
+        return res.render('auth/login', { error: 'Lỗi hệ thống!' });
+      }
+      return res.redirect('/');
+    });
   } catch (error) {
     console.error('Lỗi handleLogin:', error);
     return res.render('auth/login', {
@@ -119,27 +124,9 @@ async function handleForgotPassword(req, res) {
       });
     }
     req.session.resetEmail = email;
-    const otp = Math.floor(100000 + Math.random() * 900000);
-    await userModel.updateOTP(email, otp);
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_APP_PASSWORD,
-      },
-    });
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: 'MÃ XÁC NHẬN ĐỔI MẬT KHẨU',
-      text: `Mã OTP của bạn là: ${otp}. Mã này sẽ dùng để lấy lại mật khẩu.`,
-    };
-    await transporter.sendMail(mailOptions);
-    console.log('Đã gửi email OTP thành công tới:', email);
+    const otp = await authService.createOtp(email);
+    await sendMail(email, otp);
 
-    console.log(
-      'handleForgotPassword: ' + req.session.resetEmail + '\nOTP: ' + otp,
-    );
     req.session.save((err) => {
       if (err) {
         console.error('Lỗi lưu session:', err);
