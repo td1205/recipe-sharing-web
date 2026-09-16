@@ -3,7 +3,7 @@ const prisma = require('../config/prisma');
 async function isFavorite(userId, recipeId) {
   const favorite = await prisma.favorites.findUnique({
     where: {
-      unique_user_recipe: {
+      user_id_recipe_id: {
         user_id: parseInt(userId),
         recipe_id: parseInt(recipeId),
       },
@@ -24,7 +24,7 @@ async function addFavorite(userId, recipeId) {
 async function removeFavorite(userId, recipeId) {
   return await prisma.favorites.delete({
     where: {
-      unique_user_recipe: {
+      user_id_recipe_id: {
         user_id: parseInt(userId),
         recipe_id: parseInt(recipeId),
       },
