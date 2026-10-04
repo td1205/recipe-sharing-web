@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
@@ -8,14 +8,19 @@ import SkeletonLoader from '../components/SkeletonLoader';
 const ProfileEdit = () => {
   const { user, setUser } = useContext(AuthContext);
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
+  
   const [formData, setFormData] = useState({
     fullname: '',
     email: '',
+    bio: ''
   });
   const [username, setUsername] = useState('');
+  const [avatarPreview, setAvatarPreview] = useState('https://avatars.akamai.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [file, setFile] = useState(null);
 
   useEffect(() => {
     const fetchEditPage = async () => {
@@ -26,8 +31,10 @@ const ProfileEdit = () => {
           setFormData({
             fullname: editUser.fullname || '',
             email: editUser.email || '',
+            bio: editUser.bio || ''
           });
           setUsername(editUser.username || '');
+          if (editUser.avatar_url) setAvatarPreview(editUser.avatar_url);
         }
       } catch (err) {
         if (err.response?.status === 401) navigate('/login');
@@ -43,12 +50,30 @@ const ProfileEdit = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      setAvatarPreview(URL.createObjectURL(selectedFile));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
     try {
-      const res = await axios.post('/api/profile/edit', formData);
+      const data = new FormData();
+      data.append('fullname', formData.fullname);
+      data.append('email', formData.email);
+      data.append('bio', formData.bio);
+      if (file) {
+        data.append('avatar', file);
+      }
+      
+      const res = await axios.post('/api/profile/edit', data, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       if (res.data.success) {
         setSuccess('Cập nhật thông tin thành công!');
         setUser(res.data.user); // update global user state
@@ -67,33 +92,53 @@ const ProfileEdit = () => {
 
   return (
     <MainLayout hideSidebar>
-      <div className="profile-header">
-        <h2>Chỉnh sửa thông tin cá nhân</h2>
-        <Link to="/profile" className="btn-auth btn-back-profile">Quay lại</Link>
-      </div>
-      
-      <div className="profile-card profile-card-edit">
-        {error && <div className="error-msg">{error}</div>}
-        {success && <div className="success-msg">{success}</div>}
+      <div className="steam-profile-edit-container">
+        <div className="profile-header">
+          <h2>Hồ sơ của {username}</h2>
+          <Link to="/profile" className="btn-auth btn-back-profile">Quay về Hồ sơ</Link>
+        </div>
+        
+        <div className="profile-card profile-card-edit" style={{ display: 'flex', gap: '30px' }}>
+          {error && <div className="error-msg" style={{ width: '100%' }}>{error}</div>}
+          {success && <div className="success-msg" style={{ width: '100%' }}>{success}</div>}
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Tên đăng nhập (Tài khoản)</label>
-            <input type="text" value={username} disabled className="input-disabled-edit" />
+          <div className="steam-edit-left" style={{ flex: '1' }}>
+            <form onSubmit={handleSubmit}>
+              <div className="form-group steam-form-group">
+                <label>TÊN HỒ SƠ</label>
+                <input type="text" name="fullname" value={formData.fullname} onChange={handleChange} required />
+              </div>
+              <div className="form-group steam-form-group">
+                <label>TÊN THẬT</label>
+                <input type="text" value={username} disabled className="input-disabled-edit" />
+              </div>
+              <div className="form-group steam-form-group">
+                <label>EMAIL</label>
+                <input type="email" name="email" value={formData.email} onChange={handleChange} required />
+              </div>
+              <div className="form-group steam-form-group">
+                <label>TÓM TẮT</label>
+                <textarea name="bio" value={formData.bio} onChange={handleChange} rows="5" style={{ width: '100%', background: '#222B35', border: '1px solid #000', color: '#fff', padding: '10px' }}></textarea>
+              </div>
+              
+              <div className="steam-edit-actions" style={{ marginTop: '20px' }}>
+                <button type="submit" className="steam-btn-blue">Lưu</button>
+                <Link to="/profile" className="steam-btn-gray" style={{ marginLeft: '10px' }}>Hủy</Link>
+              </div>
+            </form>
           </div>
-          <div className="form-group">
-            <label>Họ và tên</label>
-            <input type="text" name="fullname" value={formData.fullname} onChange={handleChange} required />
+
+          <div className="steam-edit-right" style={{ width: '250px' }}>
+            <h3 style={{ fontSize: '14px', color: '#8f98a0', marginBottom: '10px', textTransform: 'uppercase' }}>Hình đại diện</h3>
+            <div className="steam-avatar-upload" style={{ background: '#222B35', border: '1px solid #000', padding: '15px', textAlign: 'center' }}>
+              <img src={avatarPreview} alt="Avatar" style={{ width: '184px', height: '184px', border: '2px solid #545454', borderRadius: '4px', marginBottom: '15px', objectFit: 'cover' }} />
+              <button type="button" className="steam-btn-gray" onClick={() => fileInputRef.current.click()}>
+                Tải ảnh lên
+              </button>
+              <input type="file" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} accept="image/*" />
+            </div>
           </div>
-          <div className="form-group">
-            <label>Email</label>
-            <input type="email" name="email" value={formData.email} onChange={handleChange} required />
-          </div>
-          
-          <div className="text-right-mt20">
-            <button type="submit" className="btn-auth">Cập nhật thông tin</button>
-          </div>
-        </form>
+        </div>
       </div>
     </MainLayout>
   );

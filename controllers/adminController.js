@@ -2,12 +2,13 @@ const adminModel = require('../repositories/adminRepository');
 const userModel = require('../repositories/userRepository');
 async function renderDashboard(req, res) {
   try {
-    const [totalUsers, totalRecipes, totalCategories, totalComments] =
+    const [totalUsers, totalRecipes, totalCategories, totalComments, chartData] =
       await Promise.all([
         adminModel.countUsers(),
         adminModel.countRecipes(),
         adminModel.countCategories(),
         adminModel.countComments(),
+        adminModel.getChartData(),
       ]);
     const stats = {
       users: totalUsers,
@@ -15,27 +16,27 @@ async function renderDashboard(req, res) {
       categories: totalCategories,
       comments: totalComments,
     };
-    res.render('admin/dashboard', { stats });
+    res.json({ success: true, stats, chartData });
   } catch (error) {
     console.error('Lỗi khi lấy dữ liệu thống kê:', error);
-    res.status(500).send('Lỗi Server');
+    res.status(500).json({ success: false, message: 'Lỗi Server' });
   }
 }
 async function renderUserManagement(req, res) {
   try {
     const users = await adminModel.getAllUsers();
-    res.render('admin/users', { users });
+    res.json({ success: true, users });
   } catch (error) {
-    res.status(500).send('500 Server Error');
+    res.status(500).json({ success: false, message: '500 Server Error' });
   }
 }
 async function handleDeleteUser(req, res) {
   try {
     const userId = req.params.id;
     await adminModel.deleteUser(userId);
-    res.redirect('/admin/users');
+    res.json({ success: true, message: 'User deleted' });
   } catch (error) {
-    res.status(500).send('500 Server Error');
+    res.status(500).json({ success: false, message: '500 Server Error' });
   }
 }
 
@@ -44,11 +45,11 @@ async function getEditUserPage(req, res) {
     const userId = req.params.id;
     const [user] = await userModel.getUserById(userId);
     if (!user) {
-      return res.status(404).send('Không tìm thấy người dùng');
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
     }
-    res.render('auth/profile-edit', { editUser: user, isAdminEditing: true });
+    res.json({ success: true, editUser: user, isAdminEditing: true });
   } catch (error) {
-    res.status(500).send('500 Server Error');
+    res.status(500).json({ success: false, message: '500 Server Error' });
   }
 }
 
@@ -57,17 +58,17 @@ async function handleEditUser(req, res) {
     const userId = req.params.id;
     const { fullname, email, role } = req.body;
     await adminModel.updateUserByAdmin(userId, fullname, email, role);
-    res.redirect('/admin/users');
+    res.json({ success: true, message: 'User updated' });
   } catch (error) {
-    res.status(500).send('500 Server Error');
+    res.status(500).json({ success: false, message: '500 Server Error' });
   }
 }
 
 async function getChangePasswordPage(req, res) {
-  res.render('auth/change-password');
+  res.json({ success: true, message: 'Change password page' });
 }
 async function handleChangePassword(req, res) {
-  res.render('auth/change-password');
+  res.json({ success: true, message: 'Change password action' });
 }
 module.exports = {
   renderDashboard,

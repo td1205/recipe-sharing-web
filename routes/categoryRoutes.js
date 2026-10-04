@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const categoryController = require('../controllers/categoryController');
+router.get('/nav-data', categoryController.getNavData);
 router.get('/admin/categories', categoryController.showCategories);
 router.get('/admin/categories/create', categoryController.showCreate);
 router.post('/admin/categories/create', categoryController.createCategory);

@@ -1,7 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 const Footer = () => {
+  const handleMockupClick = (e) => {
+    e.preventDefault();
+    toast.success('Tính năng đang phát triển', { style: { background: '#1b2838', color: '#c6d4df', border: '1px solid #101822' }});
+  };
+
   return (
     <footer className="steam-footer">
       <div className="steam-footer-container">
@@ -16,42 +22,42 @@ const Footer = () => {
             © 2026 Recipe Sharing Website. Bảo lưu mọi quyền. Tất cả các thương hiệu là tài sản của chủ sở hữu tương ứng tại Việt Nam và các quốc gia khác. Giá đã bao gồm VAT (nếu có).
           </div>
           <div className="steam-footer-socials">
-            <a href="#"><i className="fa-brands fa-youtube"></i></a>
-            <a href="#"><i className="fa-brands fa-x-twitter"></i></a>
-            <a href="#"><i className="fa-brands fa-facebook"></i></a>
-            <a href="#"><i className="fa-solid fa-link"></i></a>
+            <a href="#" onClick={handleMockupClick}><i className="fa-brands fa-youtube"></i></a>
+            <a href="#" onClick={handleMockupClick}><i className="fa-brands fa-x-twitter"></i></a>
+            <a href="#" onClick={handleMockupClick}><i className="fa-brands fa-facebook"></i></a>
+            <a href="#" onClick={handleMockupClick}><i className="fa-solid fa-link"></i></a>
           </div>
         </div>
 
         <div className="steam-footer-right">
           <div className="steam-footer-column">
             <h4>RECIPE SHARING</h4>
-            <Link to="/">Thông tin về Recipe Sharing</Link>
-            <Link to="/">Thỏa thuận người dùng</Link>
-            <Link to="/">Chia sẻ công thức</Link>
-            <Link to="/">Quy định nội dung</Link>
-            <Link to="/">Thẻ quà tặng</Link>
+            <a href="#" onClick={handleMockupClick}>Thông tin về Recipe Sharing</a>
+            <a href="#" onClick={handleMockupClick}>Thỏa thuận người dùng</a>
+            <a href="#" onClick={handleMockupClick}>Chia sẻ công thức</a>
+            <a href="#" onClick={handleMockupClick}>Quy định nội dung</a>
+            <a href="#" onClick={handleMockupClick}>Thẻ quà tặng</a>
           </div>
           <div className="steam-footer-column">
             <h4>CỘNG ĐỒNG</h4>
-            <Link to="/">Thông tin về Cộng đồng</Link>
-            <Link to="/">Tuyển dụng</Link>
-            <Link to="/">Quy tắc ứng xử</Link>
-            <Link to="/">Đóng góp ý kiến</Link>
+            <a href="#" onClick={handleMockupClick}>Thông tin về Cộng đồng</a>
+            <a href="#" onClick={handleMockupClick}>Tuyển dụng</a>
+            <a href="#" onClick={handleMockupClick}>Quy tắc ứng xử</a>
+            <a href="#" onClick={handleMockupClick}>Đóng góp ý kiến</a>
           </div>
           <div className="steam-footer-column">
             <h4>PHÁP LÝ</h4>
-            <Link to="/">Quyền riêng tư</Link>
-            <Link to="/">Hỗ trợ tiếp cận</Link>
-            <Link to="/">Thông báo & Chính sách</Link>
-            <Link to="/">Cookie</Link>
-            <Link to="/">Bản quyền</Link>
+            <a href="#" onClick={handleMockupClick}>Quyền riêng tư</a>
+            <a href="#" onClick={handleMockupClick}>Hỗ trợ tiếp cận</a>
+            <a href="#" onClick={handleMockupClick}>Thông báo & Chính sách</a>
+            <a href="#" onClick={handleMockupClick}>Cookie</a>
+            <a href="#" onClick={handleMockupClick}>Bản quyền</a>
           </div>
           <div className="steam-footer-column">
             <h4>KHÁC</h4>
-            <Link to="/">Tải ứng dụng</Link>
-            <Link to="/">Nhận hỗ trợ</Link>
-            <Link to="/">Tài khoản của tôi</Link>
+            <a href="#" onClick={handleMockupClick}>Tải ứng dụng</a>
+            <a href="#" onClick={handleMockupClick}>Nhận hỗ trợ</a>
+            <a href="#" onClick={handleMockupClick}>Tài khoản của tôi</a>
           </div>
         </div>
 

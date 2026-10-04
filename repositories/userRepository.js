@@ -46,10 +46,10 @@ async function updateUserInfo(id, fullname, email) {
   });
 }
 
-async function updateUserProfile(id, fullname, email) {
+async function updateUserProfile(id, fullname, email, avatar_url, bio) {
   return await prisma.users.update({
     where: { id: parseInt(id) },
-    data: { fullname, email },
+    data: { fullname, email, avatar_url, bio },
   });
 }
 

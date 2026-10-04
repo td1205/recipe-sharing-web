@@ -3,8 +3,8 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Home from './pages/Home';
 import Login from './pages/Login';
-// Các Component chưa tạo sẽ được bổ sung sau
 import Register from './pages/Register';
+import NewRecipes from './pages/NewRecipes';
 import RecipeDetail from './pages/RecipeDetail';
 import RecipeCreate from './pages/RecipeCreate';
 import RecipeEdit from './pages/RecipeEdit';
@@ -21,12 +21,14 @@ import AdminUsers from './pages/admin/Users';
 import AdminComments from './pages/admin/Comments';
 import AdminArticles from './pages/admin/Articles';
 import { Toaster } from 'react-hot-toast';
+import ScrollToTop from './components/ScrollToTop';
 
 function App() {
   return (
     <AuthProvider>
       <Toaster position="top-right" />
       <Router>
+        <ScrollToTop />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
@@ -34,6 +36,7 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/otp" element={<OTP />} />
           <Route path="/change-password" element={<ChangePassword />} />
+          <Route path="/new-recipes" element={<NewRecipes />} />
           <Route path="/recipes/:id" element={<RecipeDetail />} />
           <Route path="/recipes/create" element={<RecipeCreate />} />
           <Route path="/recipes/edit/:id" element={<RecipeEdit />} />

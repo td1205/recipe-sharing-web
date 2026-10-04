@@ -3,6 +3,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
+import SkeletonLoader from '../components/SkeletonLoader';
 import { AuthContext } from '../context/AuthContext';
 
 const RecipeDetail = () => {
@@ -10,12 +11,16 @@ const RecipeDetail = () => {
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
 
+  const [isFav, setIsFav] = useState(false);
   const [recipe, setRecipe] = useState(null);
   const [ingredients, setIngredients] = useState([]);
   const [steps, setSteps] = useState([]);
   const [comments, setComments] = useState([]);
   const [rating, setRating] = useState({});
   const [relatedRecipes, setRelatedRecipes] = useState([]);
+  const [tags, setTags] = useState([]);
+  const [media, setMedia] = useState([]);
+  const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
@@ -31,6 +36,9 @@ const RecipeDetail = () => {
         setComments(res.data.comments || []);
         setRating(res.data.rating || {});
         setRelatedRecipes(res.data.relatedRecipes || []);
+        setTags(res.data.tags || []);
+        setMedia(res.data.media && res.data.media.length > 0 ? res.data.media : [{ media_url: res.data.recipe.image_url, media_type: 'image' }]);
+        setIsFav(res.data.isFav || false);
       }
     } catch (err) {
       setError('Không thể tải công thức hoặc công thức không tồn tại.');
@@ -43,9 +51,49 @@ const RecipeDetail = () => {
     fetchDetail();
   }, [id]);
 
+  const handleRequireLogin = (actionFn) => {
+    if (!user) {
+      toast((t) => (
+        <div style={{ textAlign: 'center' }}>
+          <h4 style={{ margin: '0 0 10px 0', fontSize: '15px', color: '#c6d4df', fontWeight: 'normal' }}>
+            Đăng nhập để thực hiện thao tác này
+          </h4>
+          <button 
+            onClick={() => { toast.dismiss(t.id); navigate('/login'); }}
+            style={{ background: 'linear-gradient(to right, #47bfff 5%, #1a44c2 60%)', color: '#fff', border: 'none', padding: '5px 20px', borderRadius: '2px', cursor: 'pointer', fontSize: '13px' }}
+          >
+            Đăng nhập
+          </button>
+        </div>
+      ), {
+        style: { background: '#1b2838', border: '1px solid #101822', boxShadow: '0 0 10px rgba(0,0,0,0.8)' },
+        duration: 4000
+      });
+      return;
+    }
+    if (actionFn) actionFn();
+  };
+
+  const handleToggleFavorite = async () => {
+    try {
+      const res = await axios.post(`/api/recipes/${id}/favorite`);
+      if (res.data.success) {
+        setIsFav(res.data.isFav);
+        toast.success(res.data.isFav ? 'Đã thêm vào yêu thích' : 'Đã bỏ yêu thích', {
+          style: { background: '#1b2838', color: '#c6d4df', border: '1px solid #2a323f' }
+        });
+      }
+    } catch (e) {
+      toast.error('Lỗi khi cập nhật yêu thích');
+    }
+  };
+
+  const handleAddTag = () => toast.success('Tính năng thêm tag đang phát triển', { style: { background: '#1b2838', color: '#c6d4df' }});
+  const handleReport = () => toast.success('Đã gửi báo cáo cho Admin', { style: { background: '#1b2838', color: '#c6d4df' }});
+  
   if (loading) return (
     <MainLayout hideSidebar>
-      <div style={{ minHeight: '100vh', padding: '20px 15px', color: '#fff' }}>Đang tải...</div>
+      <SkeletonLoader />
     </MainLayout>
   );
   if (error) return <MainLayout hideSidebar><div className="error-msg" style={{ minHeight: '80vh', padding: '20px', textAlign: 'center', color: '#fff' }}>{error}</div></MainLayout>;
@@ -64,14 +112,45 @@ const RecipeDetail = () => {
             </div>
           <div className="steam-app-title-area">
             <h2 className="steam-app-title">{recipe.title}</h2>
-            <Link to="/" className="steam-btn-hub">Trung tâm cộng đồng</Link>
+            <a href="#" className="steam-btn-hub" onClick={(e) => { e.preventDefault(); toast.success('Tính năng đang phát triển', { style: { background: '#1b2838', color: '#c6d4df', border: '1px solid #101822' }}); }}>Trung tâm cộng đồng</a>
           </div>
         </div>
 
         {/* Hero Section */}
         <div className="steam-app-hero">
           <div className="steam-hero-left">
-            <img src={recipe.image_url || 'https://via.placeholder.com/600'} alt={recipe.title} className="steam-hero-main-img" />
+            <div className="steam-main-viewer">
+              {media[activeMediaIndex]?.media_type === 'video' ? (
+                 <video src={media[activeMediaIndex]?.media_url} controls className="steam-hero-main-img" autoPlay />
+              ) : (
+                 <img src={media[activeMediaIndex]?.media_url || 'https://via.placeholder.com/808x455'} alt={recipe.title} className="steam-hero-main-img" />
+              )}
+            </div>
+            {/* Thumbnails Row */}
+            <div className="steam-hero-thumbnails">
+              <div className="steam-thumb-track">
+                {media.map((item, idx) => (
+                  <div 
+                    key={idx} 
+                    className={`steam-thumb-item ${idx === activeMediaIndex ? 'active' : ''}`}
+                    onClick={() => setActiveMediaIndex(idx)}
+                  >
+                    {item.media_type === 'video' ? (
+                      <video src={item.media_url} className="steam-hero-main-img" />
+                    ) : (
+                      <img src={item.media_url || 'https://via.placeholder.com/116x65'} />
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="steam-slider-controls">
+                <div className="steam-slider-arrow left"><i className="fa-solid fa-chevron-left"></i></div>
+                <div className="steam-slider-scrollbar">
+                  <div className="steam-slider-thumb"></div>
+                </div>
+                <div className="steam-slider-arrow right"><i className="fa-solid fa-chevron-right"></i></div>
+              </div>
+            </div>
           </div>
           <div className="steam-hero-right">
             <img src={recipe.image_url || 'https://via.placeholder.com/600'} alt={recipe.title} className="steam-hero-small-img" />
@@ -79,7 +158,7 @@ const RecipeDetail = () => {
             
             <div className="steam-hero-reviews">
               <div className="review-row">
-                <span className="review-label">Trung bình đánh giá trong 1 ngày:</span>
+                <span className="review-label">Trung bình đánh giá:</span>
                 <span className="review-value">
                   <span className={rating.averageRating >= 4 ? 'positive' : 'mixed'}>
                     {rating.averageRating ? (rating.averageRating >= 4 ? 'Rất tích cực' : 'Trái chiều') : 'Chưa có'}
@@ -100,12 +179,28 @@ const RecipeDetail = () => {
             </div>
 
             <div className="steam-hero-tags">
-              <span className="steam-tag">{recipe.category_name || 'Món chính'}</span>
-              <span className="steam-tag">{recipe.meal_time_name || 'Mọi lúc'}</span>
-              <span className="steam-tag">Nấu ăn</span>
+              {tags.map((tag, idx) => (
+                <span key={idx} className="steam-tag">{tag.name}</span>
+              ))}
               <span className="steam-tag-plus">+</span>
             </div>
           </div>
+        </div>
+
+        {/* Steam Action Bar */}
+        <div className="steam-action-bar" style={{ display: 'flex', gap: '5px', marginBottom: '30px', flexWrap: 'wrap' }}>
+          <button className="steam-action-btn" onClick={() => handleRequireLogin(handleToggleFavorite)}>
+             <i className="fa-solid fa-heart" style={{ color: isFav ? '#d9534f' : '#67c1f5' }}></i> {isFav ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+          </button>
+          <button className="steam-action-btn" onClick={() => handleRequireLogin(handleAddTag)}>
+             <i className="fa-solid fa-tags"></i> Gắn thêm Tag
+          </button>
+          <button className="steam-action-btn" onClick={() => handleRequireLogin(() => toast.success('Tính năng đang phát triển', { style: { background: '#1b2838', color: '#c6d4df', border: '1px solid #101822' }}))}>
+             <i className="fa-solid fa-share-nodes"></i> Chia sẻ
+          </button>
+          <button className="steam-action-btn" onClick={() => handleRequireLogin(handleReport)}>
+             <i className="fa-solid fa-flag"></i> Báo cáo món ăn
+          </button>
         </div>
 
         {/* Main Content Area */}
@@ -263,6 +358,22 @@ const RecipeDetail = () => {
              </div>
           </div>
           
+           <div className="steam-write-review" style={{ margin: '20px 0', padding: '15px', background: 'rgba(0,0,0,0.3)', border: '1px solid #2a323f', borderRadius: '2px' }}>
+              <h3 style={{ margin: '0 0 10px 0', fontSize: '15px', color: '#c6d4df' }}>Viết đánh giá của bạn</h3>
+              <textarea 
+                placeholder="Bạn nghĩ gì về công thức này?" 
+                onClick={() => handleRequireLogin()}
+                style={{ width: '100%', height: '80px', background: '#101822', color: '#c6d4df', border: '1px solid #1b2838', padding: '10px', resize: 'none' }}
+              ></textarea>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
+                <span style={{ fontSize: '12px', color: '#8f98a0' }}>Bạn có khuyên mọi người nấu món này không?</span>
+                <div>
+                   <button onClick={() => handleRequireLogin()} style={{ background: '#233c51', color: '#67c1f5', border: 'none', padding: '5px 15px', cursor: 'pointer', marginRight: '5px' }}><i className="fa-solid fa-thumbs-up"></i> Có</button>
+                   <button onClick={() => handleRequireLogin()} style={{ background: '#233c51', color: '#67c1f5', border: 'none', padding: '5px 15px', cursor: 'pointer' }}><i className="fa-solid fa-thumbs-down"></i> Không</button>
+                </div>
+              </div>
+           </div>
+
           <div className="steam-review-active-filter">
             Đang hiện {comments.length} đánh giá khớp với bộ lọc bên trên ( Rất tích cực )
           </div>

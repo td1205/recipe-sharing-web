@@ -6,25 +6,25 @@ const interactionModel = require('../repositories/interactionRepository');
 async function addComment(req, res) {
   try {
     if (!req.session.user) {
-      return res.redirect('/login');
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
     const recipeId = req.params.id;
     const userId = req.session.user.id;
     const { content } = req.body;
     if (!content || content.trim() === '') {
-      return res.redirect(`/recipes/${recipeId}`);
+      return res.status(400).json({ success: false, message: 'Empty comment' });
     }
     await commentModel.createComment(userId, recipeId, content);
-    res.redirect(`/recipes/${recipeId}`);
+    res.json({ success: true, message: 'Comment added' });
   } catch (err) {
     console.error(err);
-    res.status(500).send('Server Error');
+    res.status(500).json({ success: false, message: 'Server Error' });
   }
 }
 async function addRating(req, res) {
   try {
     if (!req.session.user) {
-      return res.redirect('/login');
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
     const recipeId = req.params.id;
     const userId = req.session.user.id;
@@ -34,16 +34,16 @@ async function addRating(req, res) {
       recipeId,
       parseInt(star_count),
     );
-    res.redirect(`/recipes/${recipeId}`);
+    res.json({ success: true, message: 'Rating added/updated' });
   } catch (err) {
     console.error(err);
-    res.status(500).send('Server Error');
+    res.status(500).json({ success: false, message: 'Server Error' });
   }
 }
 async function toggleFavorite(req, res) {
   try {
     if (!req.session.user) {
-      return res.redirect('/login');
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
     const recipeId = req.params.id;
     const userId = req.session.user.id;
@@ -53,10 +53,10 @@ async function toggleFavorite(req, res) {
     } else {
       await favoriteModel.addFavorite(userId, recipeId);
     }
-    res.redirect(`/recipes/${recipeId}`);
+    res.json({ success: true, message: 'Favorite toggled', isFav: !isFav });
   } catch (err) {
     console.error(err);
-    res.status(500).send('Server Error');
+    res.status(500).json({ success: false, message: 'Server Error' });
   }
 }
 async function showRecipeDetail(req, res) {
@@ -64,7 +64,7 @@ async function showRecipeDetail(req, res) {
     const recipeId = req.params.id;
     const recipe = await recipeModel.getRecipeById(recipeId);
     if (!recipe) {
-      return res.status(404).send('Không tìm thấy món ăn');
+      return res.status(404).json({ success: false, message: 'Không tìm thấy món ăn' });
     }
     const comments = await commentModel.getCommentsByRecipeId(recipeId);
     const rating = await ratingModel.getAverageRating(recipeId);
@@ -77,7 +77,8 @@ async function showRecipeDetail(req, res) {
       );
       isFav = await favoriteModel.isFavorite(req.session.user.id, recipeId);
     }
-    res.render('recipes/detail', {
+    res.json({
+      success: true,
       recipe,
       comments,
       rating,
@@ -87,25 +88,25 @@ async function showRecipeDetail(req, res) {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).send('Server Error');
+    res.status(500).json({ success: false, message: 'Server Error' });
   }
 }
 async function adminComments(req, res) {
   try {
     const comments = await interactionModel.getAllComments();
-    res.render('admin/comments', { comments });
+    res.json({ success: true, comments });
   } catch (err) {
     console.error(err);
-    res.status(500).send('Server Error');
+    res.status(500).json({ success: false, message: 'Server Error' });
   }
 }
 async function deleteComment(req, res) {
   try {
     await interactionModel.deleteComment(req.params.id);
-    res.redirect('/admin/comments');
+    res.json({ success: true, message: 'Comment deleted' });
   } catch (err) {
     console.error(err);
-    res.status(500).send('Server Error');
+    res.status(500).json({ success: false, message: 'Server Error' });
   }
 }
 module.exports = {

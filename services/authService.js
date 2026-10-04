@@ -2,9 +2,16 @@ const bcrypt = require('bcrypt');
 const userModel = require('../repositories/userRepository');
 
 async function login(username, password) {
-  const [user] = await userModel.getUserByUsername(username);
+  let users = await userModel.getUserByUsername(username);
+  let user = users[0];
+  
   if (!user) {
-    return { success: false, error: 'Tài khoản không tồn tại!' };
+    users = await userModel.getUserByEmail(username);
+    user = users[0];
+  }
+
+  if (!user) {
+    return { success: false, error: 'Tài khoản hoặc email không tồn tại!' };
   }
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) {

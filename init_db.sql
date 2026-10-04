@@ -16,6 +16,24 @@ CREATE TABLE IF NOT EXISTS categories (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
     description TEXT,
+    course_type_id INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (course_type_id) REFERENCES course_types(id) ON DELETE SET NULL
+);
+
+-- Bảng loại món ăn (Khai vị, Món chính, Tráng miệng)
+CREATE TABLE IF NOT EXISTS course_types (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Bảng thời gian dùng bữa (Sáng, Trưa, Chiều, Tối)
+CREATE TABLE IF NOT EXISTS meal_times (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -30,9 +48,13 @@ CREATE TABLE IF NOT EXISTS recipes (
     cook_time INT NOT NULL, -- Thời gian nấu (phút)
     servings INT NOT NULL,  -- Số khẩu phần ăn
     image_url VARCHAR(255), -- Đường dẫn ảnh món ăn
+    course_type_id INT, -- Loại món ăn
+    meal_time_id INT, -- Thời gian bữa ăn
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,
+    FOREIGN KEY (course_type_id) REFERENCES course_types(id) ON DELETE SET NULL,
+    FOREIGN KEY (meal_time_id) REFERENCES meal_times(id) ON DELETE SET NULL
 );
 
 -- 4. Bảng lưu các nguyên liệu chi tiết của món ăn
@@ -87,6 +109,18 @@ CREATE TABLE IF NOT EXISTS favorites (
     UNIQUE KEY unique_user_recipe (user_id, recipe_id) -- Tránh một người thích 1 món nhiều lần
 );
 
+-- 8.5 Bảng lưu trữ bài viết (Blog/Articles)
+CREATE TABLE IF NOT EXISTS articles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    image_url VARCHAR(255),
+    author_id INT NOT NULL,
+    views INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- 9. Dữ liệu mẫu cho danh mục (categories)
 INSERT IGNORE INTO categories (id, name, description) VALUES
 (2, 'Món Kho', 'Các món kho đậm đà, hao cơm'),
@@ -96,6 +130,19 @@ INSERT IGNORE INTO categories (id, name, description) VALUES
 (6, 'Món Nướng', 'Các món nướng thơm lừng, thích hợp cho dịp cuối tuần'),
 (7, 'Món Lẩu', 'Các món lẩu nghi ngút khói, thích hợp quây quần gia đình'),
 (8, 'Món Hấp', 'Các món hấp thanh đạm, giữ nguyên vị ngọt tự nhiên');
+
+-- Dữ liệu mẫu cho loại món ăn
+INSERT IGNORE INTO course_types (id, name, description) VALUES
+(1, 'Món Khai Vị', 'Các món ăn nhẹ dùng để kích thích vị giác trước bữa chính'),
+(2, 'Món Chính', 'Các món ăn no, cung cấp năng lượng chính cho bữa ăn'),
+(3, 'Món Tráng Miệng', 'Các món ăn ngọt, trái cây dùng sau bữa chính');
+
+-- Dữ liệu mẫu cho thời gian bữa ăn
+INSERT IGNORE INTO meal_times (id, name, description) VALUES
+(1, 'Sáng', 'Các món ăn thường được nấu và dùng vào buổi sáng'),
+(2, 'Trưa', 'Các món ăn thường được nấu và dùng vào buổi trưa'),
+(3, 'Chiều', 'Các món ăn thường được nấu và dùng vào buổi chiều nhẹ'),
+(4, 'Tối', 'Các món ăn thường được nấu và dùng vào buổi tối');
 
 -- 10. Dữ liệu mẫu cho công thức (recipes)
 -- Tạo tài khoản admin mặc định (user_id = 1) để gán cho các công thức
@@ -300,3 +347,32 @@ INSERT IGNORE INTO steps (recipe_id, step_number, instruction) VALUES
 (17, 1, 'Thịt dê làm sạch thái miếng nhỏ. Sả, ớt, gừng làm sạch và đập dập, băm hơi nhuyễn.'),
 (17, 2, 'Ướp thịt dê với hạt nêm, đường, bột ngọt vào trộn thật đều để trong 30 phút.'),
 (17, 3, 'Chuẩn bị một cái nồi lớn, cho sả xuống dưới đáy nồi rồi cho thịt dê đã được ướp gia vị đặt lên trên. Hấp cách thủy với sả trong 40 phút là được.');
+
+-- B?ng luu tr? Tags (Community Tags)
+CREATE TABLE IF NOT EXISTS tags (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    type VARCHAR(50) DEFAULT 'community', -- 'dietary' (chay, clean), 'cuisine' (vn, hq), 'ingredient' (h?i s?n, th?t d?), 'community' (ngon, r?)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- B?ng trung gian Recipe - Tags
+CREATE TABLE IF NOT EXISTS recipe_tags (
+    recipe_id INT NOT NULL,
+    tag_id INT NOT NULL,
+    PRIMARY KEY (recipe_id, tag_id),
+    FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE,
+    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+);
+
+-- B?ng luu tr? Media (Nhi?u ?nh, Video) cho Recipe
+CREATE TABLE IF NOT EXISTS recipe_media (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    recipe_id INT NOT NULL,
+    media_url VARCHAR(255) NOT NULL,
+    media_type ENUM('image', 'video') DEFAULT 'image',
+    display_order INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE
+);
+

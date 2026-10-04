@@ -4,7 +4,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
 import SkeletonLoader from '../components/SkeletonLoader';
 import SquareRecipeCard from '../components/SquareRecipeCard';
-
+import toast from 'react-hot-toast';
 const Home = () => {
   const [searchParams] = useSearchParams();
   const search = searchParams.get('search') || '';
@@ -76,6 +76,11 @@ const Home = () => {
   const basedOnYou = todayRecipes.slice(0, 5);
   const becauseYouCooked = popularRecipes.slice(5, 9);
   const recentCookedName = topRecipe ? topRecipe.title : 'Salad';
+
+  const handleMockupClick = (e) => {
+    if (e) e.preventDefault();
+    toast.success('Tính năng đang phát triển', { style: { background: '#1b2838', color: '#c6d4df', border: '1px solid #101822' }});
+  };
 
   return (
     <MainLayout categories={categories} hideSidebar>
@@ -209,23 +214,23 @@ const Home = () => {
               <h2 className="steam-section-title">Sự kiện & Món ngon nổi bật</h2>
               <div className="steam-events-grid">
                 <div className="steam-event-main">
-                  <div className="steam-event-card large" style={{ backgroundImage: `url(${eventRecipes[0]?.image_url || 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1'})` }}>
+                  <div className="steam-event-card large" style={{ backgroundImage: `url(${eventRecipes[0]?.image_url || 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1'})`, cursor: 'pointer' }} onClick={handleMockupClick}>
                     <div className="steam-event-label">CUỘC THI ẨM THỰC</div>
                   </div>
                 </div>
                 <div className="steam-event-col">
-                  <div className="steam-event-card medium" style={{ backgroundImage: `url(${eventRecipes[1]?.image_url || 'https://images.unsplash.com/photo-1490818387583-1b5f22209849'})` }}>
+                  <div className="steam-event-card medium" style={{ backgroundImage: `url(${eventRecipes[1]?.image_url || 'https://images.unsplash.com/photo-1490818387583-1b5f22209849'})`, cursor: 'pointer' }} onClick={handleMockupClick}>
                     <div className="steam-event-label">MÓN NGON MÙA HÈ</div>
                   </div>
-                  <div className="steam-event-card medium" style={{ backgroundImage: `url(${eventRecipes[2]?.image_url || 'https://images.unsplash.com/photo-1484723091791-00d759ce4342'})` }}>
+                  <div className="steam-event-card medium" style={{ backgroundImage: `url(${eventRecipes[2]?.image_url || 'https://images.unsplash.com/photo-1484723091791-00d759ce4342'})`, cursor: 'pointer' }} onClick={handleMockupClick}>
                     <div className="steam-event-label">THỰC ĐƠN GIẢM CÂN</div>
                   </div>
                 </div>
                 <div className="steam-event-col">
-                  <div className="steam-event-card medium" style={{ backgroundImage: `url(${eventRecipes[3]?.image_url || 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd'})` }}>
+                  <div className="steam-event-card medium" style={{ backgroundImage: `url(${eventRecipes[3]?.image_url || 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd'})`, cursor: 'pointer' }} onClick={handleMockupClick}>
                     <div className="steam-event-label">EAT CLEAN</div>
                   </div>
-                  <div className="steam-event-card medium" style={{ backgroundImage: `url(${eventRecipes[4]?.image_url || 'https://images.unsplash.com/photo-1473093295043-cdd812d0e601'})` }}>
+                  <div className="steam-event-card medium" style={{ backgroundImage: `url(${eventRecipes[4]?.image_url || 'https://images.unsplash.com/photo-1473093295043-cdd812d0e601'})`, cursor: 'pointer' }} onClick={handleMockupClick}>
                     <div className="steam-event-label">MÓN CHAY DỄ LÀM</div>
                   </div>
                 </div>

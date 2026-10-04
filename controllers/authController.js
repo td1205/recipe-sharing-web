@@ -20,11 +20,11 @@ function validatePassword(password) {
 }
 
 function getLoginPage(req, res) {
-  res.render('auth/login');
+  res.json({ success: true, message: 'Login page endpoint' });
 }
 
 function getRegisterPage(req, res) {
-  res.render('auth/register');
+  res.json({ success: true, message: 'Register page endpoint' });
 }
 
 async function handleLogin(req, res) {
@@ -33,7 +33,8 @@ async function handleLogin(req, res) {
     const result = await authService.login(username, password);
 
     if (!result.success) {
-      return res.render('auth/login', {
+      return res.status(401).json({
+        success: false,
         error: result.error,
       });
     }
@@ -47,13 +48,14 @@ async function handleLogin(req, res) {
     req.session.save((err) => {
       if (err) {
         console.error('Lỗi lưu session:', err);
-        return res.render('auth/login', { error: 'Lỗi hệ thống!' });
+        return res.status(500).json({ success: false, error: 'Lỗi hệ thống!' });
       }
-      return res.redirect('/');
+      return res.json({ success: true, user: req.session.user });
     });
   } catch (error) {
     console.error('Lỗi handleLogin:', error);
-    return res.render('auth/login', {
+    return res.status(500).json({
+      success: false,
       error: 'Lỗi hệ thống, vui lòng thử lại!',
     });
   }
@@ -64,30 +66,32 @@ async function handleRegister(req, res) {
     const { username, email, password, confirm_password, fullname } = req.body;
 
     if (password !== confirm_password) {
-      return res.render('auth/register', {
+      return res.status(400).json({
+        success: false,
         error: 'Mật khẩu xác nhận không khớp!',
       });
     }
 
     const passwordError = validatePassword(password);
     if (passwordError) {
-      return res.render('auth/register', { error: passwordError });
+      return res.status(400).json({ success: false, error: passwordError });
     }
 
     const [user] = await userModel.getUserByUsername(username);
     if (user !== undefined) {
-      return res.render('auth/register', { error: 'Tài khoản đã tồn tại!' });
+      return res.status(400).json({ success: false, error: 'Tài khoản đã tồn tại!' });
     }
     const [userByEmail] = await userModel.getUserByEmail(email);
     if (userByEmail !== undefined) {
-      return res.render('auth/register', { error: 'Email đã được sử dụng!' });
+      return res.status(400).json({ success: false, error: 'Email đã được sử dụng!' });
     }
     const hashedPassword = await bcrypt.hash(password, 10);
     await userModel.createUser(username, hashedPassword, email, fullname);
-    return res.redirect('/login');
+    return res.json({ success: true, message: 'Đăng ký thành công' });
   } catch (error) {
     console.error('Lỗi handleRegister:', error);
-    return res.render('auth/register', {
+    return res.status(500).json({
+      success: false,
       error: 'Lỗi hệ thống, vui lòng thử lại!',
     });
   }
@@ -95,23 +99,24 @@ async function handleRegister(req, res) {
 
 function logout(req, res) {
   req.session.destroy();
-  return res.redirect('/login');
+  return res.json({ success: true, message: 'Logged out' });
 }
 
 async function renderProfile(req, res) {
   try {
+    if (!req.session.user) return res.status(401).json({ success: false, message: 'Unauthorized' });
     const userId = req.session.user.id;
     const [user] = await userModel.getUserById(userId);
     const favouriteRecipes = await userModel.getFavouriteRecipesByUser(userId);
-    res.render('auth/profile', { user, favouriteRecipes });
+    res.json({ success: true, user, favouriteRecipes });
   } catch (error) {
     console.error('Lỗi renderProfile:', error);
-    res.status(500).send('Lỗi hệ thống!');
+    res.status(500).json({ success: false, error: 'Lỗi hệ thống!' });
   }
 }
 
 function getForgotPasswordPage(req, res) {
-  res.render('auth/forgot-password');
+  res.json({ success: true, message: 'Forgot password page endpoint' });
 }
 
 async function handleForgotPassword(req, res) {
@@ -119,7 +124,8 @@ async function handleForgotPassword(req, res) {
     const { email } = req.body;
     const [userByEmail] = await userModel.getUserByEmail(email);
     if (!userByEmail) {
-      return res.render('auth/forgot-password', {
+      return res.status(404).json({
+        success: false,
         error: 'Không tìm thấy tài khoản nào với Email này!',
       });
     }
@@ -130,22 +136,25 @@ async function handleForgotPassword(req, res) {
     req.session.save((err) => {
       if (err) {
         console.error('Lỗi lưu session:', err);
-        return res.render('auth/forgot-password', {
+        return res.status(500).json({
+          success: false,
           error: 'Lỗi khi lưu phiên!',
         });
       }
-      return res.redirect('/otp');
+      return res.json({ success: true, message: 'OTP sent' });
     });
   } catch (error) {
     console.error('Lỗi handleForgotPassword:', error);
-    return res.render('auth/forgot-password', {
+    return res.status(500).json({
+      success: false,
       error: 'Lỗi hệ thống, vui lòng thử lại!',
     });
   }
 }
 
 function getEditProfilePage(req, res) {
-  res.render('auth/profile-edit', {
+  res.json({
+    success: true,
     editUser: req.session.user,
     isAdminEditing: false,
   });
@@ -153,59 +162,71 @@ function getEditProfilePage(req, res) {
 
 async function handleEditProfile(req, res) {
   try {
-    const { fullname, email } = req.body;
+    if (!req.session.user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+    const { fullname, email, bio } = req.body;
+    let avatar_url = req.session.user.avatar_url || null;
+
+    if (req.file) {
+      avatar_url = '/avatars/' + req.file.filename;
+    }
+
     const userId = req.session.user.id;
     const [userByEmail] = await userModel.getUserByEmail(email);
     if (userByEmail && userByEmail.id !== userId) {
-      return res.render('auth/profile-edit', {
+      return res.status(400).json({
+        success: false,
         error: 'Email đã được sử dụng bởi người khác!',
-        editUser: req.session.user,
-        isAdminEditing: false,
       });
     }
-    await userModel.updateUserProfile(userId, fullname, email);
+    await userModel.updateUserProfile(userId, fullname, email, avatar_url, bio);
     req.session.user.fullname = fullname;
     req.session.user.email = email;
-    res.redirect('/profile');
+    req.session.user.avatar_url = avatar_url;
+    req.session.user.bio = bio;
+    res.json({ success: true, user: req.session.user });
   } catch (error) {
     console.error('Lỗi handleEditProfile:', error);
-    res.status(500).send('Lỗi hệ thống!');
+    res.status(500).json({ success: false, error: 'Lỗi hệ thống!' });
   }
 }
 
 async function getChangePasswordPage(req, res) {
-  res.render('auth/change-password');
+  res.json({ success: true, message: 'Change password page' });
 }
 
 async function handleChangePassword(req, res) {
   try {
     const email = req.session.resetEmail;
+    if (!email) return res.status(400).json({ success: false, error: 'No reset email in session' });
     const { password, confirm_password } = req.body;
     if (password !== confirm_password) {
-      return res.render('auth/change-password', {
+      return res.status(400).json({
+        success: false,
         error: 'Mật khẩu xác nhận không khớp!',
       });
     }
     const passwordError = validatePassword(password);
     if (passwordError) {
-      return res.render('auth/change-password', { error: passwordError });
+      return res.status(400).json({ success: false, error: passwordError });
     }
     const hashedPassword = await bcrypt.hash(password, 10);
     await userModel.updatePasswordByEmail(email, hashedPassword);
     req.session.destroy();
-    return res.render('auth/login', {
-      success: 'Đổi mật khẩu thành công! Vui lòng đăng nhập lại.',
+    return res.json({
+      success: true,
+      message: 'Đổi mật khẩu thành công! Vui lòng đăng nhập lại.',
     });
   } catch (error) {
     console.error('Lỗi handleChangePassword:', error);
-    return res.render('auth/change-password', {
+    return res.status(500).json({
+      success: false,
       error: 'Lỗi hệ thống, vui lòng thử lại!',
     });
   }
 }
 
 async function getOTPPage(req, res) {
-  res.render('auth/otp');
+  res.json({ success: true, message: 'OTP page' });
 }
 
 async function handleOTP(req, res) {
@@ -216,13 +237,13 @@ async function handleOTP(req, res) {
     if (otp == trueotp) {
       req.session.otp = true;
       console.log('OTP=' + otp + '\nTrue OTP=' + trueotp);
-      return res.redirect('/change-password');
+      return res.json({ success: true, message: 'OTP correct' });
     } else {
-      return res.render('auth/otp', { error: 'Sai mã OTP!' });
+      return res.status(400).json({ success: false, error: 'Sai mã OTP!' });
     }
   } catch (error) {
     console.error('Lỗi handleOTP:', error);
-    return res.render('auth/otp', { error: 'Lỗi hệ thống, vui lòng thử lại!' });
+    return res.status(500).json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại!' });
   }
 }
 
