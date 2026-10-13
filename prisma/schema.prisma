@@ -87,7 +87,9 @@ model recipes {
   ingredients    ingredients[]
   ratings        ratings[]
   recipe_media   recipe_media[]
+  recipe_views   recipe_views[]
   recipe_tags    recipe_tags[]
+  user_tag_votes user_tag_votes[]
   users          users          @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "recipes_ibfk_1")
   categories     categories     @relation(fields: [category_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "recipes_ibfk_2")
   meal_times     meal_times?    @relation(fields: [meal_time_id], references: [id], onUpdate: NoAction, map: "recipes_ibfk_3")
@@ -144,6 +146,7 @@ model users {
   otp          String?     @db.Char(6)
   OTPExpiredAt DateTime?   @db.DateTime(0)
   OTPIsUsed    Boolean?    @default(dbgenerated("b'0'")) @db.Bit(1)
+  is_banned    Boolean?    @default(false)
   avatar_url   String?     @db.VarChar(255)
   bio          String?     @db.Text
   articles     articles[]
@@ -151,6 +154,22 @@ model users {
   favorites    favorites[]
   ratings      ratings[]
   recipes      recipes[]
+  recipe_views recipe_views[]
+  user_tag_votes user_tag_votes[]
+}
+
+model recipe_views {
+  id          Int      @id @default(autoincrement())
+  recipe_id   Int
+  user_id     Int?
+  viewer_hash String   @db.Char(64)
+  viewed_at   DateTime @default(now()) @db.Timestamp(0)
+  recipes     recipes  @relation(fields: [recipe_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users       users?   @relation(fields: [user_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([recipe_id, viewed_at])
+  @@index([viewer_hash, recipe_id, viewed_at])
+  @@index([user_id])
 }
 
 model articles {
@@ -194,9 +213,25 @@ model tags {
   type        String?       @default("community") @db.VarChar(50)
   created_at  DateTime?     @default(now()) @db.Timestamp(0)
   recipe_tags recipe_tags[]
+  user_tag_votes user_tag_votes[]
 }
 
 enum recipe_media_media_type {
   image
   video
+}
+
+model user_tag_votes {
+  user_id    Int
+  recipe_id  Int
+  tag_id     Int
+  created_at DateTime? @default(now()) @db.Timestamp(0)
+
+  users      users   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  recipes    recipes @relation(fields: [recipe_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tags       tags    @relation(fields: [tag_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([user_id, recipe_id, tag_id])
+  @@index([recipe_id])
+  @@index([tag_id])
 }

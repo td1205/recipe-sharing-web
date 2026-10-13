@@ -1,0 +1,432 @@
+/* The homepage font experiment includes its shared header and footer. */
+.home-typography {
+  --font-sans: var(--font-home);
+  --font-serif: var(--font-home);
+  --font-heading: var(--font-home);
+}
+
+/* Keep Font Awesome's icon fonts while unifying all visible text and controls. */
+.home-typography :where(*):not([class*="fa-"]) {
+  font-family: var(--font-home);
+}
+
+.home-typography .nyt-logo {
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.home-search-container,
+.home-discover-container {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-4) 60px;
+}
+
+.home-typography .mag-hero-main-img {
+  display: block;
+  object-fit: cover;
+}
+
+.home-title-link,
+.home-author-link,
+.home-typography .mag-card,
+.home-typography .mag-list-card {
+  color: var(--color-text-main);
+  text-decoration: none;
+}
+
+.home-author-link {
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.home-typography .mag-hero-main-title {
+  font-size: var(--home-text-hero);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  letter-spacing: -0.025em;
+  overflow-wrap: anywhere;
+}
+
+.home-typography .magazine-section-header {
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  border-top-width: 2px;
+}
+
+.home-typography .magazine-section-title {
+  font-size: var(--home-text-section);
+  font-weight: 700;
+  line-height: var(--lh-heading);
+  letter-spacing: 0;
+}
+
+.home-featured-section {
+  padding: var(--space-5);
+  background: var(--color-bg-hover);
+  border-radius: var(--radius-md);
+}
+
+.home-typography .home-featured-section-header {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.home-typography .mag-hero-main-desc {
+  max-width: 44rem;
+  font-size: var(--home-text-body);
+  line-height: 1.7;
+}
+
+.home-typography .mag-hero-main-author {
+  margin-bottom: var(--space-3);
+  font-size: var(--home-text-body);
+  line-height: var(--lh-body);
+  color: var(--color-text-main);
+}
+
+.home-typography .mag-hero-main-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  font-size: var(--home-text-meta);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.home-typography .mag-hero-main-meta > span:not(:last-child) {
+  padding-right: var(--space-3);
+  border-right: 1px solid var(--color-border);
+}
+
+.home-rating-summary {
+  color: var(--color-text-main);
+}
+
+.home-rating-summary i {
+  margin-right: var(--space-1);
+  color: var(--color-primary);
+}
+
+.home-typography .mag-list-title {
+  font-size: var(--home-text-list);
+  font-weight: 600;
+  line-height: var(--lh-heading);
+  overflow-wrap: anywhere;
+}
+
+.home-typography .mag-list-card-first .mag-list-title {
+  font-size: var(--home-text-card);
+}
+
+.home-typography .mag-list-card:not(:last-child) {
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 72%, var(--color-text-muted));
+}
+
+.home-typography .mag-list-card:last-child {
+  border-bottom: none;
+}
+
+.home-typography .mag-card-meta {
+  min-width: 0;
+  margin-bottom: var(--space-1);
+  font-size: var(--home-text-meta);
+  line-height: var(--lh-body);
+}
+
+.home-typography .mag-card-meta span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-typography .mag-card-title {
+  margin: 0;
+  font-size: var(--home-text-card);
+  font-weight: 600;
+  line-height: var(--lh-heading);
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.home-typography .mag-card-compact .mag-card-title {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 1rem;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.home-typography .mag-card-compact .mag-card-img-wrapper {
+  aspect-ratio: 4 / 3;
+  margin-bottom: var(--space-2);
+}
+
+.home-recipe-slider {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  /* Single source for the card width so the arrow can be aligned to the
+     image band instead of guessing a percentage of the whole slider. */
+  --slider-card-w: clamp(10.5rem, 18vw, 13rem);
+}
+
+.home-recipe-slider-track {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  gap: var(--space-3);
+  overflow-x: auto;
+  padding-bottom: var(--space-3);
+  scroll-behavior: smooth;
+  scroll-snap-type: x proximity;
+}
+
+.home-recipe-slider-track .mag-card {
+  position: relative;
+  flex: 0 0 var(--slider-card-w);
+  min-width: 0;
+  padding-right: var(--space-3);
+  border-right: 1px solid color-mix(in srgb, var(--color-border) 72%, var(--color-text-muted));
+  scroll-snap-align: start;
+}
+
+/* Keep the trailing gutter on the last card so every image box stays the
+   same size; only the divider line is dropped. */
+.home-recipe-slider-track .mag-card:last-child {
+  border-right: 0;
+}
+
+.home-slider-button {
+  /* Centre the arrow on the card image: card width minus the right gutter,
+     converted to the 4/3 image height, then offset by half the button. */
+  --slider-btn: 2.25rem;
+  --slider-img-h: calc((var(--slider-card-w) - var(--space-3)) * 0.75);
+  position: absolute;
+  top: calc((var(--slider-img-h) - var(--slider-btn)) / 2);
+  z-index: 2;
+  display: grid;
+  width: var(--slider-btn);
+  height: var(--slider-btn);
+  padding: 0;
+  place-items: center;
+  color: var(--color-text-main);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.home-slider-button-prev {
+  left: calc(var(--space-2) * -1);
+}
+
+.home-slider-button-next {
+  right: calc(var(--space-2) * -1);
+}
+
+.home-slider-button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.home-search-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+  gap: var(--space-5) var(--space-3);
+}
+
+.home-search-grid .mag-card {
+  min-width: 0;
+  padding-right: var(--space-3);
+  border-right: 1px solid color-mix(in srgb, var(--color-border) 72%, var(--color-text-muted));
+}
+
+.home-empty-state {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: var(--space-4) 0;
+  color: var(--color-text-muted);
+}
+
+.home-status-state {
+  display: grid;
+  max-width: 36rem;
+  min-height: 50vh;
+  margin: 0 auto;
+  padding: 5rem var(--space-4);
+  place-items: center;
+  align-content: center;
+  gap: var(--space-3);
+  text-align: center;
+}
+
+.home-status-state .btn-primary {
+  flex: none;
+}
+
+.home-typography :is(.mag-tab, .magazine-section-link, .mag-author-name,
+  .nyt-search-form input, .nyt-action-link, .nyt-nav-item > a) {
+  font-size: var(--home-text-ui);
+  line-height: var(--lh-body);
+  letter-spacing: 0;
+}
+
+.home-typography .mag-side-list-header {
+  border-top-width: 2px;
+  font-size: var(--home-text-ui);
+  font-weight: 700;
+  line-height: var(--lh-heading);
+}
+
+@media (max-width: 768px) {
+  .home-search-container,
+  .home-discover-container {
+    padding: var(--space-4) var(--space-3) 48px;
+  }
+
+  .home-typography .nyt-top-row {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .home-typography .nyt-top-row .nyt-container {
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .home-typography .nyt-logo {
+    flex-shrink: 0;
+    font-size: 1.5rem;
+  }
+
+  .home-typography .nyt-actions {
+    gap: var(--space-3);
+    margin-left: auto;
+  }
+
+  .home-typography .nyt-search-form {
+    order: 3;
+    flex: 1 0 100%;
+    max-width: none;
+  }
+
+  .home-typography .nyt-bottom-row {
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .home-typography .nyt-bottom-row .nyt-container {
+    justify-content: flex-start;
+    overflow: hidden;
+  }
+
+  .home-typography .nyt-nav-list {
+    width: 100%;
+    gap: var(--space-4);
+    overflow-x: auto;
+    padding: 0 var(--space-3);
+  }
+
+  .home-typography .nyt-nav-item {
+    flex: 0 0 auto;
+    padding: 12px 0;
+  }
+
+  .home-typography .nyt-mega-menu {
+    display: none;
+  }
+
+  .home-featured-section {
+    padding: var(--space-4);
+  }
+}
+
+@media (max-width: 576px) {
+  .home-search-container,
+  .home-discover-container {
+    padding-inline: var(--space-3);
+  }
+
+  .home-typography .nyt-logo {
+    font-size: 1.3rem;
+  }
+
+  .home-typography .nyt-actions {
+    display: flex;
+    order: 1;
+    flex: 0 0 auto;
+    gap: 0;
+    margin-left: auto;
+  }
+
+  .home-typography :is(.nyt-app-cta, .nyt-recipe-box-link) {
+    display: none;
+  }
+
+  .home-typography .mag-hero-grid {
+    gap: var(--space-5);
+    margin-bottom: 48px;
+  }
+
+  .home-typography .mag-hero-main-img-wrapper {
+    margin-bottom: var(--space-3);
+  }
+
+  .home-typography .mag-hero-main-meta > span:not(:last-child) {
+    padding-right: var(--space-2);
+  }
+
+  .home-featured-section {
+    padding: var(--space-4) var(--space-3);
+  }
+
+  .home-typography .magazine-section-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .home-typography .magazine-section-link {
+    align-self: flex-start;
+  }
+
+  .home-typography .mag-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: var(--space-2);
+  }
+
+  .home-typography .mag-tab {
+    flex: 0 0 auto;
+  }
+
+  .home-recipe-slider {
+    --slider-card-w: 10rem;
+  }
+
+  .home-slider-button {
+    --slider-btn: 2rem;
+  }
+
+  .home-slider-button-prev {
+    left: calc(var(--space-1) * -1);
+  }
+
+  .home-slider-button-next {
+    right: calc(var(--space-1) * -1);
+  }
+
+  .home-search-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Two-column mobile grid: every second card drops the divider but keeps the
+     gutter, so both columns render identical image boxes. */
+  .home-search-grid .mag-card:nth-child(even) {
+    border-right: 0;
+  }
+}

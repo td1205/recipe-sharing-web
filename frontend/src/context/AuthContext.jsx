@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }) => {
         }
       })
       .catch(err => {
-        console.log('Chưa đăng nhập');
+        // Do nothing on unauthenticated
       })
       .finally(() => {
         setLoading(false);

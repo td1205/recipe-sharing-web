@@ -17,12 +17,25 @@ async function countComments() {
 }
 
 async function getAllUsers() {
-  return await prisma.users.findMany();
+  return await prisma.users.findMany({
+    include: {
+      _count: {
+        select: { recipes: true, comments: true }
+      }
+    }
+  });
 }
 
 async function deleteUser(id) {
   return await prisma.users.delete({
     where: { id: parseInt(id) },
+  });
+}
+
+async function banUser(id, is_banned) {
+  return await prisma.users.update({
+    where: { id: parseInt(id) },
+    data: { is_banned },
   });
 }
 
@@ -80,6 +93,7 @@ module.exports = {
   countComments,
   getAllUsers,
   deleteUser,
+  banUser,
   updateUserByAdmin,
   getChartData,
 };

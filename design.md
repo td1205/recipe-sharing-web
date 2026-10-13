@@ -1,107 +1,82 @@
-# Design System & UI Guidelines
+# Design System: Editorial Magazine (Recipe Sharing Web)
 
-Tài liệu này đóng vai trò là "Single Source of Truth" (Nguồn chân lý duy nhất) cho toàn bộ quy chuẩn thiết kế UI/UX của dự án Web Chia Sẻ Công Thức Nấu Ăn. 
-Dự án hiện tại đi theo phong cách **Steam Desktop Client Aesthetic** (Giao diện giả lập Steam).
+Tài liệu này đóng vai trò là "Single Source of Truth" (Nguồn chân lý duy nhất) cho toàn bộ quy chuẩn thiết kế UI/UX của dự án. Giao diện được thiết kế để mang lại cảm giác của một cuốn tạp chí ẩm thực, một trang báo hoặc một cuốn sách dạy nấu ăn chuyên nghiệp (Sạch sẽ, Tương phản cao, Tông Trắng/Cam).
 
-Mọi lập trình viên hoặc AI khi viết thêm Code đều **phải tuân thủ nghiêm ngặt** các quy chuẩn dưới đây để đảm bảo tính đồng bộ trên toàn hệ thống.
-
----
-
-## 1. Triết lý thiết kế (Design Philosophy)
-- **Dark Mode Mặc định (Steam Clone):** Giao diện tập trung vào nền tối (Dark Blue/Grey), tạo cảm giác không gian mạng nội bộ hoặc hệ thống phân phối lớn.
-- **Steam Navigation:** Hệ thống thanh điều hướng 2 tầng (Top Bar & Nav Bar) đặc trưng của Steam.
-- **Tập trung vào nội dung (Content-First):** Nhường toàn bộ "sân khấu" về màu sắc cho hình ảnh món ăn và công thức. Các nút chức năng sử dụng màu xanh đặc trưng (Steam Blue).
+Mọi lập trình viên hoặc AI khi viết thêm Code đều **phải tuân thủ nghiêm ngặt** các quy chuẩn dưới đây. Bất kỳ sự chệch hướng nào so với bộ quy chuẩn này đều bị coi là lỗi hiển thị nghiêm trọng.
 
 ---
 
-## 2. Design Tokens (Biến thiết kế cốt lõi)
-
-Mọi style tĩnh bắt buộc phải sử dụng CSS Variables (khai báo tại `frontend/src/index.css`).
-
-### 2.1. Colors (Màu sắc)
-- **Nền (Backgrounds):**
-  - `--color-bg-body`: `#1b2838` (Xanh đen thẫm Steam) - Nền trang tổng thể.
-  - `--color-bg-card`: `#171a21` (Đen thẫm) - Phân tách khu vực nội dung (Thẻ, Header).
-  - `--color-bg-hover`: `#2a475e` (Xanh navy nhạt hơn) - Dùng khi hover bảng/thẻ.
-- **Màu Thương hiệu (Brand Colors):**
-  - `--color-primary`: `#66c0f4` (Steam Blue) - Nút hành động chính.
-  - `--color-primary-hover`: `#417a9b` - Khi lướt chuột qua nút chính.
-- **Màu Ngữ nghĩa & Chức năng (Semantic/Functional Colors):**
-  - `--color-danger`: `#dc3545` (Đỏ mận) - Cảnh báo, xóa dữ liệu.
-  - `--color-secondary`: `#2a475e` - Nút phụ, background phụ.
-- **Màu Chữ (Text):**
-  - `--color-text-main`: `#c7d5e0` - Chữ chính (Trắng xanh nhạt).
-  - `--color-text-muted`: `#8f98a0` - Chữ phụ (Mô tả, ngày tháng).
-  - `--color-border`: `#2a475e` - Viền phân cách.
-
-### 2.2. Typography (Phông chữ & Thang kích thước)
-- **Cả Tiêu đề và Body:** Khuyến khích sử dụng phông chữ không chân hiện đại (Sans-serif) như `'Inter', -apple-system, sans-serif` để khớp với Steam.
-- **Tiêu đề (Headers):** `--font-serif: 'Inter', sans-serif;` (Chuyển sang sans-serif cho hợp Steam)
-- **Văn bản thường (Body):** `--font-sans: 'Inter', -apple-system, sans-serif;`
-- **Typography Scale (Đề xuất):**
-  - H1: `32px`, line-height `1.2`
-  - H2: `24px`, line-height `1.3`
-  - H3: `20px`
-  - Body: `14px`, line-height `1.5` (Steam thường dùng chữ 14px)
-  - Small/Muted: `12px`
-
-### 2.3. Spacing, Layout & Borders
-- **Spacing Scale (Đề xuất):** Dùng các bội số của 4 hoặc 8 (`4px, 8px, 16px, 24px, 32px`).
-- **Container Width (Đề xuất):** Tối đa `100%` hoặc `1200px` tùy layout. (Thường là `940px` hoặc `1200px` cho Steam store).
-- **Borders & Radius:**
-  - `--radius-sm`: `2px` (Vuông vức hơn, khớp với Steam)
-  - `--radius-md`: `4px`
-- **Shadows (Đề xuất):** 
-  - Tối giản shadow, dùng flat colors (màu phẳng) theo style Steam.
+## 1. Visual Theme & Atmosphere (Chủ đề & Không gian)
+Giao diện tuân theo phong cách **Editorial Light Mode** (Báo chí/Tạp chí Trắng Sáng). Bầu không khí được tạo ra phải cực kỳ sáng sủa, sạch sẽ, tối giản để tôn vinh hoàn toàn vẻ đẹp của hình ảnh món ăn và typography.
+- **Density (Mật độ):** "White Space Heavy" (Rất nhiều khoảng trắng). Khoảng trắng đóng vai trò như một thành phần thiết kế cốt lõi giúp giao diện "thở".
+- **Color Accent:** Trắng chủ đạo, đen cho chữ (như mực in), và Cam (Magazine Orange) là điểm nhấn duy nhất thu hút ánh nhìn.
 
 ---
 
-## 3. Component Guidelines (Thành phần giao diện)
+## 2. Color Palette & Roles (Bảng màu & Chức năng)
+Tuyệt đối không hardcode mã màu HEX vào component. Luôn sử dụng CSS Variables.
 
-### 3.1. Buttons & Inputs
-- **Buttons:** Màu xanh `#66c0f4` với chữ màu `#1b2838`, khi hover chuyển sang sáng hơn. Hoặc màu nền `#2a475e` (chữ trắng) và khi hover thành màu `#66c0f4`.
-- **Inputs & Forms:** Nền tối `#111`, chữ trắng, viền mảnh. Khi focus chuyển viền thành màu xanh `#66c0f4`.
-
-### 3.2. Cards (Thẻ nội dung)
-- Tái sử dụng component `RecipeCard` (chuẩn bị tách) cho mọi lưới bài viết/công thức.
-- Nền `#171a21`, chữ `#c7d5e0`, hover lên thẻ hiển thị background `#2a475e`.
-
-### 3.3. Navbar & Header (Steam Clone)
-- **Tầng 1 (Top Bar):** Logo Recipe Sharing, Icon Notifications, Profile Dropdown. Nền màu `#171a21`.
-- **Tầng 2 (Nav Bar):** Menu Duyệt tìm (Browse), Khuyến nghị (Recommendations), Danh mục (Categories), Thủ thuật (Ways to Play), Bộ sưu tập (Special sections), Search Bar, Yêu thích (Wishlist).
-- **Mega Menu (Duyệt tìm):** Khi nhấp chuột (Click), menu sẽ thả xuống bao trọn toàn bộ chiều ngang trang web (100vw width). Gồm 3 cột (Cột Trái: Các liên kết chính, Cột Giữa: Thẻ banner nổi bật, Cột Phải: Các liên kết gợi ý & tài khoản). Nền tối `#171d25`, box shadow rộng. Nội dung bên trong được căn giữa với chiều rộng 940px.
+- **Paper White** (`var(--color-bg-body)` / `#F9F9F7`) — Nền trang tổng thể. Một màu trắng ngà nhẹ như giấy in tạp chí, giúp bảo vệ mắt tốt hơn trắng toát.
+- **Pure Canvas** (`var(--color-bg-card)` / `#FFFFFF`) — Nền của các Khối (Card), Modal, hoặc Box nội dung nổi lên trên nền giấy.
+- **Hover Ash** (`var(--color-bg-hover)` / `#F0EDE6`) — Dùng khi lướt chuột qua các menu hoặc bảng.
+- **Editorial Orange** (`var(--color-primary)` / `#E85D04`) — Điểm nhấn duy nhất trên toàn bộ website. Dùng cho Nút hành động chính (CTAs), trạng thái Active, Tiêu đề nổi bật.
+- **Deep Ink** (`var(--color-text-main)` / `#111111`) — Chữ chính. Đen tuyền sắc nét như mực in, tương phản tuyệt đối trên nền trắng.
+- **Grey Ink** (`var(--color-text-muted)` / `#666666`) — Chữ phụ, mô tả, ngày tháng, tác giả.
+- **Divider Line** (`var(--color-border)` / `#E5E5E5`) — Viền xám mỏng nhẹ đóng vai trò là các đường kẻ phân cách trong tạp chí.
 
 ---
 
-## 4. UI Elements & Components (Steam Desktop Style)
+## 3. Typography Rules & Type Scale (Quy chuẩn Phông chữ & Thang kích thước)
 
-### 4.1. Buttons
-- **Primary Buttons (Xác nhận, Thêm, Mua):**
-  - Sử dụng dải gradient màu Xanh Lá Steam: `linear-gradient(to right, #75b022 5%, #588a1b 95%)`.
-  - Chữ màu lục nhạt `#d2efa9`, có `text-shadow` nhẹ để tạo khối.
-  - Hover: Chuyển sang dải gradient sáng hơn `#8ed629 -> #6aa621`, chữ chuyển thành `#ffffff`.
-- **Secondary Buttons (Huỷ, Sửa, Gợi ý):**
-  - Màu nền xanh dương nhạt trong suốt `rgba(103, 193, 245, 0.2)`.
-  - Màu chữ xanh dương Steam `#67c1f5`.
-  - Hover: Đổ gradient xanh biển đậm `linear-gradient(to right, #47bfff 5%, #1a44c2 95%)`, chữ trắng.
+Hệ thống typography được thiết kế theo chuẩn tỷ lệ báo chí (Editorial/Magazine). Kích thước chữ (font-size) **bắt buộc** phải sử dụng đơn vị `rem` (với base root mặc định là `16px`) để đảm bảo khả năng mở rộng và co giãn hoàn hảo.
 
-### 4.2. Recipe Cards (Thẻ Công Thức)
-- **Background & Border:** Màu nền `#111923` hoặc `rgba(0,0,0,0.2)`. Hiệu ứng bo tròn hiện đại `border-radius: 4px` hoặc `8px` (Modern Steam UI).
-- **Typography:** Tiêu đề chữ Trắng (`#ffffff`), font thường không bôi đậm. Mô tả chữ xám (`#8f98a0`).
-- **Hiệu ứng Hover (Steam Focus Glow):** 
-  - Nảy nhẹ lên trên `transform: translateY(-3px)`.
-  - Bóng viền phát sáng màu xanh dương `box-shadow: 0 4px 8px rgba(0,0,0,0.6), 0 0 10px rgba(102, 192, 244, 0.6)`.
-  - Ảnh mờ nhẹ (Opacity 0.8 hoặc Brightness 1.1) để tạo cảm giác bấm được.
+### Phông chữ (Font Families)
+- **Tiêu đề (Display/Headlines):** BẮT BUỘC sử dụng Serif cổ điển (*Playfair Display* hoặc *Georgia*). Tiêu đề phải cực lớn, độ dày mỏng (Light/Regular) để tạo dáng vẻ thanh lịch của trang báo.
+- **Văn bản thường (Body/UI):** Sử dụng Sans-serif hiện đại (*Outfit*, *Inter* hoặc *Helvetica*).
 
-### 4.3. Typography & Background
-- **Font:** Ưu tiên `Arial, Helvetica, sans-serif` làm gốc (Mô phỏng Motiva Sans).
-- **Background:** Màu `#1b2838` kết hợp với Pattern nền (hoặc gradient toả tròn từ tâm). Không bao giờ dùng màu đen tuyền `#000` làm nền chính.
-- **Tiêu đề (Headers):** Viết Hoa (Uppercase), Letter-spacing rộng `1px`, màu trắng `#ffffff`.
+### Thang kích thước chuẩn (Standard Type Scale)
+- **2.875rem (46px):** Tiêu đề trang, Tiêu đề bài viết chính (Hero Title).
+- **1.125rem (18px):** Nội dung văn bản chính (Recipe instructions, Article body), Tiêu đề phân đoạn (Section titles - in hoa).
+- **1.0625rem (17px):** Danh sách (Ingredients list), Tiêu đề các bước phụ (Step 1, Step 2).
+- **1rem (16px):** Tên tác giả (Byline), Khẩu phần ăn (Yield).
+- **0.875rem (14px):** Ngày tháng (Date), Đoạn chú thích/mô tả dưới ảnh (Intro/Description), Chữ trong Nút bấm nhỏ (Toolbar buttons), Tag/Badge.
+- **0.75rem (12px):** Chú thích bản quyền ảnh (Image copyright), Vi văn bản (Microcopy).
 
-### 4.4. Animations & Transitions
-- Mọi hiệu ứng hover, chuyển màu, nảy thẻ (bounce) đều dùng tốc độ cực nhanh và dứt khoát: `transition: all 0.2s ease`. Steam hướng tới sự mượt mà nhưng phản hồi tức thì.
+### Quy định chung
+- **Line-height (Khoảng cách dòng):** Đối với văn bản dài (Body), sử dụng `1.6` đến `1.8` để tạo sự thư thái giống như đang đọc sách. Đối với Tiêu đề cực lớn (Giant Serif), sử dụng `1.1` để chữ chặt chẽ.
+- **BANNED (Cấm):** Cấm dùng phông chữ hệ thống khô khan. Cấm dùng các phông chữ dạng "Comic/Trẻ em". Cấm sử dụng đơn vị `px` cứng nhắc cho font chữ.
 
 ---
 
-## 8. Exceptions và Anti-patterns
-- Không sử dụng màu trắng `#FFF` làm màu nền chính, vì sẽ phá vỡ toàn bộ phong cách Steam Dark Mode.
+## 4. Component Stylings (Chuẩn hóa Thành phần)
+
+* **Thẻ (Cards):** Bắt buộc viền vuông vức hoặc bo góc siêu nhỏ (`2px` đến `4px`). Loại bỏ hoàn toàn đổ bóng (shadow) gắt. Chỉ dùng viền mỏng (`1px solid var(--color-border)`) hoặc thậm chí không viền, chỉ dùng hình ảnh lớn.
+* **Nút bấm (Buttons):** 
+  - *Primary:* Nền Cam (`var(--color-primary)`), chữ Trắng, khối vuông vức (`border-radius: 2px`).
+  - *Secondary:* Nền Trắng, viền Đen hoặc Cam mỏng.
+* **Forms & Inputs:** Nền trắng, viền xám mỏng. Khi Focus, viền chuyển thành Đen hoặc Cam. Thiết kế tối giản tối đa, giống như điền vào một phiếu báo.
+* **Hình ảnh (Images):** Hình ảnh món ăn đóng vai trò trái tim của cuốn tạp chí. Hình ảnh phải chiếm tỉ lệ lớn, viền sắc nét, không bo góc quá tròn.
+
+---
+
+## 5. Layout Principles (Nguyên tắc Bố cục)
+- **Grid Architecture:** Bố cục dạng lưới (Grid) sắc sảo của báo chí. Khuyến khích sử dụng Asymmetric Splits (Bố cục bất đối xứng) với một cột chữ lớn và một cột ảnh rộng.
+- **Borders & Lines:** Khuyến khích sử dụng các đường kẻ ngang hoặc dọc (`1px solid #E5E5E5`) để phân tách các khu vực nội dung, giống hệt cấu trúc dàn trang của một bài báo thực thụ.
+- **Hero Section:** Tiêu đề cực lớn (Giant Serif) nằm đè nhẹ lên góc ảnh hoặc tách biệt rõ ràng ở một nửa màn hình.
+
+---
+
+## 6. Motion & Interaction (Chuyển động & Tương tác)
+- **Minimal Motion:** Chuyển động phải cực kỳ tinh tế, nhanh và dứt khoát. 
+- **Hover Image:** Khi hover vào bài viết, hình ảnh có thể zoom nhẹ (`scale(1.02)`) nhưng khung không đổi.
+- **Tránh lòe loẹt:** Không đổ bóng sáng rực rỡ, không lạm dụng animation bay nhảy lộn xộn. Mọi thứ cần tĩnh lặng, tập trung vào nội dung.
+
+---
+
+## 7. Anti-Patterns (Những Lỗi Thiết Kế Bị Cấm Tuyệt Đối)
+Nếu vi phạm các lỗi này, giao diện sẽ đánh mất chất "Tạp chí Ẩm thực":
+- **CẤM** sử dụng Dark Mode (nền đen/xám tối). Giao diện PHẢI là nền trắng/giấy.
+- **CẤM** bo góc tròn quá mức (`border-radius > 8px`) cho ảnh hoặc card. Bo góc làm mất đi vẻ sắc sảo của tạp chí.
+- **CẤM** sử dụng bóng đổ (box-shadow) dơ và nặng nề. Mọi khối nổi phải dùng viền hoặc khoảng trắng.
+- **CẤM** sử dụng Emojis rực rỡ lộn xộn.
+- **CẤM** hiệu ứng Neon Glow (Viền phát sáng).

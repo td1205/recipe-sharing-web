@@ -24,7 +24,6 @@ async function handleScanImage(req, res) {
     
     // Nếu không có API Key, sử dụng Mock Data để test
     if (!apiKey) {
-      console.log('Không tìm thấy GEMINI_API_KEY. Trả về kết quả giả lập (Mock).');
       await sleep(1500);
       return res.json({ success: true, keyword: 'Gà rán' });
     }
@@ -44,7 +43,6 @@ async function handleScanImage(req, res) {
           const modelName = fallbackModels[i];
           attempts++;
           try {
-            console.log(`[Lần thử ${attempts}/${MAX_ATTEMPTS}] Đang gọi model: ${modelName}...`);
             response = await ai.models.generateContent({
               model: modelName,
               contents: [
@@ -62,7 +60,6 @@ async function handleScanImage(req, res) {
             console.warn(`Lỗi khi gọi model ${modelName}:`, err.message || err);
             lastError = err;
             if (err.status === 503 || err.status === 429) {
-              console.log('Server Google đang bận, chờ 3 giây...');
               await sleep(3000);
               // Thử sang model tiếp theo trong danh sách
               continue; 
@@ -81,7 +78,6 @@ async function handleScanImage(req, res) {
       }
 
       const keyword = response.text.trim().replace(/\.$/, '');
-      console.log('AI nhận diện:', keyword);
       
       return res.json({ success: true, keyword });
     } catch (error) {

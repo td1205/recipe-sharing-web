@@ -2,7 +2,7 @@ import React from 'react';
 
 const SkeletonLoader = () => {
   return (
-    <div style={{ minHeight: '100vh', padding: '20px 15px', display: 'flex', flexDirection: 'column', gap: '30px', width: '100%', background: '#1b2838' }}>
+    <div style={{ minHeight: '100vh', padding: '20px 15px', display: 'flex', flexDirection: 'column', gap: '30px', width: '100%', background: 'var(--color-bg-body)' }}>
       {/* Giả lập tiêu đề */}
       <div className="steam-skeleton" style={{ width: '30%', height: '30px', marginBottom: '10px' }}></div>
       

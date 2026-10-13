@@ -5,9 +5,11 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import NewRecipes from './pages/NewRecipes';
+import PopularRecipes from './pages/PopularRecipes';
 import RecipeDetail from './pages/RecipeDetail';
 import RecipeCreate from './pages/RecipeCreate';
 import RecipeEdit from './pages/RecipeEdit';
+import RecipeList from './pages/RecipeList';
 import Profile from './pages/Profile';
 import ProfileEdit from './pages/ProfileEdit';
 import Articles from './pages/Articles';
@@ -37,7 +39,10 @@ function App() {
           <Route path="/otp" element={<OTP />} />
           <Route path="/change-password" element={<ChangePassword />} />
           <Route path="/new-recipes" element={<NewRecipes />} />
-          <Route path="/recipes/:id" element={<RecipeDetail />} />
+          <Route path="/popular" element={<PopularRecipes />} />
+          <Route path="/popular-recipes" element={<PopularRecipes />} />
+          <Route path="/recipes" element={<RecipeList />} />
+      <Route path="/recipes/:id" element={<RecipeDetail />} />
           <Route path="/recipes/create" element={<RecipeCreate />} />
           <Route path="/recipes/edit/:id" element={<RecipeEdit />} />
           

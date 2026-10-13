@@ -27,9 +27,38 @@ async function createUser(username, password, email, fullname) {
 async function getFavouriteRecipesByUser(userId) {
   const favorites = await prisma.favorites.findMany({
     where: { user_id: parseInt(userId) },
-    include: { recipes: true },
+    include: { 
+      recipes: {
+        include: { recipe_media: true }
+      } 
+    },
   });
-  return favorites.map((f) => f.recipes);
+  
+  return favorites.map((f) => {
+    let video_url = null;
+    if (f.recipes.recipe_media) {
+      const videoMedia = f.recipes.recipe_media.find(m => m.media_type === 'video');
+      if (videoMedia) video_url = videoMedia.media_url;
+    }
+    return { ...f.recipes, video_url };
+  });
+}
+
+async function getRecipesByUser(userId) {
+  const recipes = await prisma.recipes.findMany({
+    where: { user_id: parseInt(userId) },
+    include: { recipe_media: true },
+    orderBy: { created_at: 'desc' },
+  });
+
+  return recipes.map((r) => {
+    let video_url = null;
+    if (r.recipe_media) {
+      const videoMedia = r.recipe_media.find(m => m.media_type === 'video');
+      if (videoMedia) video_url = videoMedia.media_url;
+    }
+    return { ...r, video_url };
+  });
 }
 
 async function updatePasswordByEmail(email, hashedPassword) {
@@ -76,4 +105,5 @@ module.exports = {
   updateUserInfo,
   updateOTP,
   getOTPbyEmail,
+  getRecipesByUser,
 };

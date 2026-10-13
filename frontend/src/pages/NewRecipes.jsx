@@ -110,7 +110,7 @@ const NewRecipes = () => {
             ))}
             
             {listRecipes.length === 0 && (
-              <div style={{ padding: '20px', color: '#8f98a0', textAlign: 'center' }}>
+              <div style={{ padding: '20px', color: 'var(--color-text-muted)', textAlign: 'center' }}>
                 Không có công thức nào mới ra mắt.
               </div>
             )}

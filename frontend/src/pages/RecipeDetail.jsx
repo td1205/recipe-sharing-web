@@ -1,10 +1,21 @@
 import toast from 'react-hot-toast';
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import axios from 'axios';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
 import SkeletonLoader from '../components/SkeletonLoader';
+import RecipeSlider from '../components/RecipeSlider';
+import LoginRequiredModal from '../components/LoginRequiredModal';
 import { AuthContext } from '../context/AuthContext';
+import './Home.css';
+
+// How many suggestions to show in the slider.
+const SUGGESTION_LIMIT = 16;
+
+const getThumbnailUrl = (url, type) => {
+  if (type !== 'video' || !url) return url;
+  return url.replace(/\.[^/.]+$/, ".jpg");
+};
 
 const RecipeDetail = () => {
   const { id } = useParams();
@@ -15,30 +26,83 @@ const RecipeDetail = () => {
   const [recipe, setRecipe] = useState(null);
   const [ingredients, setIngredients] = useState([]);
   const [steps, setSteps] = useState([]);
-  const [comments, setComments] = useState([]);
-  const [rating, setRating] = useState({});
-  const [relatedRecipes, setRelatedRecipes] = useState([]);
   const [tags, setTags] = useState([]);
   const [media, setMedia] = useState([]);
-  const [activeMediaIndex, setActiveMediaIndex] = useState(0);
+  const [comments, setComments] = useState([]);
+  const [rating, setRating] = useState(0);
+  const [ratingCount, setRatingCount] = useState(0);
+  const [viewCount, setViewCount] = useState(0);
+  const [relatedRecipes, setRelatedRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
-  const [similarPage, setSimilarPage] = useState(0);
+  const [isTagModalOpen, setIsTagModalOpen] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
+  const [currentServings, setCurrentServings] = useState(1);
+  const [checkedIngs, setCheckedIngs] = useState({});
+
+  // States cho comment và rating
+  const [commentLimit, setCommentLimit] = useState(5);
+  const [newComment, setNewComment] = useState('');
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  
+  const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
+  const [hoverStar, setHoverStar] = useState(0);
+  const [selectedStar, setSelectedStar] = useState(0);
 
   const fetchDetail = async () => {
     try {
-      const res = await axios.get(`/api/recipes/${id}`);
+      let recentIds = [];
+      try {
+        const recents = JSON.parse(localStorage.getItem('recentlyViewedRecipes') || '[]');
+        recentIds = recents.map((item) => item.id).filter(Boolean).slice(0, 20);
+      } catch (storageError) {
+        console.error('Lỗi đọc lịch sử xem:', storageError);
+      }
+      const res = await axios.get(`/api/recipes/${id}`, {
+        params: recentIds.length > 0 ? { recent: recentIds.join(',') } : undefined,
+      });
       if (res.data.success) {
         setRecipe(res.data.recipe);
         setIngredients(res.data.ingredients || []);
         setSteps(res.data.steps || []);
-        setComments(res.data.comments || []);
-        setRating(res.data.rating || {});
-        setRelatedRecipes(res.data.relatedRecipes || []);
         setTags(res.data.tags || []);
-        setMedia(res.data.media && res.data.media.length > 0 ? res.data.media : [{ media_url: res.data.recipe.image_url, media_type: 'image' }]);
+        const fetchedMedia = res.data.media && res.data.media.length > 0 ? res.data.media : [{ media_url: res.data.recipe.image_url, media_type: 'image' }];
+        setMedia(fetchedMedia);
+        setComments(res.data.comments || []);
+        
+        const rObj = res.data.rating || {};
+        setRating(rObj.averageRating || 0);
+        setRatingCount(rObj.totalRatings || res.data.recipe.total_ratings || 0);
+        setViewCount(res.data.recipe.view_count || 0);
+        
+        if (res.data.userRating) {
+          setSelectedStar(res.data.userRating.star_count);
+        } else {
+          setSelectedStar(0);
+        }
+
+        setRelatedRecipes(res.data.relatedRecipes || []);
         setIsFav(res.data.isFav || false);
+        setCurrentServings(res.data.recipe.servings || 1);
+
+        // Save to recently viewed
+        try {
+          const recents = JSON.parse(localStorage.getItem('recentlyViewedRecipes') || '[]');
+          const newRecent = {
+            id: res.data.recipe.id,
+            title: res.data.recipe.title,
+            image_url: res.data.recipe.image_url
+          };
+          const filteredRecents = recents.filter(r => r.id !== newRecent.id);
+          filteredRecents.unshift(newRecent);
+          localStorage.setItem('recentlyViewedRecipes', JSON.stringify(filteredRecents.slice(0, 10)));
+        } catch (e) {
+          console.error("Lỗi lưu lịch sử xem", e);
+        }
       }
     } catch (err) {
       setError('Không thể tải công thức hoặc công thức không tồn tại.');
@@ -49,26 +113,59 @@ const RecipeDetail = () => {
 
   useEffect(() => {
     fetchDetail();
+    window.scrollTo(0, 0);
   }, [id]);
+
+  useEffect(() => {
+    if (!recipe || String(recipe.id) !== String(id)) return undefined;
+
+    let requestPending = false;
+    let viewRecorded = false;
+    let viewTimer;
+
+    const cleanup = () => {
+      window.clearTimeout(viewTimer);
+      window.removeEventListener('scroll', handleScroll);
+    };
+
+    const recordView = async () => {
+      if (requestPending || viewRecorded) return;
+      requestPending = true;
+
+      try {
+        const res = await axios.post(`/api/recipes/${id}/view`);
+        if (res.data.success) {
+          viewRecorded = true;
+          setViewCount(res.data.viewCount || 0);
+          cleanup();
+        }
+      } catch (err) {
+        console.error('Không thể ghi nhận lượt xem:', err);
+      } finally {
+        requestPending = false;
+      }
+    };
+
+    function handleScroll() {
+      const pageHeight = document.documentElement.scrollHeight;
+      const viewedDepth = pageHeight > 0
+        ? (window.scrollY + window.innerHeight) / pageHeight
+        : 0;
+
+      if (viewedDepth >= 0.3) {
+        recordView();
+      }
+    }
+
+    viewTimer = window.setTimeout(recordView, 10000);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return cleanup;
+  }, [id, recipe]);
 
   const handleRequireLogin = (actionFn) => {
     if (!user) {
-      toast((t) => (
-        <div style={{ textAlign: 'center' }}>
-          <h4 style={{ margin: '0 0 10px 0', fontSize: '15px', color: '#c6d4df', fontWeight: 'normal' }}>
-            Đăng nhập để thực hiện thao tác này
-          </h4>
-          <button 
-            onClick={() => { toast.dismiss(t.id); navigate('/login'); }}
-            style={{ background: 'linear-gradient(to right, #47bfff 5%, #1a44c2 60%)', color: '#fff', border: 'none', padding: '5px 20px', borderRadius: '2px', cursor: 'pointer', fontSize: '13px' }}
-          >
-            Đăng nhập
-          </button>
-        </div>
-      ), {
-        style: { background: '#1b2838', border: '1px solid #101822', boxShadow: '0 0 10px rgba(0,0,0,0.8)' },
-        duration: 4000
-      });
+      setIsLoginModalOpen(true);
       return;
     }
     if (actionFn) actionFn();
@@ -78,348 +175,359 @@ const RecipeDetail = () => {
     try {
       const res = await axios.post(`/api/recipes/${id}/favorite`);
       if (res.data.success) {
+        // The button label and icon already flip between "Lưu" / "Đã lưu",
+        // so a corner toast would only repeat what is already on screen.
         setIsFav(res.data.isFav);
-        toast.success(res.data.isFav ? 'Đã thêm vào yêu thích' : 'Đã bỏ yêu thích', {
-          style: { background: '#1b2838', color: '#c6d4df', border: '1px solid #2a323f' }
-        });
       }
     } catch (e) {
+      // No inline feedback for a failed request, so keep the toast here.
       toast.error('Lỗi khi cập nhật yêu thích');
     }
   };
 
-  const handleAddTag = () => toast.success('Tính năng thêm tag đang phát triển', { style: { background: '#1b2838', color: '#c6d4df' }});
-  const handleReport = () => toast.success('Đã gửi báo cáo cho Admin', { style: { background: '#1b2838', color: '#c6d4df' }});
+  const handleSubmitComment = (e) => {
+    e.preventDefault();
+    if (!newComment.trim()) return;
+    handleRequireLogin(async () => {
+      setIsSubmittingComment(true);
+      try {
+        const res = await axios.post(`/api/recipes/${id}/comments`, { content: newComment });
+        if (res.data.success) {
+          toast.success('Đã gửi bình luận');
+          setNewComment('');
+          setComments([{
+            id: res.data.commentId || Date.now(),
+            content: newComment,
+            created_at: new Date(),
+            user: { username: user.username }
+          }, ...comments]);
+        }
+      } catch (err) {
+        toast.error('Lỗi khi gửi bình luận');
+      } finally {
+        setIsSubmittingComment(false);
+      }
+    });
+  };
+
+  const handleSubmitRating = (starValue) => {
+    handleRequireLogin(async () => {
+      try {
+        const res = await axios.post(`/api/recipes/${id}/rate`, { star_count: starValue });
+        if (res.data.success) {
+          setSelectedStar(starValue);
+          toast.success('Cảm ơn bạn đã đánh giá!');
+          if (res.data.newRating !== undefined) setRating(res.data.newRating);
+          if (res.data.newCount !== undefined) setRatingCount(res.data.newCount);
+        }
+      } catch (err) {
+        toast.error('Lỗi khi gửi đánh giá');
+      }
+    });
+  };
+
+  const toggleIng = (idx) => setCheckedIngs(prev => ({...prev, [idx]: !prev[idx]}));
+  const handlePrint = () => window.print();
+
+  const [activeMediaIndex, setActiveMediaIndex] = useState(0);
+
+  // "Đã sao chép" confirmation on the share button.
+  const [isLinkCopied, setIsLinkCopied] = useState(false);
+  const copyResetTimer = useRef(null);
+
+  useEffect(() => () => clearTimeout(copyResetTimer.current), []);
+
+  const handleCopyLink = async () => {
+    const url = window.location.href;
+
+    // Flip to "Đã sao chép" straight away so the click feels instant,
+    // without waiting on the clipboard promise to settle.
+    setIsLinkCopied(true);
+    clearTimeout(copyResetTimer.current);
+    copyResetTimer.current = setTimeout(() => setIsLinkCopied(false), 2000);
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        // Fallback for insecure contexts where the async clipboard is blocked.
+        const scratch = document.createElement('textarea');
+        scratch.value = url;
+        scratch.setAttribute('readonly', '');
+        scratch.style.position = 'fixed';
+        scratch.style.opacity = '0';
+        document.body.appendChild(scratch);
+        scratch.select();
+        document.execCommand('copy');
+        document.body.removeChild(scratch);
+      }
+      // No toast here: the button itself flips to the check mark as feedback.
+    } catch (err) {
+      console.error('Không thể sao chép liên kết:', err);
+      setIsLinkCopied(false);
+      toast.error('Không thể sao chép liên kết');
+    }
+  };
+
+  const suggestedRecipes = relatedRecipes
+    .filter((item) => item && item.id !== Number(id))
+    .slice(0, SUGGESTION_LIMIT);
+
+  if (loading) return <MainLayout hideSidebar className="home-typography"><SkeletonLoader /></MainLayout>;
+  if (error) return <MainLayout hideSidebar className="home-typography"><div style={{ textAlign: 'center', padding: '50px' }}>{error}</div></MainLayout>;
+  if (!recipe) return <MainLayout hideSidebar className="home-typography"><div style={{ textAlign: 'center', padding: '50px' }}>Không tìm thấy</div></MainLayout>;
+
+  const ratio = currentServings / (recipe.servings || 1);
+  const totalRecipeTime = (Number(recipe.prep_time) || 0) + (Number(recipe.cook_time) || 0);
   
-  if (loading) return (
-    <MainLayout hideSidebar>
-      <SkeletonLoader />
-    </MainLayout>
-  );
-  if (error) return <MainLayout hideSidebar><div className="error-msg" style={{ minHeight: '80vh', padding: '20px', textAlign: 'center', color: '#fff' }}>{error}</div></MainLayout>;
-  if (!recipe) return <MainLayout hideSidebar><div className="error-msg" style={{ minHeight: '80vh', padding: '20px', textAlign: 'center', color: '#fff' }}>Không tìm thấy công thức</div></MainLayout>;
+  // Safeguard activeMediaIndex if media is empty
+  const safeMediaIndex = (media && media.length > activeMediaIndex) ? activeMediaIndex : 0;
+  const mainMedia = media[safeMediaIndex] || {};
 
   return (
-    <MainLayout hideSidebar>
-      <div className="steam-page-bg-wrapper">
-        <div className="steam-page-bg-image" style={{ backgroundImage: `url(${recipe.image_url || 'https://via.placeholder.com/600'})` }}></div>
-        <div className="steam-app-page">
-          
-          {/* Breadcrumbs & Title */}
-          <div className="steam-app-header">
-            <div className="steam-app-breadcrumbs">
-              <Link to="/">Tất cả công thức</Link> &gt; <Link to={`/?category=${recipe.category_name}`}>{recipe.category_name}</Link> &gt; {recipe.title}
-            </div>
-          <div className="steam-app-title-area">
-            <h2 className="steam-app-title">{recipe.title}</h2>
-            <a href="#" className="steam-btn-hub" onClick={(e) => { e.preventDefault(); toast.success('Tính năng đang phát triển', { style: { background: '#1b2838', color: '#c6d4df', border: '1px solid #101822' }}); }}>Trung tâm cộng đồng</a>
-          </div>
-        </div>
+    <MainLayout hideSidebar className="home-typography">
+      <div className="nyt-recipe-page-wrapper">
+        <div className="nyt-recipe-page">
+          <div className="nyt-recipe-grid">
+            
+            {/* LEFT COLUMN */}
+            <div className="nyt-col-left">
+              <h1 className="nyt-title">{recipe.title}</h1>
+              
+              <div className="nyt-byline">
+                <p>Công thức bởi <strong><Link to={`/profile/${recipe.user_id}`} style={{color: 'inherit', textDecoration: 'none'}}>{recipe.author_name || 'Đầu bếp ẩn danh'}</Link></strong></p>
+                {recipe.original_author && <p>Phỏng theo <strong>{recipe.original_author}</strong></p>}
+                <p className="nyt-date">Đăng ngày {new Date(recipe.created_at).toLocaleDateString('vi-VN', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+              </div>
 
-        {/* Hero Section */}
-        <div className="steam-app-hero">
-          <div className="steam-hero-left">
-            <div className="steam-main-viewer">
-              {media[activeMediaIndex]?.media_type === 'video' ? (
-                 <video src={media[activeMediaIndex]?.media_url} controls className="steam-hero-main-img" autoPlay />
-              ) : (
-                 <img src={media[activeMediaIndex]?.media_url || 'https://via.placeholder.com/808x455'} alt={recipe.title} className="steam-hero-main-img" />
-              )}
-            </div>
-            {/* Thumbnails Row */}
-            <div className="steam-hero-thumbnails">
-              <div className="steam-thumb-track">
-                {media.map((item, idx) => (
-                  <div 
-                    key={idx} 
-                    className={`steam-thumb-item ${idx === activeMediaIndex ? 'active' : ''}`}
-                    onClick={() => setActiveMediaIndex(idx)}
-                  >
-                    {item.media_type === 'video' ? (
-                      <video src={item.media_url} className="steam-hero-main-img" />
-                    ) : (
-                      <img src={item.media_url || 'https://via.placeholder.com/116x65'} />
-                    )}
+              <div className="nyt-stats-row">
+                <div className="nyt-stat">
+                  <span className="nyt-stat-label">Tổng thời gian</span>
+                  <span className="nyt-stat-val">
+                    {totalRecipeTime > 0 ? `${totalRecipeTime} phút` : 'Chưa có thời gian nấu'}
+                  </span>
+                </div>
+                <div className="nyt-stat">
+                  <span className="nyt-stat-label">Đánh giá</span>
+                  <span className="nyt-stat-val">
+                    <span className="nyt-stars">
+                      {Array.from({length: 5}).map((_, i) => (
+                        <i key={i} className={`fa-solid fa-star ${i < Math.round(rating) ? 'active' : ''}`}></i>
+                      ))}
+                    </span>
+                    <span className="nyt-rating-count">({ratingCount})</span>
+                  </span>
+                </div>
+                <div className="nyt-stat">
+                  <span className="nyt-stat-label">Lượt xem</span>
+                  <span className="nyt-stat-val">{viewCount.toLocaleString('vi-VN')} đã xem</span>
+                </div>
+              </div>
+
+              <div className="nyt-toolbar-divider"></div>
+
+              <div className="nyt-toolbar">
+                <button className={`nyt-btn ${isFav ? 'nyt-btn-saved' : 'nyt-btn-save'}`} onClick={() => handleRequireLogin(handleToggleFavorite)}>
+                  <i className={isFav ? "fa-solid fa-bookmark" : "fa-regular fa-bookmark"}></i> {isFav ? 'Đã lưu' : 'Lưu'}
+                </button>
+                <button
+                  className={`nyt-btn-circle${isLinkCopied ? ' nyt-btn-circle-copied' : ''}`}
+                  title={isLinkCopied ? 'Đã sao chép liên kết' : 'Sao chép liên kết'}
+                  aria-label={isLinkCopied ? 'Đã sao chép liên kết' : 'Sao chép liên kết'}
+                  onClick={handleCopyLink}
+                ><i className={isLinkCopied ? 'fa-solid fa-check' : 'fa-solid fa-share'} aria-hidden="true"></i></button>
+                <button className="nyt-btn-circle" title="In công thức" aria-label="In công thức" onClick={handlePrint}><i className="fa-solid fa-print"></i></button>
+                
+                {user && user.id === recipe.user_id && (
+                  <button className="nyt-btn-circle" onClick={() => navigate(`/recipes/edit/${id}`)} title="Sửa công thức"><i className="fa-solid fa-pen"></i></button>
+                )}
+              </div>
+
+              <div className="nyt-section">
+                <h3 className="nyt-section-title">Nguyên liệu</h3>
+                <div className="nyt-yield-row">
+                  <p className="nyt-yield"><strong>Khẩu phần:</strong> {currentServings} người</p>
+                  <div className="nyt-servings-ctrl">
+                    <button onClick={() => setCurrentServings(Math.max(1, currentServings - 1))}><i className="fa-solid fa-minus"></i></button>
+                    <button onClick={() => setCurrentServings(currentServings + 1)}><i className="fa-solid fa-plus"></i></button>
                   </div>
+                </div>
+                
+                <ul className="nyt-ing-list">
+                  {ingredients.length > 0 ? ingredients.map((ing, idx) => {
+                    let displayAmount = ing.amount;
+                    const parsedAmount = parseFloat(ing.amount);
+                    if (!isNaN(parsedAmount)) {
+                      displayAmount = (parsedAmount * ratio).toFixed(1).replace(/\.0$/, '');
+                    }
+                    const isChecked = Boolean(checkedIngs[idx]);
+                    return (
+                      <li key={idx} className={isChecked ? 'nyt-ing-checked' : ''}>
+                        {/* Label wraps the whole row so clicking anywhere toggles the box natively. */}
+                        <label className="nyt-ing-row">
+                          <input
+                            type="checkbox"
+                            className="nyt-ing-check"
+                            checked={isChecked}
+                            onChange={() => toggleIng(idx)}
+                          />
+                          <span className="nyt-ing-amount">{displayAmount} {ing.unit}</span>
+                          <span className="nyt-ing-name">{ing.name}</span>
+                        </label>
+                      </li>
+                    );
+                  }) : <li>Chưa có nguyên liệu</li>}
+                </ul>
+              </div>
+            </div>
+
+            {/* RIGHT COLUMN */}
+            <div className="nyt-col-right">
+              <div className="nyt-hero-media-container">
+                <div className="nyt-hero">
+                  {mainMedia.media_type === 'video' ? (
+                    <video key={mainMedia.media_url} src={mainMedia.media_url} autoPlay loop muted playsInline className="nyt-hero-img" style={{ pointerEvents: 'none' }} />
+                  ) : (
+                    <img key={mainMedia.media_url} src={mainMedia.media_url || 'https://via.placeholder.com/800x1000'} alt={recipe.title} className="nyt-hero-img" />
+                  )}
+                  <p className="nyt-hero-caption">Ảnh minh họa cho {recipe.title}. Nguồn: Cộng đồng Recipe Sharing.</p>
+                </div>
+                
+                {media && media.length > 1 && (
+                  <div className="nyt-media-thumbnails">
+                    {media.map((m, idx) => (
+                      <div 
+                        key={idx} 
+                        className={`nyt-thumb ${idx === safeMediaIndex ? 'active' : ''}`}
+                        onClick={() => setActiveMediaIndex(idx)}
+                      >
+                        <img src={getThumbnailUrl(m.media_url, m.media_type)} alt={`Ảnh minh họa ${idx + 1}`} />
+                        {m.media_type === 'video' && (
+                          <div className="thumb-video-icon"><i className="fa-solid fa-play"></i></div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="nyt-desc">
+                <p>{recipe.description || 'Hương vị tuyệt hảo được chắt lọc từ những nguyên liệu tươi ngon nhất, mang đến cho bạn trải nghiệm ẩm thực đỉnh cao ngay tại nhà.'}</p>
+              </div>
+
+              <div className="nyt-section" style={{ marginTop: '40px' }}>
+                <h3 className="nyt-section-title">Thực hiện</h3>
+                <div className="nyt-step-list">
+                  {steps.length > 0 ? steps.map((step, idx) => (
+                    <div key={idx} className="nyt-step-item">
+                      <h4>Bước {step.step_number}</h4>
+                      <p>{step.instruction}</p>
+                    </div>
+                  )) : <p>Chưa có hướng dẫn</p>}
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* TAGS */}
+          {tags.length > 0 && (
+            <div className="nyt-tags-section">
+              <h3 className="nyt-section-title" style={{ fontSize: '1rem' }}>Từ khóa</h3>
+              <div className="nyt-tags-list">
+                {tags.map((tag, idx) => (
+                  <Link to={`/?search=${encodeURIComponent(tag.name)}`} key={idx} className="nyt-tag-pill">{tag.name}</Link>
                 ))}
               </div>
-              <div className="steam-slider-controls">
-                <div className="steam-slider-arrow left"><i className="fa-solid fa-chevron-left"></i></div>
-                <div className="steam-slider-scrollbar">
-                  <div className="steam-slider-thumb"></div>
-                </div>
-                <div className="steam-slider-arrow right"><i className="fa-solid fa-chevron-right"></i></div>
-              </div>
             </div>
-          </div>
-          <div className="steam-hero-right">
-            <img src={recipe.image_url || 'https://via.placeholder.com/600'} alt={recipe.title} className="steam-hero-small-img" />
-            <p className="steam-hero-desc">{recipe.description}</p>
-            
-            <div className="steam-hero-reviews">
-              <div className="review-row">
-                <span className="review-label">Trung bình đánh giá:</span>
-                <span className="review-value">
-                  <span className={rating.averageRating >= 4 ? 'positive' : 'mixed'}>
-                    {rating.averageRating ? (rating.averageRating >= 4 ? 'Rất tích cực' : 'Trái chiều') : 'Chưa có'}
-                  </span>
-                  <span className="review-count">({rating.totalRatings || 0} bài đánh giá)</span>
-                </span>
-              </div>
-              <div className="review-row">
-                <span className="review-label">Ngày tạo:</span>
-                <span className="review-value-date">{new Date(recipe.created_at).toLocaleDateString('vi-VN')}</span>
-              </div>
-              <div className="review-row">
-                <span className="review-label">Tác giả:</span>
-                <span className="review-value-author">
-                  <Link to={`/?author=${recipe.author_name}`}>{recipe.author_name || 'Ẩn danh'}</Link>
-                </span>
-              </div>
-            </div>
+          )}
 
-            <div className="steam-hero-tags">
-              {tags.map((tag, idx) => (
-                <span key={idx} className="steam-tag">{tag.name}</span>
-              ))}
-              <span className="steam-tag-plus">+</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Steam Action Bar */}
-        <div className="steam-action-bar" style={{ display: 'flex', gap: '5px', marginBottom: '30px', flexWrap: 'wrap' }}>
-          <button className="steam-action-btn" onClick={() => handleRequireLogin(handleToggleFavorite)}>
-             <i className="fa-solid fa-heart" style={{ color: isFav ? '#d9534f' : '#67c1f5' }}></i> {isFav ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
-          </button>
-          <button className="steam-action-btn" onClick={() => handleRequireLogin(handleAddTag)}>
-             <i className="fa-solid fa-tags"></i> Gắn thêm Tag
-          </button>
-          <button className="steam-action-btn" onClick={() => handleRequireLogin(() => toast.success('Tính năng đang phát triển', { style: { background: '#1b2838', color: '#c6d4df', border: '1px solid #101822' }}))}>
-             <i className="fa-solid fa-share-nodes"></i> Chia sẻ
-          </button>
-          <button className="steam-action-btn" onClick={() => handleRequireLogin(handleReport)}>
-             <i className="fa-solid fa-flag"></i> Báo cáo món ăn
-          </button>
-        </div>
-
-        {/* Main Content Area */}
-        <div className="steam-app-content">
-          <div className="steam-col-left">
-            
-            {/* Ingredients replacing Buy boxes */}
-            <div className="steam-buy-wrapper">
-               <h2>Nguyên liệu cần thiết</h2>
-               {ingredients.length > 0 ? ingredients.map((ing, idx) => (
-                 <div className="steam-buy-box" key={idx}>
-                   <h1>{ing.name}</h1>
-                   <div className="steam-buy-action">
-                     <div className="steam-price">{ing.amount} {ing.unit}</div>
-                     <div className="steam-add-cart">Chuẩn bị</div>
-                   </div>
-                 </div>
-               )) : <div className="steam-buy-box"><h1>Không có nguyên liệu</h1></div>}
-            </div>
-            
-            {/* Recipe Instructions */}
-            <div className="steam-about-game">
-              <h2>CÔNG THỨC</h2>
-              <div className="steam-about-content">
-                {steps.length > 0 ? steps.map((step, idx) => (
-                   <p key={idx}><strong className="steam-step-label">Bước {step.step_number}:</strong> <span className="steam-step-detail">{step.instruction}</span></p>
-                )) : <p>Chưa có hướng dẫn</p>}
-              </div>
-            </div>
-            
-          </div>
-          
-          <div className="steam-col-right">
-            <div className="steam-sidebar-features">
-              <div className="feature-row">
-                <div className="feature-icon"><i className="fa-regular fa-clock"></i></div>
-                <div className="feature-text">Thời gian chuẩn bị: <span className="feature-value">{recipe.prep_time || 0} phút</span></div>
-              </div>
-              <div className="feature-row">
-                <div className="feature-icon"><i className="fa-solid fa-fire-burner"></i></div>
-                <div className="feature-text">Thời gian chế biến: <span className="feature-value">{recipe.cook_time || 0} phút</span></div>
-              </div>
-              <div className="feature-row">
-                <div className="feature-icon"><i className="fa-solid fa-utensils"></i></div>
-                <div className="feature-text">Khẩu phần ăn: <span className="feature-value">{recipe.servings || 1} người</span></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Similar Recipes */}
-        {(() => {
-          let displayRecipes = [...relatedRecipes];
-          if (displayRecipes.length > 0 && displayRecipes.length < 12) {
-            while(displayRecipes.length < 12) {
-              displayRecipes = [...displayRecipes, ...relatedRecipes];
-            }
-          }
-          displayRecipes = displayRecipes.slice(0, 12);
-          const totalPages = Math.ceil(displayRecipes.length / 4);
-
-          return (
-            <div className="steam-similar-wrapper" style={{ position: 'relative', margin: '30px 0' }}>
-              <button 
-                className="steam-similar-arrow left" 
-                onClick={() => setSimilarPage(p => totalPages > 0 ? (p - 1 + totalPages) % totalPages : 0)}
-                disabled={totalPages <= 1}
-                style={{ position: 'absolute', left: '-45px', top: '50%', transform: 'translateY(-50%)', zIndex: 10 }}
-              >
-                &#10094;
-              </button>
-
-              <div className="steam-similar-container" style={{ margin: 0, width: '100%', overflow: 'hidden' }}>
-                <div className="steam-similar-header">
-                  <h2>SẢN PHẨM TƯƠNG TỰ</h2>
-                  <button className="steam-similar-btn-all">Xem tất cả</button>
-                </div>
-                <div className="steam-similar-body">
-                  <div className="steam-similar-view">
-                    <div className="steam-similar-track" style={{ transform: `translateX(-${similarPage * 100}%)` }}>
-                      {displayRecipes.map((r, idx) => (
-                        <Link to={`/recipes/${r.id}`} className="steam-similar-card" key={`${r.id}-${idx}`}>
-                          <img src={r.image_url || 'https://via.placeholder.com/300'} alt={r.title} />
-                          <div className="steam-similar-info">
-                            <div className="steam-similar-name">{r.title}</div>
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
+          {/* RATINGS AND COMMENTS */}
+          <div className="nyt-comments-section">
+            <div className="nyt-comments-grid">
+              <div className="nyt-comments-left" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '15px' }}>
+                  <span style={{ fontSize: '46px', color: '#111', lineHeight: '1' }}><i className="fa-solid fa-star"></i></span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#111', fontFamily: 'var(--font-sans)' }}>{Number(rating).toFixed(1).replace(/\.0$/, '')} trên 5</span>
+                    <span style={{ fontSize: '14px', color: '#666', fontFamily: 'var(--font-sans)' }}>{ratingCount} lượt đánh giá</span>
                   </div>
                 </div>
-                <div className="steam-similar-scrollbar">
-                  <div className="steam-similar-scrollbar-track">
-                    <div 
-                      className="steam-similar-scrollbar-thumb" 
-                      style={{ 
-                        width: `${totalPages > 0 ? 100 / totalPages : 100}%`,
-                        transform: `translateX(${similarPage * 100}%)`
-                      }}
-                    ></div>
-                  </div>
-                </div>
-              </div>
-
-              <button 
-                className="steam-similar-arrow right" 
-                onClick={() => setSimilarPage(p => totalPages > 0 ? (p + 1) % totalPages : 0)}
-                disabled={totalPages <= 1}
-                style={{ position: 'absolute', right: '-45px', top: '50%', transform: 'translateY(-50%)', zIndex: 10 }}
-              >
-                &#10095;
-              </button>
-            </div>
-          );
-        })()}
-
-        {/* Reviews Section */}
-        <div className="steam-reviews-section">
-          <h2>ĐÁNH GIÁ CỦA KHÁCH HÀNG CHO {recipe.title.toUpperCase()}</h2>
-          
-          <div className="steam-review-summary-box">
-            <div className="review-summary-left">
-              <div className="summary-title">Đánh giá chung</div>
-              <div className="summary-rating positive">Rất tích cực</div>
-              <div className="summary-count">({comments.length} đánh giá)</div>
-            </div>
-            <div className="review-summary-right">
-              <div className="summary-row">
-                <span>Đánh giá gần đây:</span>
-                <span className="positive">Rất tích cực</span>
-              </div>
-              <div className="summary-row">
-                <span>Tổng lượt đánh giá:</span>
-                <span className="positive">Rất tích cực</span>
-              </div>
-            </div>
-          </div>
-          
-          <div className="steam-review-filters">
-             <div className="filter-cols">
-               <div className="filter-col">
-                 <div className="filter-title">Loại bài đánh giá</div>
-                 <label><input type="radio" checked readOnly/> Tất cả ({comments.length})</label>
-                 <label><input type="radio" disabled/> Tích cực (0)</label>
-                 <label><input type="radio" disabled/> Tiêu cực (0)</label>
-               </div>
-               <div className="filter-col">
-                 <div className="filter-title">Khoảng ngày</div>
-                 <select><option>Trọn đời</option></select>
-               </div>
-               <div className="filter-col">
-                 <div className="filter-title">Hiển thị</div>
-                 <select><option>Tóm tắt</option></select>
-               </div>
-             </div>
-          </div>
-          
-           <div className="steam-write-review" style={{ margin: '20px 0', padding: '15px', background: 'rgba(0,0,0,0.3)', border: '1px solid #2a323f', borderRadius: '2px' }}>
-              <h3 style={{ margin: '0 0 10px 0', fontSize: '15px', color: '#c6d4df' }}>Viết đánh giá của bạn</h3>
-              <textarea 
-                placeholder="Bạn nghĩ gì về công thức này?" 
-                onClick={() => handleRequireLogin()}
-                style={{ width: '100%', height: '80px', background: '#101822', color: '#c6d4df', border: '1px solid #1b2838', padding: '10px', resize: 'none' }}
-              ></textarea>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
-                <span style={{ fontSize: '12px', color: '#8f98a0' }}>Bạn có khuyên mọi người nấu món này không?</span>
+                
+                <hr style={{ border: 'none', borderTop: '1px solid #eaeaea', margin: '10px 0', width: '100%' }} />
+                
                 <div>
-                   <button onClick={() => handleRequireLogin()} style={{ background: '#233c51', color: '#67c1f5', border: 'none', padding: '5px 15px', cursor: 'pointer', marginRight: '5px' }}><i className="fa-solid fa-thumbs-up"></i> Có</button>
-                   <button onClick={() => handleRequireLogin()} style={{ background: '#233c51', color: '#67c1f5', border: 'none', padding: '5px 15px', cursor: 'pointer' }}><i className="fa-solid fa-thumbs-down"></i> Không</button>
+                  <h4 style={{ fontSize: '16px', fontWeight: 'bold', color: '#111', marginBottom: '10px', fontFamily: 'var(--font-sans)' }}>Đánh giá của bạn</h4>
+                  <div style={{ display: 'flex', gap: '8px', fontSize: '32px', color: '#d3d3d3', cursor: 'pointer' }}>
+                    {[1, 2, 3, 4, 5].map(star => (
+                      <i 
+                        key={star} 
+                        className={`fa-solid fa-star ${star <= (hoverStar || selectedStar) ? 'active' : ''}`}
+                        style={{ color: star <= (hoverStar || selectedStar) ? '#111' : '#d3d3d3', transition: 'color 0.2s' }}
+                        onMouseEnter={() => setHoverStar(star)}
+                        onMouseLeave={() => setHoverStar(0)}
+                        onClick={() => handleSubmitRating(star)}
+                      ></i>
+                    ))}
+                  </div>
                 </div>
               </div>
-           </div>
+              
+              <div className="nyt-comments-right">
+                <h3 className="nyt-section-title">Bình luận</h3>
+                
+                {/* Form comment */}
+                <form className="nyt-comment-form" onSubmit={handleSubmitComment} style={{ marginBottom: '20px' }}>
+                  <textarea 
+                    placeholder="Để lại bình luận của bạn..." 
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    rows="3"
+                    style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc', fontFamily: 'var(--font-sans)', fontSize: '14px', resize: 'vertical' }}
+                  ></textarea>
+                  <div style={{ textAlign: 'right', marginTop: '10px' }}>
+                    <button type="submit" className="nyt-btn-save" disabled={isSubmittingComment} style={{ padding: '8px 16px', border: 'none', background: 'var(--color-primary)', color: 'white', borderRadius: '4px', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontWeight: 'bold' }}>
+                      {isSubmittingComment ? 'Đang gửi...' : 'Gửi bình luận'}
+                    </button>
+                  </div>
+                </form>
 
-          <div className="steam-review-active-filter">
-            Đang hiện {comments.length} đánh giá khớp với bộ lọc bên trên ( Rất tích cực )
-          </div>
-          
-          <h3 className="steam-helpful-title">Đánh giá hữu ích nhất</h3>
-          
-          <div className="steam-review-list">
-            {comments.map((c, idx) => (
-              <div className="steam-review-item" key={idx}>
-                <div className="review-left">
-                  <div className="review-avatar">{c.username.charAt(0).toUpperCase()}</div>
-                  <div className="review-author">
-                    <div className="author-name">{c.username}</div>
-                    <div className="author-products">12 sản phẩm trong tài khoản</div>
-                  </div>
-                </div>
-                <div className="review-right">
-                  <div className="review-header">
-                    <div className="review-thumb">
-                       <i className="fa-solid fa-thumbs-up"></i> Khuyên dùng
+                <div className="nyt-comments-list">
+                  {comments.length > 0 ? comments.slice(0, commentLimit).map((cmt, idx) => (
+                    <div key={idx} className="nyt-comment-item">
+                      <div className="nyt-comment-meta">
+                        <span className="nyt-comment-author">{cmt.user?.username || 'Người dùng'}</span>
+                        <span className="nyt-comment-date">{new Date(cmt.created_at).toLocaleDateString('vi-VN')}</span>
+                      </div>
+                      <p className="nyt-comment-text">{cmt.content}</p>
                     </div>
-                    <div className="review-hours">2.5 giờ trên thực tế</div>
-                  </div>
-                  <div className="review-date">Đăng ngày {new Date(c.created_at).toLocaleDateString('vi-VN')}</div>
-                  <div className="review-content">{c.content}</div>
-                  <div className="review-helpful">
-                     Bao nhiêu người thấy đánh giá này hữu ích?
-                     <div className="helpful-btns">
-                       <button>Có</button>
-                       <button>Không</button>
-                       <button>Hài hước</button>
-                       <button>Trao giải thưởng</button>
-                     </div>
-                  </div>
+                  )) : (
+                    <p style={{fontFamily: 'var(--font-sans)', color: '#666'}}>Chưa có bình luận nào. Hãy là người đầu tiên!</p>
+                  )}
+                  {comments.length > commentLimit && (
+                    <button className="nyt-btn-outline" style={{marginTop: '20px'}} onClick={() => setCommentLimit(prev => prev + 5)}>Xem thêm bình luận</button>
+                  )}
                 </div>
               </div>
-            ))}
+            </div>
           </div>
-          
-          <div className="steam-review-browse-all">
-            <button>Duyệt tất cả {comments.length} đánh giá</button>
-          </div>
+
+          {/* SUGGESTED RECIPES — mirrors the homepage "Gợi ý tuần này" panel */}
+          {suggestedRecipes.length > 0 && (
+            <div className="magazine-section home-featured-section">
+              <div className="magazine-section-header home-featured-section-header">
+                <h2 className="magazine-section-title">Gợi ý cho bạn</h2>
+              </div>
+
+              <RecipeSlider recipes={suggestedRecipes} label="Gợi ý cho bạn" />
+            </div>
+          )}
+
         </div>
-        
       </div>
-      </div>
+
+      <LoginRequiredModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
+
     </MainLayout>
   );
 };

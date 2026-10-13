@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 const Footer = () => {
   const handleMockupClick = (e) => {
     e.preventDefault();
-    toast.success('Tính năng đang phát triển', { style: { background: '#1b2838', color: '#c6d4df', border: '1px solid #101822' }});
+    toast.success('Tính năng đang phát triển', { style: { background: 'var(--color-bg-body)', color: 'var(--color-text-main)', border: '1px solid var(--color-border)' }});
   };
 
   return (
@@ -15,11 +15,12 @@ const Footer = () => {
         <div className="steam-footer-left">
           <div className="steam-footer-brand">
             <Link to="/" className="steam-logo steam-logo-footer">
-              <i className="fa-brands fa-steam"></i> RECIPE
+              <i className="fa-solid fa-book-open" aria-hidden="true"></i>
+              <span>Recipe Sharing</span>
             </Link>
           </div>
           <div className="steam-footer-copy">
-            © 2026 Recipe Sharing Website. Bảo lưu mọi quyền. Tất cả các thương hiệu là tài sản của chủ sở hữu tương ứng tại Việt Nam và các quốc gia khác. Giá đã bao gồm VAT (nếu có).
+            © 2026 Recipe Sharing. Bảo lưu mọi quyền. Tất cả các thương hiệu là tài sản của chủ sở hữu tương ứng tại Việt Nam và các quốc gia khác. Giá đã bao gồm VAT (nếu có).
           </div>
           <div className="steam-footer-socials">
             <a href="#" onClick={handleMockupClick}><i className="fa-brands fa-youtube"></i></a>

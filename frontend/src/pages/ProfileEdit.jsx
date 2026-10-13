@@ -95,7 +95,7 @@ const ProfileEdit = () => {
       <div className="steam-profile-edit-container">
         <div className="profile-header">
           <h2>Hồ sơ của {username}</h2>
-          <Link to="/profile" className="btn-auth btn-back-profile">Quay về Hồ sơ</Link>
+          <Link to="/profile" className="btn-secondary">Quay về Hồ sơ</Link>
         </div>
         
         <div className="profile-card profile-card-edit" style={{ display: 'flex', gap: '30px' }}>
@@ -118,21 +118,21 @@ const ProfileEdit = () => {
               </div>
               <div className="form-group steam-form-group">
                 <label>TÓM TẮT</label>
-                <textarea name="bio" value={formData.bio} onChange={handleChange} rows="5" style={{ width: '100%', background: '#222B35', border: '1px solid #000', color: '#fff', padding: '10px' }}></textarea>
+                <textarea name="bio" value={formData.bio} onChange={handleChange} rows="5" style={{ width: '100%', background: 'var(--color-bg-body)', border: '1px solid var(--color-border)', color: 'var(--color-text-main)', padding: '10px', borderRadius: '4px' }}></textarea>
               </div>
               
-              <div className="steam-edit-actions" style={{ marginTop: '20px' }}>
-                <button type="submit" className="steam-btn-blue">Lưu</button>
-                <Link to="/profile" className="steam-btn-gray" style={{ marginLeft: '10px' }}>Hủy</Link>
+              <div className="steam-edit-actions" style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
+                <button type="submit" className="btn-primary" style={{ border: 'none' }}>Lưu</button>
+                <Link to="/profile" className="btn-secondary">Hủy</Link>
               </div>
             </form>
           </div>
 
           <div className="steam-edit-right" style={{ width: '250px' }}>
-            <h3 style={{ fontSize: '14px', color: '#8f98a0', marginBottom: '10px', textTransform: 'uppercase' }}>Hình đại diện</h3>
-            <div className="steam-avatar-upload" style={{ background: '#222B35', border: '1px solid #000', padding: '15px', textAlign: 'center' }}>
-              <img src={avatarPreview} alt="Avatar" style={{ width: '184px', height: '184px', border: '2px solid #545454', borderRadius: '4px', marginBottom: '15px', objectFit: 'cover' }} />
-              <button type="button" className="steam-btn-gray" onClick={() => fileInputRef.current.click()}>
+            <h3 style={{ fontSize: '14px', color: 'var(--color-text-muted)', marginBottom: '10px', textTransform: 'uppercase' }}>Hình đại diện</h3>
+            <div className="steam-avatar-upload" style={{ background: 'var(--color-bg-body)', border: '1px solid var(--color-border)', padding: '15px', textAlign: 'center', borderRadius: '8px' }}>
+              <img src={avatarPreview} alt="Avatar" style={{ width: '184px', height: '184px', border: '1px solid var(--color-border)', borderRadius: '4px', marginBottom: '15px', objectFit: 'cover' }} />
+              <button type="button" className="btn-secondary" style={{ width: '100%' }} onClick={() => fileInputRef.current.click()}>
                 Tải ảnh lên
               </button>
               <input type="file" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} accept="image/*" />

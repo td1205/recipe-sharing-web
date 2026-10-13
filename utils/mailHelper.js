@@ -16,7 +16,6 @@ async function sendMail(email, otp) {
     text: `Mã OTP của bạn là: ${otp}. Mã này sẽ dùng để lấy lại mật khẩu.`,
   };
   await transporter.sendMail(mailOptions);
-  console.log('Đã gửi email OTP thành công tới:', email);
 }
 
 module.exports = { sendMail };

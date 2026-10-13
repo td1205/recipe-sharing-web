@@ -25,16 +25,13 @@
   color: #56707f;
   text-decoration: none;
 }
-.steam-breadcrumbs a:hover {
-  color: #fff;
-}
 .steam-breadcrumbs span {
-  color: #c6d4df;
+  color: var(--color-text-main);
 }
 
 .steam-page-title {
   font-size: 28px;
-  color: #fff;
+  color: var(--color-text-main);
   font-weight: 400;
   margin-bottom: 30px;
   text-transform: uppercase;
@@ -66,10 +63,6 @@
   transition: transform 0.3s;
 }
 
-.steam-featured-card:hover img {
-  transform: scale(1.05);
-}
-
 .steam-featured-overlay {
   position: absolute;
   bottom: 0;
@@ -89,7 +82,7 @@
 }
 
 .steam-featured-price {
-  color: #fff;
+  color: var(--color-text-main);
   font-size: 14px;
 }
 
@@ -112,13 +105,8 @@
 
 .steam-tab.active {
   background: #2a475e;
-  color: #fff;
+  color: var(--color-text-main);
 }
-.steam-tab:hover:not(.active) {
-  color: #fff;
-  background: rgba(255,255,255,0.05);
-}
-
 /* List View */
 .steam-list-view {
   display: flex;
@@ -139,10 +127,6 @@
 
 .steam-list-item:nth-child(even) {
   background: rgba(0,0,0,0.3);
-}
-
-.steam-list-item:hover {
-  background: #2a475e;
 }
 
 .steam-list-img-container {
@@ -166,7 +150,7 @@
 }
 
 .steam-list-title {
-  color: #fff;
+  color: var(--color-text-main);
   font-size: 15px;
   margin-bottom: 4px;
   white-space: nowrap;
@@ -175,7 +159,7 @@
 }
 
 .steam-list-icons {
-  color: #8f98a0;
+  color: var(--color-text-muted);
   font-size: 11px;
   margin-bottom: 6px;
 }
@@ -187,7 +171,7 @@
 
 .steam-tag {
   background: rgba(255,255,255,0.1);
-  color: #8f98a0;
+  color: var(--color-text-muted);
   font-size: 10px;
   padding: 2px 6px;
   border-radius: 2px;
@@ -213,6 +197,6 @@
 }
 
 .steam-author-name {
-  color: #8f98a0;
+  color: var(--color-text-muted);
   font-size: 12px;
 }

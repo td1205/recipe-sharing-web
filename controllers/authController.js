@@ -108,7 +108,8 @@ async function renderProfile(req, res) {
     const userId = req.session.user.id;
     const [user] = await userModel.getUserById(userId);
     const favouriteRecipes = await userModel.getFavouriteRecipesByUser(userId);
-    res.json({ success: true, user, favouriteRecipes });
+    const myRecipes = await userModel.getRecipesByUser(userId);
+    res.json({ success: true, user, favouriteRecipes, myRecipes });
   } catch (error) {
     console.error('Lỗi renderProfile:', error);
     res.status(500).json({ success: false, error: 'Lỗi hệ thống!' });
@@ -236,7 +237,6 @@ async function handleOTP(req, res) {
     const trueotp = await userModel.getOTPbyEmail(email);
     if (otp == trueotp) {
       req.session.otp = true;
-      console.log('OTP=' + otp + '\nTrue OTP=' + trueotp);
       return res.json({ success: true, message: 'OTP correct' });
     } else {
       return res.status(400).json({ success: false, error: 'Sai mã OTP!' });
