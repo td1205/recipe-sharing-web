@@ -1,0 +1,147 @@
+/* Alert shown when the navbar camera button is pressed.
+   Same editorial language as LoginRequiredModal: paper-white panel, orange
+   accent, square-ish corners, restrained motion. The frame around the panel is
+   built from eight separate straight segments (four corner brackets), so it
+   reads like a viewfinder rather than a continuous outline. */
+
+.visual-search-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--color-text-main) 45%, transparent);
+}
+
+.visual-search-panel {
+  --bracket-color: var(--color-primary);
+  --bracket-len: 22px;
+  --bracket-thick: 2px;
+
+  box-sizing: border-box;
+  position: relative;
+  width: 100%;
+  max-width: 28rem;
+  padding: var(--space-5);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(17, 17, 17, 0.08);
+  transition: border-color 0.2s ease;
+}
+
+/* Highlight the whole panel while a file hovers over it. */
+.visual-search-panel[data-dragging="true"] {
+  border-color: var(--color-primary);
+}
+
+/* Eight disjoint straight segments: two arms on each of the four corners.
+   Two gradients per corner - one horizontal arm, one vertical arm. */
+.visual-search-brackets {
+  position: absolute;
+  /* Pull the frame inside the panel edge. */
+  inset: 10px;
+  pointer-events: none;
+
+  --arm: linear-gradient(var(--bracket-color), var(--bracket-color));
+
+  background-image:
+    /* top-left */ var(--arm), var(--arm),
+    /* top-right */ var(--arm), var(--arm),
+    /* bottom-left */ var(--arm), var(--arm),
+    /* bottom-right */ var(--arm), var(--arm);
+
+  background-size:
+    /* top-left */ var(--bracket-len) var(--bracket-thick), var(--bracket-thick) var(--bracket-len),
+    /* top-right */ var(--bracket-len) var(--bracket-thick), var(--bracket-thick) var(--bracket-len),
+    /* bottom-left */ var(--bracket-len) var(--bracket-thick), var(--bracket-thick) var(--bracket-len),
+    /* bottom-right */ var(--bracket-len) var(--bracket-thick), var(--bracket-thick) var(--bracket-len);
+
+  background-position:
+    /* top-left */ left top, left top,
+    /* top-right */ right top, right top,
+    /* bottom-left */ left bottom, left bottom,
+    /* bottom-right */ right bottom, right bottom;
+
+  background-repeat: no-repeat;
+}
+
+.visual-search-icon {
+  display: block;
+  margin-bottom: var(--space-3);
+  font-size: 1.5rem;
+  color: var(--color-primary);
+}
+
+.visual-search-title {
+  margin: 0 0 var(--space-5);
+  font-size: var(--text-h3);
+  line-height: var(--lh-heading);
+  color: var(--color-text-main);
+  /* Keep sentence case; the global h2 rule forces uppercase. */
+  text-transform: none;
+}
+
+.visual-search-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.visual-search-btn {
+  min-width: 8rem;
+  padding: 10px 20px;
+  font-size: var(--text-body);
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.visual-search-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.visual-search-btn-primary {
+  background: var(--color-primary);
+  color: var(--color-bg-card);
+  border: 1px solid var(--color-primary);
+}
+
+
+.visual-search-btn-secondary {
+  background: var(--color-bg-card);
+  color: var(--color-text-main);
+  border: 1px solid var(--color-border-strong);
+}
+
+
+/* Real input stays reachable for keyboard and assistive tech only. */
+.visual-search-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 480px) {
+  .visual-search-actions {
+    flex-direction: column-reverse;
+  }
+
+  .visual-search-btn {
+    width: 100%;
+  }
+
+  .visual-search-brackets {
+    --bracket-len: 16px;
+  }
+}

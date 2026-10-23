@@ -6,6 +6,18 @@ async function getAll() {
   });
 }
 
+async function getAllCourseTypes() {
+  return await prisma.course_types.findMany({
+    orderBy: { id: 'asc' },
+  });
+}
+
+async function getAllMealTimes() {
+  return await prisma.meal_times.findMany({
+    orderBy: { id: 'asc' },
+  });
+}
+
 async function getById(id) {
   return await prisma.categories.findUnique({
     where: { id: parseInt(id) },
@@ -33,6 +45,8 @@ async function remove(id) {
 
 module.exports = {
   getAll,
+  getAllCourseTypes,
+  getAllMealTimes,
   getById,
   create,
   update,

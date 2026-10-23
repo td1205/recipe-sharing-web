@@ -1,0 +1,82 @@
+/* Alert shown when a gated action needs the visitor to sign in.
+   Follows the editorial spec: paper-white panel, thin rule, orange accent,
+   square corners, restrained motion. Typography is inherited from the page. */
+
+.login-required-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  /* Slight dim rather than a heavy blackout. */
+  background: color-mix(in srgb, var(--color-text-main) 45%, transparent);
+}
+
+.login-required-modal {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 26rem;
+  padding: var(--space-5);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  text-align: center;
+  /* Minimal lift only — the design spec bans heavy drop shadows. */
+  box-shadow: 0 2px 8px rgba(17, 17, 17, 0.08);
+}
+
+.login-required-title {
+  margin: 0 0 var(--space-5);
+  font-size: var(--text-h3);
+  line-height: var(--lh-heading);
+  color: var(--color-text-main);
+  /* Keep sentence case; the global h2 rule forces uppercase. */
+  text-transform: none;
+}
+
+.login-required-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+/* Button radius/weight come from the global button rule in tasty.css. */
+.login-required-btn {
+  min-width: 8rem;
+  padding: 10px 20px;
+  font-size: var(--text-body);
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.login-required-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.login-required-btn-primary {
+  background: var(--color-primary);
+  color: var(--color-bg-card);
+  border: 1px solid var(--color-primary);
+}
+
+
+.login-required-btn-secondary {
+  background: var(--color-bg-card);
+  color: var(--color-text-main);
+  border: 1px solid var(--color-border-strong);
+}
+
+
+@media (max-width: 480px) {
+  .login-required-actions {
+    flex-direction: column-reverse;
+  }
+
+  .login-required-btn {
+    width: 100%;
+  }
+}

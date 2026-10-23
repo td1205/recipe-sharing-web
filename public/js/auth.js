@@ -55,6 +55,5 @@ function gopOTP() {
     otpFull += input.value;
   });
   document.getElementById('otp').value = otpFull;
-  console.log('otpFull=' + otpFull);
   return true;
 }

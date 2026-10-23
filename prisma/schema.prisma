@@ -8,11 +8,15 @@ datasource db {
 }
 
 model categories {
-  id          Int       @id @default(autoincrement())
-  name        String    @unique(map: "name") @db.VarChar(100)
-  description String?   @db.Text
-  created_at  DateTime? @default(now()) @db.Timestamp(0)
-  recipes     recipes[]
+  id             Int           @id @default(autoincrement())
+  name           String        @unique(map: "name") @db.VarChar(100)
+  description    String?       @db.Text
+  created_at     DateTime?     @default(now()) @db.Timestamp(0)
+  course_type_id Int?
+  course_types   course_types? @relation(fields: [course_type_id], references: [id], onUpdate: NoAction, map: "categories_ibfk_1")
+  recipes        recipes[]
+
+  @@index([course_type_id], map: "course_type_id")
 }
 
 model comments {
@@ -66,26 +70,53 @@ model ratings {
 }
 
 model recipes {
-  id          Int           @id @default(autoincrement())
-  user_id     Int
-  category_id Int
-  title       String        @db.VarChar(255)
-  description String?       @db.Text
-  prep_time   Int
-  cook_time   Int
-  servings    Int
-  image_url   String?       @db.VarChar(255)
-  created_at  DateTime?     @default(now()) @db.Timestamp(0)
-  comments    comments[]
-  favorites   favorites[]
-  ingredients ingredients[]
-  ratings     ratings[]
-  users       users         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "recipes_ibfk_1")
-  categories  categories    @relation(fields: [category_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "recipes_ibfk_2")
-  steps       steps[]
+  id             Int            @id @default(autoincrement())
+  user_id        Int
+  category_id    Int
+  title          String         @db.VarChar(255)
+  description    String?        @db.Text
+  prep_time      Int
+  cook_time      Int
+  servings       Int
+  image_url      String?        @db.VarChar(255)
+  created_at     DateTime?      @default(now()) @db.Timestamp(0)
+  course_type_id Int?
+  meal_time_id   Int?
+  comments       comments[]
+  favorites      favorites[]
+  ingredients    ingredients[]
+  ratings        ratings[]
+  recipe_media   recipe_media[]
+  recipe_views   recipe_views[]
+  recipe_tags    recipe_tags[]
+  user_tag_votes user_tag_votes[]
+  users          users          @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "recipes_ibfk_1")
+  categories     categories     @relation(fields: [category_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "recipes_ibfk_2")
+  meal_times     meal_times?    @relation(fields: [meal_time_id], references: [id], onUpdate: NoAction, map: "recipes_ibfk_3")
+  course_types   course_types?  @relation(fields: [course_type_id], references: [id], onUpdate: NoAction, map: "recipes_ibfk_4")
+  steps          steps[]
 
   @@index([category_id], map: "category_id")
   @@index([user_id], map: "user_id")
+  @@index([meal_time_id], map: "meal_time_id")
+  @@index([course_type_id], map: "course_type_id")
+}
+
+model course_types {
+  id          Int          @id @default(autoincrement())
+  name        String       @unique(map: "name") @db.VarChar(100)
+  description String?      @db.Text
+  created_at  DateTime?    @default(now()) @db.Timestamp(0)
+  categories  categories[]
+  recipes     recipes[]
+}
+
+model meal_times {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique(map: "name") @db.VarChar(100)
+  description String?   @db.Text
+  created_at  DateTime? @default(now()) @db.Timestamp(0)
+  recipes     recipes[]
 }
 
 model sessions {
@@ -115,8 +146,92 @@ model users {
   otp          String?     @db.Char(6)
   OTPExpiredAt DateTime?   @db.DateTime(0)
   OTPIsUsed    Boolean?    @default(dbgenerated("b'0'")) @db.Bit(1)
+  is_banned    Boolean?    @default(false)
+  avatar_url   String?     @db.VarChar(255)
+  bio          String?     @db.Text
+  articles     articles[]
   comments     comments[]
   favorites    favorites[]
   ratings      ratings[]
   recipes      recipes[]
+  recipe_views recipe_views[]
+  user_tag_votes user_tag_votes[]
+}
+
+model recipe_views {
+  id          Int      @id @default(autoincrement())
+  recipe_id   Int
+  user_id     Int?
+  viewer_hash String   @db.Char(64)
+  viewed_at   DateTime @default(now()) @db.Timestamp(0)
+  recipes     recipes  @relation(fields: [recipe_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users       users?   @relation(fields: [user_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([recipe_id, viewed_at])
+  @@index([viewer_hash, recipe_id, viewed_at])
+  @@index([user_id])
+}
+
+model articles {
+  id         Int       @id @default(autoincrement())
+  title      String    @db.VarChar(255)
+  content    String    @db.Text
+  image_url  String?   @db.VarChar(255)
+  author_id  Int
+  views      Int       @default(0)
+  created_at DateTime? @default(now()) @db.Timestamp(0)
+  users      users     @relation(fields: [author_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "articles_ibfk_1")
+
+  @@index([author_id], map: "author_id")
+}
+
+model recipe_media {
+  id            Int                      @id @default(autoincrement())
+  recipe_id     Int
+  media_url     String                   @db.VarChar(255)
+  media_type    recipe_media_media_type? @default(image)
+  display_order Int?                     @default(0)
+  created_at    DateTime?                @default(now()) @db.Timestamp(0)
+  recipes       recipes                  @relation(fields: [recipe_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "recipe_media_ibfk_1")
+
+  @@index([recipe_id], map: "recipe_id")
+}
+
+model recipe_tags {
+  recipe_id Int
+  tag_id    Int
+  recipes   recipes @relation(fields: [recipe_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "recipe_tags_ibfk_1")
+  tags      tags    @relation(fields: [tag_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "recipe_tags_ibfk_2")
+
+  @@id([recipe_id, tag_id])
+  @@index([tag_id], map: "tag_id")
+}
+
+model tags {
+  id          Int           @id @default(autoincrement())
+  name        String        @unique(map: "name") @db.VarChar(50)
+  type        String?       @default("community") @db.VarChar(50)
+  created_at  DateTime?     @default(now()) @db.Timestamp(0)
+  recipe_tags recipe_tags[]
+  user_tag_votes user_tag_votes[]
+}
+
+enum recipe_media_media_type {
+  image
+  video
+}
+
+model user_tag_votes {
+  user_id    Int
+  recipe_id  Int
+  tag_id     Int
+  created_at DateTime? @default(now()) @db.Timestamp(0)
+
+  users      users   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  recipes    recipes @relation(fields: [recipe_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tags       tags    @relation(fields: [tag_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([user_id, recipe_id, tag_id])
+  @@index([recipe_id])
+  @@index([tag_id])
 }
