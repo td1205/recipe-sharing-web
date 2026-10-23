@@ -11,8 +11,13 @@ const interactionRoutes = require('./routes/interactionRoutes.js');
 const adminCommentRoutes = require('./routes/admin.js');
 const aiRoutes = require('./routes/aiRoutes.js');
 const articleRoutes = require('./routes/articleRoutes.js');
+const { refreshSessionUser } = require('./middlewares/sessionUserMiddleware');
 const app = express();
 app.use(express.static(path.join(__dirname, 'frontend/dist')));
+// Ảnh đại diện người dùng tải lên
+app.use('/avatars', express.static(path.join(__dirname, 'uploads/avatars')));
+// Tương thích ảnh cũ từng lưu trong frontend/public/avatars
+app.use('/avatars', express.static(path.join(__dirname, 'frontend/public/avatars')));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 const sessionStore = new MySQLStore({
@@ -38,6 +43,8 @@ app.use((req, res, next) => {
   res.locals.user = req.session.user || null;
   next();
 });
+// Kiểm tra tài khoản bị khóa / đổi quyền ở mỗi request API
+app.use('/api', refreshSessionUser);
 app.use('/api', recipeRoutes);
 app.use('/api', authRoutes);
 app.use('/api', categoryRoutes);
