@@ -1,4 +1,5 @@
 const prisma = require('../config/prisma');
+const { SAFE_USER_SELECT } = require('../utils/userSelect');
 
 const User = {};
 
@@ -12,8 +13,13 @@ async function getUserByEmail(email) {
   return user ? [user] : [];
 }
 
+// Chỉ trả về các trường an toàn (không có password/otp) vì kết quả được
+// gửi thẳng về client ở trang hồ sơ và trang admin.
 async function getUserById(id) {
-  const user = await prisma.users.findUnique({ where: { id: parseInt(id) } });
+  const user = await prisma.users.findUnique({
+    where: { id: parseInt(id) },
+    select: SAFE_USER_SELECT,
+  });
   return user ? [user] : [];
 }
 
