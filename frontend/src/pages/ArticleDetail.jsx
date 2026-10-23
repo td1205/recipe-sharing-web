@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import MainLayout from '../components/MainLayout';
 import SkeletonLoader from '../components/SkeletonLoader';
+import { sanitizeHtml } from '../utils/sanitizeHtml';
 
 const ArticleDetail = () => {
   const { id } = useParams();
@@ -72,7 +73,7 @@ const ArticleDetail = () => {
         <div 
           className="article-content" 
           style={{ fontSize: '18px', lineHeight: '1.8', color: 'var(--color-text-main)' }}
-          dangerouslySetInnerHTML={{ __html: article.content }} 
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(article.content) }} 
         />
         
       </div>
