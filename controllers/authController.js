@@ -1,8 +1,10 @@
 const userModel = require('../repositories/userRepository');
 const bcrypt = require('bcrypt');
-const nodemailer = require('nodemailer');
 const { sendMail } = require('../utils/mailHelper');
 const authService = require('../services/authService');
+
+const OTP_TTL_MS = 5 * 60 * 1000; // OTP hết hạn sau 5 phút
+const OTP_MAX_ATTEMPTS = 5; // tối đa 5 lần nhập sai
 function validatePassword(password) {
   if (password.length < 8) {
     return 'Mật khẩu phải chứa ít nhất 8 ký tự!';
@@ -131,6 +133,9 @@ async function handleForgotPassword(req, res) {
       });
     }
     req.session.resetEmail = email;
+    req.session.otp = false;
+    req.session.otpExpiresAt = Date.now() + OTP_TTL_MS;
+    req.session.otpAttempts = 0;
     const otp = await authService.createOtp(email);
     await sendMail(email, otp);
 
@@ -233,14 +238,43 @@ async function getOTPPage(req, res) {
 async function handleOTP(req, res) {
   try {
     const email = req.session.resetEmail;
-    const otp = req.body.otp;
-    const trueotp = await userModel.getOTPbyEmail(email);
-    if (otp == trueotp) {
-      req.session.otp = true;
-      return res.json({ success: true, message: 'OTP correct' });
-    } else {
-      return res.status(400).json({ success: false, error: 'Sai mã OTP!' });
+    const otp = String(req.body.otp || '').trim();
+
+    if (!req.session.otpExpiresAt || Date.now() > req.session.otpExpiresAt) {
+      await userModel.updateOTP(email, null);
+      return res.status(400).json({
+        success: false,
+        error: 'Mã OTP đã hết hạn, vui lòng yêu cầu mã mới!',
+      });
     }
+
+    if ((req.session.otpAttempts || 0) >= OTP_MAX_ATTEMPTS) {
+      await userModel.updateOTP(email, null);
+      return res.status(429).json({
+        success: false,
+        error: 'Bạn đã nhập sai quá nhiều lần, vui lòng yêu cầu mã mới!',
+      });
+    }
+
+    const trueOtp = await userModel.getOTPbyEmail(email);
+    if (!/^\d{6}$/.test(otp) || !trueOtp || otp !== String(trueOtp)) {
+      req.session.otpAttempts = (req.session.otpAttempts || 0) + 1;
+      const remaining = OTP_MAX_ATTEMPTS - req.session.otpAttempts;
+      return res.status(400).json({
+        success: false,
+        error:
+          remaining > 0
+            ? `Sai mã OTP! Bạn còn ${remaining} lần thử.`
+            : 'Sai mã OTP! Bạn đã hết lượt thử, vui lòng yêu cầu mã mới.',
+      });
+    }
+
+    // OTP đúng: vô hiệu hóa mã để không dùng lại được
+    await userModel.updateOTP(email, null);
+    req.session.otp = true;
+    delete req.session.otpExpiresAt;
+    delete req.session.otpAttempts;
+    return res.json({ success: true, message: 'OTP correct' });
   } catch (error) {
     console.error('Lỗi handleOTP:', error);
     return res.status(500).json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại!' });
