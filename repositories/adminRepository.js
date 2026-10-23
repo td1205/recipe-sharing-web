@@ -1,4 +1,5 @@
 const prisma = require('../config/prisma');
+const { SAFE_USER_SELECT } = require('../utils/userSelect');
 
 async function countUsers() {
   return await prisma.users.count();
@@ -18,7 +19,8 @@ async function countComments() {
 
 async function getAllUsers() {
   return await prisma.users.findMany({
-    include: {
+    select: {
+      ...SAFE_USER_SELECT,
       _count: {
         select: { recipes: true, comments: true }
       }
