@@ -32,12 +32,13 @@ async function addRating(req, res) {
     }
     const recipeId = req.params.id;
     const userId = req.session.user.id;
-    const { star_count } = req.body;
-    await ratingModel.createOrUpdateRating(
-      userId,
-      recipeId,
-      parseInt(star_count)
-    );
+    const starCount = Number(req.body.star_count);
+    if (!Number.isInteger(starCount) || starCount < 1 || starCount > 5) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Số sao phải là số nguyên từ 1 đến 5' });
+    }
+    await ratingModel.createOrUpdateRating(userId, recipeId, starCount);
     const newRatingObj = await ratingModel.getAverageRating(recipeId);
     const newRating = newRatingObj.averageRating;
     const newCount = newRatingObj.totalRatings;
