@@ -1,4 +1,5 @@
 const prisma = require('../config/prisma');
+const { PUBLIC_USER_SELECT } = require('../utils/userSelect');
 const { rankRecommendations } = require('../services/recommendationService');
 
 function getPopularityPeriodStart(period) {
@@ -46,7 +47,7 @@ const Recipe = {
     let recipes = await prisma.recipes.findMany({
       where,
       include: {
-        users: true,
+        users: { select: PUBLIC_USER_SELECT },
         categories: true,
         ratings: true,
         meal_times: true,
@@ -133,7 +134,7 @@ const Recipe = {
     const recipe = await prisma.recipes.findUnique({
       where: { id: parseInt(id) },
       include: {
-        users: true,
+        users: { select: PUBLIC_USER_SELECT },
         categories: true,
         ratings: true,
         meal_times: true,
@@ -163,7 +164,7 @@ const Recipe = {
     const recipes = await prisma.recipes.findMany({
       take: limit,
       include: {
-        users: true,
+        users: { select: PUBLIC_USER_SELECT },
         categories: true,
         ratings: true,
         meal_times: true,
@@ -181,7 +182,7 @@ const Recipe = {
     const viewDateFilter = periodStart ? { viewed_at: { gte: periodStart } } : undefined;
     const recipes = await prisma.recipes.findMany({
       include: {
-        users: true,
+        users: { select: PUBLIC_USER_SELECT },
         categories: true,
         meal_times: true,
         recipe_media: true,
@@ -259,7 +260,7 @@ const Recipe = {
         ]
       },
       take: limit,
-      include: { users: true, categories: true, ratings: true, meal_times: true, recipe_media: true },
+      include: { users: { select: PUBLIC_USER_SELECT }, categories: true, ratings: true, meal_times: true, recipe_media: true },
       orderBy: { created_at: 'desc' },
     });
     return this._formatRecipes(recipes);
@@ -295,7 +296,7 @@ const Recipe = {
     const recipes = await prisma.recipes.findMany({
       where: { category_id: topCategoryId },
       take: limit,
-      include: { users: true, categories: true, ratings: true, meal_times: true, recipe_media: true },
+      include: { users: { select: PUBLIC_USER_SELECT }, categories: true, ratings: true, meal_times: true, recipe_media: true },
       orderBy: { created_at: 'desc' },
     });
     return this._formatRecipes(recipes);
@@ -304,7 +305,7 @@ const Recipe = {
   async getDetailRecommendations(recipeId, userId = null, recentIds = [], limit = 16) {
     const recipes = await prisma.recipes.findMany({
       include: {
-        users: true,
+        users: { select: PUBLIC_USER_SELECT },
         categories: true,
         meal_times: true,
         course_types: true,
