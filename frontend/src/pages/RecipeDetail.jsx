@@ -8,6 +8,8 @@ import RecipeSlider from '../components/RecipeSlider';
 import LoginRequiredModal from '../components/LoginRequiredModal';
 import { AuthContext } from '../context/AuthContext';
 import './Home.css';
+import { scaleAmount } from '../utils/amount';
+import { DEFAULT_RECIPE_IMAGE } from '../components/MagazineCard';
 
 // How many suggestions to show in the slider.
 const SUGGESTION_LIMIT = 16;
@@ -355,11 +357,7 @@ const RecipeDetail = () => {
                 
                 <ul className="nyt-ing-list">
                   {ingredients.length > 0 ? ingredients.map((ing, idx) => {
-                    let displayAmount = ing.amount;
-                    const parsedAmount = parseFloat(ing.amount);
-                    if (!isNaN(parsedAmount)) {
-                      displayAmount = (parsedAmount * ratio).toFixed(1).replace(/\.0$/, '');
-                    }
+                    const displayAmount = scaleAmount(ing.amount, ratio);
                     const isChecked = Boolean(checkedIngs[idx]);
                     return (
                       <li key={idx} className={isChecked ? 'nyt-ing-checked' : ''}>
@@ -388,7 +386,7 @@ const RecipeDetail = () => {
                   {mainMedia.media_type === 'video' ? (
                     <video key={mainMedia.media_url} src={mainMedia.media_url} autoPlay loop muted playsInline className="nyt-hero-img" style={{ pointerEvents: 'none' }} />
                   ) : (
-                    <img key={mainMedia.media_url} src={mainMedia.media_url || 'https://via.placeholder.com/800x1000'} alt={recipe.title} className="nyt-hero-img" />
+                    <img key={mainMedia.media_url} src={mainMedia.media_url || DEFAULT_RECIPE_IMAGE} alt={recipe.title} className="nyt-hero-img" />
                   )}
                   <p className="nyt-hero-caption">Ảnh minh họa cho {recipe.title}. Nguồn: Cộng đồng Recipe Sharing.</p>
                 </div>
