@@ -5,6 +5,7 @@ import MainLayout from '../components/MainLayout';
 import SkeletonLoader from '../components/SkeletonLoader';
 import { DEFAULT_RECIPE_IMAGE } from '../components/MagazineCard';
 import LoginRequiredModal from '../components/LoginRequiredModal';
+import Pagination from '../components/Pagination';
 import { AuthContext } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import './Home.css';
@@ -26,6 +27,8 @@ const RecipeList = () => {
   const legacyMaxCookTime = searchParams.get('max_cook_time') || '';
   const minRating = searchParams.get('min_rating') || '';
   const keyword = searchParams.get('search') || '';
+  // Lọc theo tag của món, vd ?tag=thịt gà (link "Nguyên liệu" trên menu)
+  const tag = searchParams.get('tag') || '';
   const sortBy = searchParams.get('sort') || 'newest';
   const requestedPage = Math.max(1, Number(searchParams.get('page')) || 1);
 
@@ -83,7 +86,7 @@ const RecipeList = () => {
 
   const clearFilters = useCallback(() => {
     const next = new URLSearchParams(searchParams);
-    ['category', 'meal_time', 'duration', 'max_cook_time', 'min_rating', 'search', 'page'].forEach(key => next.delete(key));
+    ['category', 'meal_time', 'duration', 'max_cook_time', 'min_rating', 'search', 'tag', 'page'].forEach(key => next.delete(key));
     setSearchParams(next);
   }, [searchParams, setSearchParams]);
 
@@ -173,6 +176,10 @@ const RecipeList = () => {
         if (!searchable.includes(normalizedKeyword)) return false;
       }
 
+      if (tag && !(recipe.tag_names || []).some(name => normalizeText(name) === normalizeText(tag))) {
+        return false;
+      }
+
       return true;
     });
 
@@ -194,7 +201,7 @@ const RecipeList = () => {
       }
       return new Date(second.created_at || 0) - new Date(first.created_at || 0);
     });
-  }, [category, duration, keyword, legacyMaxCookTime, mealTime, minRating, recipes, selectedCategoryName, selectedMealTimeName, sortBy]);
+  }, [category, duration, keyword, legacyMaxCookTime, mealTime, minRating, recipes, selectedCategoryName, selectedMealTimeName, sortBy, tag]);
 
   const activeFilters = useMemo(() => {
     const filters = [];
@@ -206,8 +213,9 @@ const RecipeList = () => {
     if (!duration && legacyMaxCookTime) filters.push({ key: 'max_cook_time', label: `Dưới ${legacyMaxCookTime} phút` });
     if (minRating) filters.push({ key: 'min_rating', label: `Từ ${minRating} sao` });
     if (keyword) filters.push({ key: 'search', label: `“${keyword}”` });
+    if (tag) filters.push({ key: 'tag', label: `#${tag}` });
     return filters;
-  }, [category, duration, keyword, legacyMaxCookTime, mealTime, minRating, selectedCategoryName, selectedMealTimeName]);
+  }, [category, duration, keyword, legacyMaxCookTime, mealTime, minRating, selectedCategoryName, selectedMealTimeName, tag]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRecipes.length / ITEMS_PER_PAGE));
   const safeCurrentPage = Math.min(requestedPage, totalPages);
@@ -243,7 +251,9 @@ const RecipeList = () => {
             Thư viện công thức
           </p>
           <h1 className="nyt-list-title">
-            {keyword ? `Kết quả cho “${keyword}”` : selectedCategoryName || 'Tất cả công thức'}
+            {keyword
+              ? `Kết quả cho “${keyword}”`
+              : selectedCategoryName || (tag ? (/^món /i.test(tag) ? tag : `Món ${tag}`) : '') || (mealTime ? `Bữa ${selectedMealTimeName.toLowerCase()}` : '') || 'Tất cả công thức'}
           </h1>
           <p className="nyt-list-result-count" aria-live="polite">
             {filteredRecipes.length.toLocaleString('vi-VN')} món ăn
@@ -406,39 +416,11 @@ const RecipeList = () => {
                 <div className="nyt-pagination-count">
                   {(safeCurrentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(safeCurrentPage * ITEMS_PER_PAGE, filteredRecipes.length)} trong số {filteredRecipes.length} món
                 </div>
-                <div className="nyt-pagination-controls">
-                  <button
-                    type="button"
-                    className="nyt-page-btn"
-                    disabled={safeCurrentPage === 1}
-                    onClick={() => handlePageChange(safeCurrentPage - 1)}
-                    aria-label="Trang trước"
-                  >
-                    <i className="fa-solid fa-chevron-left" aria-hidden="true"></i>
-                  </button>
-
-                  {Array.from({ length: totalPages }, (_, index) => index + 1).map(page => (
-                    <button
-                      key={page}
-                      type="button"
-                      className={`nyt-page-btn ${safeCurrentPage === page ? 'active' : ''}`}
-                      onClick={() => handlePageChange(page)}
-                      aria-current={safeCurrentPage === page ? 'page' : undefined}
-                    >
-                      {page}
-                    </button>
-                  ))}
-
-                  <button
-                    type="button"
-                    className="nyt-page-btn"
-                    disabled={safeCurrentPage === totalPages}
-                    onClick={() => handlePageChange(safeCurrentPage + 1)}
-                    aria-label="Trang sau"
-                  >
-                    <i className="fa-solid fa-chevron-right" aria-hidden="true"></i>
-                  </button>
-                </div>
+                <Pagination
+                  currentPage={safeCurrentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                />
               </nav>
             )}
           </>

@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
 import SkeletonLoader from '../components/SkeletonLoader';
 import LoginRequiredModal from '../components/LoginRequiredModal';
+import Pagination from '../components/Pagination';
 import { DEFAULT_RECIPE_IMAGE } from '../components/MagazineCard';
 import { AuthContext } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -499,40 +500,7 @@ const PopularRecipes = () => {
                 : 'Chưa có công thức phù hợp'}
             </div>
 
-            {totalPages > 1 && (
-              <div className="nyt-pagination-controls">
-                <button
-                  type="button"
-                  className="nyt-page-btn"
-                  disabled={currentPage === 1}
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  title="Trang trước"
-                >
-                  <i className="fa-solid fa-chevron-left"></i>
-                </button>
-
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    className={`nyt-page-btn ${currentPage === p ? 'active' : ''}`}
-                    onClick={() => handlePageChange(p)}
-                  >
-                    {p}
-                  </button>
-                ))}
-
-                <button
-                  type="button"
-                  className="nyt-page-btn"
-                  disabled={currentPage === totalPages}
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  title="Trang tiếp theo"
-                >
-                  <i className="fa-solid fa-chevron-right"></i>
-                </button>
-              </div>
-            )}
+            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
           </div>
         </section>
 
