@@ -56,7 +56,7 @@ const Profile = () => {
           <div className="steam-profile-header">
             <div className="steam-profile-avatar-wrapper">
               <img 
-                src={profileUser.avatar_url || 'https://avatars.akamai.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} 
+                src={profileUser.avatar_url || '/default-avatar.svg'} 
                 alt="Avatar" 
                 className="steam-profile-avatar-large"
               />

@@ -16,7 +16,7 @@ const ProfileEdit = () => {
     bio: ''
   });
   const [username, setUsername] = useState('');
-  const [avatarPreview, setAvatarPreview] = useState('https://avatars.akamai.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg');
+  const [avatarPreview, setAvatarPreview] = useState('/default-avatar.svg');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');

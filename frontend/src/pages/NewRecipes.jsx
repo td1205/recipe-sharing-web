@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
 import SkeletonLoader from '../components/SkeletonLoader';
+import { DEFAULT_RECIPE_IMAGE } from '../components/MagazineCard';
 
 const NewRecipes = () => {
   const [recipes, setRecipes] = useState([]);
@@ -54,7 +55,7 @@ const NewRecipes = () => {
             <div className="steam-featured-grid">
               {featuredRecipes.map(recipe => (
                 <Link to={`/recipes/${recipe.id}`} key={`feat-${recipe.id}`} className="steam-featured-card">
-                  <img src={recipe.image_url || 'https://via.placeholder.com/600'} alt={recipe.title} />
+                  <img src={recipe.image_url || DEFAULT_RECIPE_IMAGE} alt={recipe.title} />
                   <div className="steam-featured-overlay">
                     <span className="steam-featured-tag">Công thức nổi bật tháng này</span>
                     <div className="steam-featured-price">
@@ -79,7 +80,7 @@ const NewRecipes = () => {
                 
                 {/* Image */}
                 <div className="steam-list-img-container">
-                  <img src={recipe.image_url || 'https://via.placeholder.com/300'} alt={recipe.title} />
+                  <img src={recipe.image_url || DEFAULT_RECIPE_IMAGE} alt={recipe.title} />
                 </div>
                 
                 {/* Middle Content */}

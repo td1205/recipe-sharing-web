@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import MainLayout from '../components/MainLayout';
 import SkeletonLoader from '../components/SkeletonLoader';
+import { DEFAULT_RECIPE_IMAGE } from '../components/MagazineCard';
 
 const Articles = () => {
   const [articles, setArticles] = useState([]);
@@ -41,7 +42,7 @@ const Articles = () => {
                     style={{ 
                       width: '100%', 
                       height: '200px', 
-                      backgroundImage: `url(${article.image_url || 'https://via.placeholder.com/400x200'})`, 
+                      backgroundImage: `url(${article.image_url || DEFAULT_RECIPE_IMAGE})`, 
                       backgroundSize: 'cover', 
                       backgroundPosition: 'center',
                       backgroundColor: '#f8f9fa'

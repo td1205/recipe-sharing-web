@@ -147,7 +147,7 @@ const AdminUsers = () => {
                       <td style={{ padding: '15px 20px', color: 'var(--color-text-muted)' }}>#{u.id}</td>
                       <td style={{ padding: '15px 20px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                          <img src={u.avatar_url || 'https://via.placeholder.com/40'} alt="avatar" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
+                          <img src={u.avatar_url || '/default-avatar.svg'} alt="avatar" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
                           <div>
                             <div style={{ color: '#fff', fontWeight: '500', fontSize: '15px' }}>{u.username}</div>
                             <div style={{ color: 'var(--color-text-muted)', fontSize: '13px' }}>{u.email}</div>
