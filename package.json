@@ -9,6 +9,10 @@
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "test": "echo \"Error: no test specified\" && exit 1",
     "format": "prettier --write \"**/*.{js,ejs,css,json}\"",
+    "data:import": "node scripts/import-vifoodrec.js",
+    "data:simulate": "node scripts/simulate-users.js",
+    "data:meal-times": "node scripts/assign-meal-times.js",
+    "recommend:evaluate": "node scripts/evaluate-recommender.js",
     "postinstall": "prisma skills sync || exit 0"
   },
   "repository": {
