@@ -152,6 +152,19 @@
   overflow-wrap: anywhere;
 }
 
+/* Lý do gợi ý ("Giống món bạn quan tâm: ...") hiển thị dưới tên món */
+.home-typography .mag-card-reason {
+  display: -webkit-box;
+  margin: var(--space-1) 0 0;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: var(--home-text-meta);
+  font-style: italic;
+  line-height: var(--lh-body);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .home-typography .mag-card-compact .mag-card-title {
   display: -webkit-box;
   overflow: hidden;

@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useSearchParams, Link } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
 import SkeletonLoader from '../components/SkeletonLoader';
-import MagazineCard, { DEFAULT_RECIPE_IMAGE } from '../components/MagazineCard';
+import MagazineCard, { DEFAULT_RECIPE_IMAGE, handleImageError } from '../components/MagazineCard';
 import RecipeSlider from '../components/RecipeSlider';
 import './Home.css';
 
@@ -74,6 +74,14 @@ const SidebarListCard = ({ recipe, isFirst }) => (
   </Link>
 );
 
+
+// Tab "Gợi ý tuần này" -> bộ lọc của API /api/recommendations/popular
+const HOME_TAB_FILTERS = {
+  'Bữa sáng': 'breakfast',
+  'Bữa tối': 'dinner',
+  'Ăn chay': 'vegetarian',
+  'Dưới 30 phút': 'quick',
+};
 const Home = () => {
   const [searchParams] = useSearchParams();
   const search = searchParams.get('search') || '';
@@ -100,14 +108,45 @@ const Home = () => {
   
   // Tab state for "What to cook this week"
   const [activeTab, setActiveTab] = useState('Tất cả');
+  // Món phổ biến theo từng tab, lấy từ hệ gợi ý (GET /api/recommendations/popular?filter=...)
+  const [tabRecipes, setTabRecipes] = useState({});
 
   useEffect(() => {
+    const filter = HOME_TAB_FILTERS[activeTab];
+    if (!filter || tabRecipes[activeTab]) return;
+    axios
+      .get('/api/recommendations/popular', { params: { filter, limit: 16 } })
+      .then((res) => setTabRecipes((current) => ({ ...current, [activeTab]: res.data.recipes || [] })))
+      .catch(() => setTabRecipes((current) => ({ ...current, [activeTab]: [] })));
+  }, [activeTab, tabRecipes]);
+
+  useEffect(() => {
+    let recents = [];
     try {
-      const recents = JSON.parse(localStorage.getItem('recentlyViewedRecipes') || '[]');
+      recents = JSON.parse(localStorage.getItem('recentlyViewedRecipes') || '[]');
       setRecentlyViewed(recents);
     } catch (e) {
       console.error(e);
     }
+    if (recents.length === 0) return;
+
+    // Đối chiếu với server: bỏ món đã bị xóa, cập nhật tên/ảnh mới nhất
+    axios
+      .get('/api/recipe-cards', { params: { ids: recents.map((item) => item.id).join(',') } })
+      .then((res) => {
+        const fresh = (res.data.recipes || []).map(({ id, title, image_url: imageUrl }) => ({
+          id,
+          title,
+          image_url: imageUrl,
+        }));
+        setRecentlyViewed(fresh);
+        try {
+          localStorage.setItem('recentlyViewedRecipes', JSON.stringify(fresh));
+        } catch (e) {
+          // trình duyệt chặn localStorage -> bỏ qua
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const updateRecentControls = useCallback(() => {
@@ -214,20 +253,8 @@ const Home = () => {
   const topRecipe = latestRecipes.length > 0 ? latestRecipes[0] : null;
   const sideRecipes = latestRecipes.slice(1, 5);
 
-  // Filter popular recipes based on active tab
-  let filteredPopular = popularRecipes;
-  if (activeTab === 'Bữa sáng') {
-    filteredPopular = popularRecipes.filter((recipe) => recipe.meal_time_name?.toLowerCase().includes('sáng'));
-  } else if (activeTab === 'Bữa tối') {
-    filteredPopular = popularRecipes.filter((recipe) => recipe.meal_time_name?.toLowerCase().includes('tối'));
-  } else if (activeTab === 'Ăn chay') {
-    filteredPopular = popularRecipes.filter((recipe) => (
-      recipe.category_name?.toLowerCase().includes('chay') ||
-      recipe.course_type_name?.toLowerCase().includes('chay')
-    ));
-  } else if (activeTab === 'Dưới 30 phút') {
-    filteredPopular = popularRecipes.filter((recipe) => Number(recipe.cook_time) < 30);
-  }
+  // Tab "Tất cả" dùng danh sách phổ biến chung; các tab khác lấy món phổ biến theo bộ lọc
+  const filteredPopular = activeTab === 'Tất cả' ? popularRecipes : tabRecipes[activeTab] || [];
 
   const heroRecipeIds = new Set([topRecipe?.id, ...sideRecipes.map((recipe) => recipe.id)].filter(Boolean));
   const popularFallbackRecipes = activeTab === 'Tất cả' ? latestRecipes.slice(1) : [];
@@ -320,7 +347,12 @@ const Home = () => {
                         {recentlyViewed.slice(0, 10).map(r => (
                           <Link to={`/recipes/${r.id}`} key={`recent-${r.id}`} className="mag-recently-card">
                             <div className="mag-recently-img-wrap">
-                              <img src={r.image_url || DEFAULT_RECIPE_IMAGE} alt={r.title} loading="lazy" />
+                              <img
+                                src={r.image_url || DEFAULT_RECIPE_IMAGE}
+                                alt={r.title}
+                                loading="lazy"
+                                onError={handleImageError}
+                              />
                             </div>
                             <h4>{r.title}</h4>
                           </Link>
