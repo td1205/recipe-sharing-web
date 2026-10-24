@@ -52,6 +52,7 @@ const Recipe = {
         ratings: true,
         meal_times: true,
         recipe_media: true,
+        recipe_tags: { select: { tags: { select: { name: true } } } },
         _count: { select: { recipe_views: true } },
       },
       orderBy: { created_at: 'desc' },

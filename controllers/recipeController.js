@@ -5,6 +5,16 @@ const categoryModel = require('../repositories/categoryRepository');
 const commentModel = require('../repositories/commentRepository');
 const ratingModel = require('../repositories/ratingRepository');
 const favoriteModel = require('../repositories/favoriteRepository');
+const recommender = require('../services/recommender');
+const { getRecipeCardsByIds } = require('../repositories/recommendationRepository');
+
+// Nếu hệ gợi ý mới lỗi (vd chưa dựng xong mô hình) thì dùng cách cũ, trang vẫn hiển thị được
+function withFallback(promise, fallback, label) {
+  return promise.catch((err) => {
+    console.error(`[recommender] ${label} lỗi, dùng cách cũ:`, err.message);
+    return fallback();
+  });
+}
 async function getHomePage(req, res) {
   try {
     const search = req.query.search ? req.query.search.trim() : '';
@@ -61,9 +71,13 @@ async function getHomePage(req, res) {
     
     const [latestRecipes, popularRecipes, todayRecipes, recommendedRecipes] = await Promise.all([
       recipeModel.getLatestRecipes(16),
-      recipeModel.getPopularRecipes(16),
+      withFallback(recommender.popularRecipes(16), () => recipeModel.getPopularRecipes(16), 'popular'),
       recipeModel.getTodayRecipes(16),
-      recipeModel.getRecommendedRecipes(userId, 16)
+      withFallback(
+        recommender.recommendForUser(userId, 16),
+        () => recipeModel.getRecommendedRecipes(userId, 16),
+        'recommendForUser',
+      ),
     ]);
 
     res.json({
@@ -128,6 +142,8 @@ async function getAllRecipes(req, res) {
       author_name: recipe.author_name,
       category_name: recipe.category_name,
       meal_time_name: recipe.meal_time_name,
+      // tag của món (dùng cho bộ lọc ?tag= ở trang danh sách, vd "thịt gà", "hải sản")
+      tag_names: (recipe.recipe_tags || []).map((item) => item.tags?.name).filter(Boolean),
       avg_rating: recipe.avg_rating,
       total_ratings: recipe.total_ratings,
       view_count: recipe.view_count,
@@ -167,11 +183,10 @@ async function getRecipeDetail(req, res) {
         ratingModel.getAverageRating(recipeId),
         recipeModel.getTagsByRecipeId(recipeId),
         recipeModel.getMediaByRecipeId(recipeId),
-        recipeModel.getDetailRecommendations(
-          recipeId,
-          req.session.user?.id || null,
-          recentIds,
-          16
+        withFallback(
+          recommender.similarRecipes(recipeId, 16),
+          () => recipeModel.getDetailRecommendations(recipeId, req.session.user?.id || null, recentIds, 16),
+          'similarRecipes',
         ),
       ]);
     let isFav = false;
@@ -474,7 +489,33 @@ async function handleDeleteRecipe(req, res) {
     res.status(500).send('Server Error');
   }
 }
+// GET /api/recipe-cards?ids=3,1,2 -> thông tin thẻ món theo đúng thứ tự, bỏ qua món đã bị xóa.
+// Dùng để làm mới danh sách "Xem gần đây" (lưu ở trình duyệt) theo dữ liệu hiện tại.
+async function getRecipeCards(req, res) {
+  try {
+    const ids = String(req.query.ids || '')
+      .split(',')
+      .map((id) => parseInt(id, 10))
+      .filter((id) => Number.isInteger(id) && id > 0)
+      .slice(0, 30);
+    const cards = await getRecipeCardsByIds(ids);
+    res.json({
+      success: true,
+      recipes: cards.map(({ id, title, image_url: imageUrl, category_name: categoryName }) => ({
+        id,
+        title,
+        image_url: imageUrl,
+        category_name: categoryName,
+      })),
+    });
+  } catch (err) {
+    console.error('Lỗi lấy thẻ món:', err);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+}
+
 module.exports = {
+  getRecipeCards,
   getHomePage,
   getAllRecipes,
   getPopularRecipes,
