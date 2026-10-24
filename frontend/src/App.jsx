@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -12,6 +12,8 @@ import RecipeEdit from './pages/RecipeEdit';
 import RecipeList from './pages/RecipeList';
 import Profile from './pages/Profile';
 import ProfileEdit from './pages/ProfileEdit';
+import PublicProfile from './pages/PublicProfile';
+import NotFound from './pages/NotFound';
 import Articles from './pages/Articles';
 import ArticleDetail from './pages/ArticleDetail';
 import ChangePassword from './pages/ChangePassword';
@@ -51,6 +53,7 @@ function App() {
           
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/edit" element={<ProfileEdit />} />
+          <Route path="/profile/:id" element={<PublicProfile />} />
           
           {/* Admin Routes */}
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
@@ -58,6 +61,10 @@ function App() {
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/comments" element={<AdminComments />} />
           <Route path="/admin/articles" element={<AdminArticles />} />
+          <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+
+          {/* Mọi đường dẫn không tồn tại -> trang 404 */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
     </AuthProvider>

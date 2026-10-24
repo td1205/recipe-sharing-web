@@ -1070,6 +1070,7 @@ body, .container-full {
   gap: 12px;
 }
 .nyt-mega-col h4 {
+  white-space: nowrap;
   font-size: 12px;
   font-weight: 800;
   color: var(--color-text-main);
@@ -1078,6 +1079,7 @@ body, .container-full {
   margin: 0 0 8px 0;
 }
 .nyt-mega-col a {
+  white-space: nowrap; /* không để "Thịt heo", "Cà chua" bị xuống dòng */
   font-size: 14px;
   color: var(--color-text-main);
   text-decoration: none;

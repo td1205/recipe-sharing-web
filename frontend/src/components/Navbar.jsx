@@ -7,6 +7,137 @@ import { AuthContext } from '../context/AuthContext';
 import LoginRequiredModal from './LoginRequiredModal';
 import ImageSearchModal from './ImageSearchModal';
 
+
+// ============================================================================
+// MENU CHÍNH - mỗi link trỏ tới bộ lọc có dữ liệu thật ở trang /recipes:
+//   ?category=<tên danh mục>  ?meal_time=Sáng|Trưa|Tối  ?tag=<tag món>
+//   ?duration=under_30|30_60|over_60  ?search=<từ khóa>
+// Muốn thêm mục: thêm [nhãn, đường dẫn] vào cột tương ứng.
+// ============================================================================
+const recipesBy = (key, value) => `/recipes?${key}=${encodeURIComponent(value)}`;
+
+const NAV_MENUS = [
+  {
+    key: 'what-to-cook',
+    label: 'Hôm nay nấu gì',
+    to: '/recipes',
+    style: { minWidth: '460px', gap: '48px' },
+    columns: [
+      {
+        title: 'GỢI Ý HÔM NAY',
+        links: [
+          ['Phổ biến nhất (Top 50)', '/popular'],
+          ['Nhanh gọn dưới 30 phút', recipesBy('duration', 'under_30')],
+          ['Thanh đạm & Ăn chay', recipesBy('tag', 'món chay')],
+          ['Món canh ấm bụng', recipesBy('category', 'Món Canh')],
+        ],
+      },
+      {
+        title: 'CHỌN THEO BỮA ĂN',
+        links: [
+          ['Bữa sáng tiện lợi', recipesBy('meal_time', 'Sáng')],
+          ['Bữa trưa công sở', recipesBy('meal_time', 'Trưa')],
+          ['Bữa tối gia đình', recipesBy('meal_time', 'Tối')],
+          ['Tráng miệng & Bánh ngọt', recipesBy('category', 'Bánh & Tráng miệng')],
+        ],
+      },
+    ],
+  },
+  {
+    key: 'recipes',
+    label: 'Công thức',
+    to: '/recipes',
+    columns: [
+      {
+        title: 'THEO CÁCH CHẾ BIẾN',
+        links: ['Món Chiên', 'Món Xào', 'Món Kho', 'Món Hấp', 'Món Nướng', 'Món Luộc'].map((name) => [
+          name,
+          recipesBy('category', name),
+        ]),
+      },
+      {
+        title: 'MÓN NƯỚC & MÓN CHÍNH',
+        links: ['Món Canh', 'Món Lẩu', 'Cơm, Bún, Phở & Mì', 'Gỏi & Salad'].map((name) => [
+          name,
+          recipesBy('category', name),
+        ]),
+      },
+      {
+        title: 'ĐỒ NGỌT & ĐỒ UỐNG',
+        links: ['Bánh & Tráng miệng', 'Đồ uống', 'Sốt & Nước chấm'].map((name) => [name, recipesBy('category', name)]),
+      },
+      {
+        title: 'THEO THỜI GIAN NẤU',
+        links: [
+          ['Dưới 30 phút', recipesBy('duration', 'under_30')],
+          ['30 – 60 phút', recipesBy('duration', '30_60')],
+          ['Trên 60 phút', recipesBy('duration', 'over_60')],
+        ],
+      },
+    ],
+  },
+  {
+    key: 'ingredients',
+    label: 'Nguyên liệu',
+    to: '/recipes',
+    columns: [
+      {
+        title: 'THỊT',
+        links: [
+          ['Thịt gà', recipesBy('tag', 'thịt gà')],
+          ['Thịt bò', recipesBy('tag', 'thịt bò')],
+          ['Thịt heo', recipesBy('tag', 'thịt heo')],
+          ['Thịt vịt', recipesBy('tag', 'thịt vịt')],
+        ],
+      },
+      {
+        title: 'HẢI SẢN',
+        links: [
+          ['Hải sản', recipesBy('tag', 'hải sản')],
+          ['Cá', recipesBy('tag', 'cá')],
+          ['Tôm', recipesBy('search', 'tôm')],
+          ['Mực', recipesBy('search', 'mực')],
+        ],
+      },
+      {
+        title: 'ĐẠM THỰC VẬT & TRỨNG',
+        links: [
+          ['Đậu hũ', recipesBy('tag', 'đậu hũ')],
+          ['Nấm', recipesBy('tag', 'nấm')],
+          ['Trứng', recipesBy('tag', 'trứng')],
+          ['Món chay', recipesBy('tag', 'món chay')],
+        ],
+      },
+      {
+        title: 'RAU CỦ',
+        links: [
+          ['Cà chua', recipesBy('search', 'cà chua')],
+          ['Khoai', recipesBy('search', 'khoai')],
+          ['Măng', recipesBy('search', 'măng')],
+        ],
+      },
+    ],
+  },
+  {
+    key: 'occasions',
+    label: 'Dịp đặc biệt',
+    to: '/recipes',
+    style: { left: '200px' },
+    columns: [
+      {
+        title: 'DỊP LỄ & TIỆC',
+        links: [
+          ['Món ngày Tết', recipesBy('search', 'tết')],
+          ['Món đãi tiệc', recipesBy('search', 'tiệc')],
+          ['Lẩu cuối tuần', recipesBy('category', 'Món Lẩu')],
+          ['Đồ nướng BBQ', recipesBy('category', 'Món Nướng')],
+        ],
+      },
+    ],
+  },
+  { key: 'articles', label: 'Bài viết', to: '/articles' },
+];
+
 const Navbar = () => {
   const { user, logout } = useContext(AuthContext);
   const [navData, setNavData] = useState({ courseTypes: [], categories: [], mealTimes: [] });
@@ -147,7 +278,8 @@ const Navbar = () => {
             >
               Đăng công thức
             </button>
-            <Link to="/" className="nyt-action-link nyt-recipe-box-link" onClick={handleMockupClick}>
+            {/* "Hộp công thức" = các món đã lưu (yêu thích), hiển thị ở trang hồ sơ */}
+            <Link to={user ? '/profile' : '/login'} className="nyt-action-link nyt-recipe-box-link">
                <i className="fa-regular fa-bookmark"></i>
                <span className="nyt-action-label">Hộp công thức</span>
             </Link>
@@ -162,7 +294,7 @@ const Navbar = () => {
                       <strong>{user.username}</strong>
                       <span>{user.email}</span>
                     </div>
-                    {user.role === 'admin' && <Link to="/admin" className="nyt-dropdown-item">Quản trị viên</Link>}
+                    {user.role === 'admin' && <Link to="/admin/dashboard" className="nyt-dropdown-item">Quản trị viên</Link>}
                     <Link to="/profile" className="nyt-dropdown-item">Hồ sơ</Link>
                     <button onClick={handleLogout} className="nyt-dropdown-item">Đăng xuất</button>
                   </div>
@@ -182,208 +314,29 @@ const Navbar = () => {
         <div className="nyt-container">
           <ul className="nyt-nav-list">
             
-            {/* 1. What to Cook */}
-            <li 
-              className="nyt-nav-item"
-              onMouseEnter={() => setActiveMega('what-to-cook')}
-              onMouseLeave={() => setActiveMega(null)}
-            >
-              <Link to="/recipes?category=Tất cả">Hôm nay nấu gì</Link>
-              {activeMega === 'what-to-cook' && (
-                <div className="nyt-mega-menu" style={{ minWidth: '460px', gap: '48px' }}>
-                   <div className="nyt-mega-col">
-                     <h4>GỢI Ý HÔM NAY</h4>
-                     <Link to="/popular" onClick={() => setActiveMega(null)}>Phổ biến nhất (Top 50)</Link>
-                     <Link to="/recipes?max_cook_time=30" onClick={() => setActiveMega(null)}>Nhanh gọn dưới 30 phút</Link>
-                     <Link to="/recipes?search=chay" onClick={() => setActiveMega(null)}>Thanh đạm & Ăn chay</Link>
-                     <Link to="/recipes?category=Món Canh" onClick={() => setActiveMega(null)}>Món canh & Hầm ấm bụng</Link>
-                   </div>
-                   <div className="nyt-mega-col">
-                     <h4>CHỌN THEO BỮA ĂN</h4>
-                     <Link to="/recipes?meal_time=1" onClick={() => setActiveMega(null)}>Bữa sáng tiện lợi</Link>
-                     <Link to="/recipes?meal_time=2" onClick={() => setActiveMega(null)}>Bữa trưa công sở</Link>
-                     <Link to="/recipes?meal_time=4" onClick={() => setActiveMega(null)}>Bữa tối gia đình</Link>
-                     <Link to="/recipes?category=12" onClick={() => setActiveMega(null)}>Món tráng miệng & Bánh ngọt</Link>
-                   </div>
-                </div>
-              )}
-            </li>
-
-            {/* 2. Recipes */}
-            <li 
-              className="nyt-nav-item"
-              onMouseEnter={() => setActiveMega('recipes')}
-              onMouseLeave={() => setActiveMega(null)}
-            >
-              <Link to="/recipes?category=Công thức">Công thức</Link>
-              {activeMega === 'recipes' && (
-                <div className="nyt-mega-menu">
-                   <div className="nyt-mega-col">
-                     <h4>MÓN NGON MỖI NGÀY</h4>
-                     <Link to="/">Dễ làm</Link>
-                     <Link to="/">Tốt cho sức khỏe</Link>
-                     <Link to="/">Bữa tối gia đình</Link>
-                     <Link to="/">Mỳ & Nui</Link>
-                     <Link to="/">Nhanh gọn</Link>
-                   </div>
-                   <div className="nyt-mega-col">
-                     <h4>THEO BỮA</h4>
-                     <Link to="/">Bữa tối</Link>
-                     <Link to="/">Bữa sáng</Link>
-                     <Link to="/">Bữa trưa</Link>
-                     <Link to="/">Tráng miệng</Link>
-                     <Link to="/">Khai vị</Link>
-                     <Link to="/">Món ăn kèm</Link>
-                     <Link to="/">Đồ uống</Link>
-                   </div>
-                   <div className="nyt-mega-col">
-                     <h4>THEO CHẾ ĐỘ</h4>
-                     <Link to="/">Ăn chay</Link>
-                     <Link to="/">Thuần chay</Link>
-                     <Link to="/">Không Gluten</Link>
-                     <Link to="/">Không bơ sữa</Link>
-                   </div>
-                   <div className="nyt-mega-col">
-                     <h4>THEO CÁCH CHẾ BIẾN</h4>
-                     <Link to="/">Nồi chiên không dầu</Link>
-                     <Link to="/">Nồi áp suất</Link>
-                     <Link to="/">Nấu chậm</Link>
-                     <Link to="/">Nướng BBQ</Link>
-                     <Link to="/">Nướng khay</Link>
-                     <Link to="/">Làm bánh lò</Link>
-                   </div>
-                </div>
-              )}
-            </li>
-
-            {/* 3. Ingredients */}
-            <li 
-              className="nyt-nav-item"
-              onMouseEnter={() => setActiveMega('ingredients')}
-              onMouseLeave={() => setActiveMega(null)}
-            >
-              <Link to="/recipes?category=Nguyên liệu">Nguyên liệu</Link>
-              {activeMega === 'ingredients' && (
-                <div className="nyt-mega-menu">
-                   <div className="nyt-mega-col">
-                     <h4>THỊT & HẢI SẢN</h4>
-                     <Link to="/">Thịt gà</Link>
-                     <Link to="/">Thịt bò</Link>
-                     <Link to="/">Thịt heo</Link>
-                     <Link to="/">Cá hồi</Link>
-                     <Link to="/">Tôm</Link>
-                   </div>
-                   <div className="nyt-mega-col">
-                     <h4>RAU CỦ QUẢ</h4>
-                     <Link to="/">Bí ngòi</Link>
-                     <Link to="/">Khoai lang</Link>
-                     <Link to="/">Cà tím</Link>
-                     <Link to="/">Bắp cải</Link>
-                     <Link to="/">Măng tây</Link>
-                     <Link to="/">Cà chua</Link>
-                   </div>
-                   <div className="nyt-mega-col">
-                     <h4>ĐẠM THỰC VẬT</h4>
-                     <Link to="/">Đậu hũ</Link>
-                     <Link to="/">Đậu lăng</Link>
-                     <Link to="/">Đậu gà</Link>
-                     <Link to="/">Các loại đậu</Link>
-                   </div>
-                   <div className="nyt-mega-col">
-                     <h4>CƠM, NGŨ CỐC, MỲ</h4>
-                     <Link to="/">Mỳ Ý</Link>
-                     <Link to="/">Bún, Phở, Mỳ</Link>
-                     <Link to="/">Cơm & Gạo</Link>
-                     <Link to="/">Diêm mạch (Quinoa)</Link>
-                     <Link to="/">Bánh mì</Link>
-                     <Link to="/">Hạt Couscous</Link>
-                   </div>
-                </div>
-              )}
-            </li>
-
-            {/* 4. Occasions */}
-            <li 
-              className="nyt-nav-item"
-              onMouseEnter={() => setActiveMega('occasions')}
-              onMouseLeave={() => setActiveMega(null)}
-            >
-              <Link to="/recipes?category=Dịp đặc biệt">Dịp đặc biệt</Link>
-              {activeMega === 'occasions' && (
-                <div className="nyt-mega-menu" style={{ left: '200px' }}>
-                   <div className="nyt-mega-col">
-                     <h4>DỊP LỄ SẮP TỚI</h4>
-                     <Link to="/">Tết Trung Thu</Link>
-                     <Link to="/">Halloween</Link>
-                     <Link to="/">Giáng Sinh</Link>
-                     <Link to="/">Tết Nguyên Đán</Link>
-                   </div>
-                   <div className="nyt-mega-col">
-                     <h4>THEO SỰ KIỆN</h4>
-                     <Link to="/">Sinh nhật</Link>
-                     <Link to="/">Ăn nhẹ (Brunch)</Link>
-                     <Link to="/">Bữa tối lãng mạn</Link>
-                     <Link to="/">Tiệc tùng</Link>
-                     <Link to="/">Dã ngoại</Link>
-                   </div>
-                </div>
-              )}
-            </li>
-
-            {/* 5. Articles */}
-            <li 
-              className="nyt-nav-item"
-              onMouseEnter={() => setActiveMega('articles')}
-              onMouseLeave={() => setActiveMega(null)}
-            >
-              <Link to="/articles">Bài viết</Link>
-              {activeMega === 'articles' && (
-                <div className="nyt-mega-menu" style={{ left: '300px' }}>
-                   <div className="nyt-mega-col">
-                     <h4>HƯỚNG DẪN CƠ BẢN</h4>
-                     <Link to="/">Cách luộc ức gà mềm</Link>
-                     <Link to="/">Cách làm men bánh mì</Link>
-                     <Link to="/">Bí quyết xào trứng</Link>
-                   </div>
-                   <div className="nyt-mega-col">
-                     <h4>CHO NGƯỜI MỚI</h4>
-                     <Link to="/">Học nấu ăn</Link>
-                     <Link to="/">Kỹ năng dùng dao</Link>
-                     <Link to="/">An toàn & bảo quản thực phẩm</Link>
-                   </div>
-                   <div className="nyt-mega-col">
-                     <h4>BẠN ĐỌC YÊU THÍCH</h4>
-                     <Link to="/">Top 100 món ăn tối</Link>
-                     <Link to="/">Món canh khỏe mạnh</Link>
-                     <Link to="/">Làm bánh mùa thu</Link>
-                   </div>
-                </div>
-              )}
-            </li>
-
-            {/* 6. Videos */}
-            <li 
-              className="nyt-nav-item"
-              onMouseEnter={() => setActiveMega('videos')}
-              onMouseLeave={() => setActiveMega(null)}
-            >
-              <Link to="/recipes?category=Video" onClick={handleMockupClick}>Video</Link>
-              {activeMega === 'videos' && (
-                <div className="nyt-mega-menu" style={{ left: '400px' }}>
-                   <div className="nyt-mega-col">
-                     <h4>CHUỖI CÔNG THỨC</h4>
-                     <Link to="/">Nấu ăn 101</Link>
-                     <Link to="/">Góc rau củ</Link>
-                     <Link to="/">Giờ nướng bánh</Link>
-                   </div>
-                   <div className="nyt-mega-col">
-                     <h4>GÓC NGƯỜI NỔI TIẾNG</h4>
-                     <Link to="/">Chuyện trò cùng Pizza</Link>
-                     <Link to="/">Món tủ của tôi</Link>
-                   </div>
-                </div>
-              )}
-            </li>
+            {/* Menu chính: dựng từ NAV_MENUS (đầu file), mọi link đều trỏ tới dữ liệu thật */}
+            {NAV_MENUS.map((menu) => (
+              <li
+                key={menu.key}
+                className="nyt-nav-item"
+                onMouseEnter={() => menu.columns && setActiveMega(menu.key)}
+                onMouseLeave={() => setActiveMega(null)}
+              >
+                <Link to={menu.to} onClick={() => setActiveMega(null)}>{menu.label}</Link>
+                {menu.columns && activeMega === menu.key && (
+                  <div className="nyt-mega-menu" style={menu.style}>
+                    {menu.columns.map((column) => (
+                      <div className="nyt-mega-col" key={column.title}>
+                        <h4>{column.title}</h4>
+                        {column.links.map(([label, to]) => (
+                          <Link key={label} to={to} onClick={() => setActiveMega(null)}>{label}</Link>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </li>
+            ))}
 
             {/* 7. About */}
             <li className="nyt-nav-item">
