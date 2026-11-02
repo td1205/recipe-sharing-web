@@ -11,6 +11,14 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Bảng loại món ăn (Khai vị, Món chính, Tráng miệng)
+CREATE TABLE IF NOT EXISTS course_types (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 2. Bảng lưu danh mục món ăn (ví dụ: Món Á, Món Âu, Món Chay)
 CREATE TABLE IF NOT EXISTS categories (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -21,13 +29,6 @@ CREATE TABLE IF NOT EXISTS categories (
     FOREIGN KEY (course_type_id) REFERENCES course_types(id) ON DELETE SET NULL
 );
 
--- Bảng loại món ăn (Khai vị, Món chính, Tráng miệng)
-CREATE TABLE IF NOT EXISTS course_types (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL UNIQUE,
-    description TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
 
 -- Bảng thời gian dùng bữa (Sáng, Trưa, Chiều, Tối)
 CREATE TABLE IF NOT EXISTS meal_times (
@@ -94,6 +95,7 @@ CREATE TABLE IF NOT EXISTS ratings (
     recipe_id INT NOT NULL,
     star_count INT NOT NULL CHECK (star_count >= 1 AND star_count <= 5),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_user_recipe_rating (user_id, recipe_id), -- mỗi người chấm 1 lần / món
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE
 );

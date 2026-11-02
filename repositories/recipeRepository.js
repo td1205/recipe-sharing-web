@@ -53,6 +53,7 @@ const Recipe = {
         meal_times: true,
         recipe_media: true,
         recipe_tags: { select: { tags: { select: { name: true } } } },
+        user_tag_votes: { select: { tags: { select: { name: true } } } },
         _count: { select: { recipe_views: true } },
       },
       orderBy: { created_at: 'desc' },
@@ -523,6 +524,40 @@ const Recipe = {
         }
       },
     });
+  },
+
+  // Tag do tác giả gắn cho món (bảng recipe_tags). Thay toàn bộ danh sách cũ.
+  async setRecipeTags(recipeId, tagNames) {
+    const id = parseInt(recipeId);
+    const names = [...new Set((tagNames || []).map((n) => String(n).trim().toLowerCase()).filter(Boolean))];
+    await prisma.$transaction(async (tx) => {
+      const tags = [];
+      for (const name of names) {
+        tags.push(
+          await tx.tags.upsert({
+            where: { name },
+            update: {},
+            create: { name, type: 'community' },
+          }),
+        );
+      }
+      await tx.recipe_tags.deleteMany({ where: { recipe_id: id } });
+      if (tags.length > 0) {
+        await tx.recipe_tags.createMany({
+          data: tags.map((tag) => ({ recipe_id: id, tag_id: tag.id })),
+          skipDuplicates: true,
+        });
+      }
+    });
+  },
+
+  // Tên các tag tác giả đã gắn (dùng cho form sửa công thức)
+  async getRecipeTagNames(recipeId) {
+    const rows = await prisma.recipe_tags.findMany({
+      where: { recipe_id: parseInt(recipeId) },
+      include: { tags: { select: { name: true } } },
+    });
+    return rows.map((row) => row.tags.name);
   },
 
   async deleteRecipe(id) {

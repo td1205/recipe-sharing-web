@@ -1,6 +1,6 @@
 const userModel = require('../repositories/userRepository');
 const bcrypt = require('bcrypt');
-const { sendMail } = require('../utils/mailHelper');
+const { sendMail, isMailConfigured, MailError } = require('../utils/mailHelper');
 const authService = require('../services/authService');
 
 const OTP_TTL_MS = 5 * 60 * 1000; // OTP hết hạn sau 5 phút
@@ -40,6 +40,8 @@ async function handleLogin(req, res) {
         error: result.error,
       });
     }
+    // Đăng nhập đúng -> xoá bộ đếm số lần sai
+    if (req.rateLimit) req.rateLimit.reset();
     const user = result.user;
     req.session.user = {
       id: user.id,
@@ -125,6 +127,16 @@ function getForgotPasswordPage(req, res) {
 async function handleForgotPassword(req, res) {
   try {
     const { email } = req.body;
+    if (!email || !String(email).trim()) {
+      return res.status(400).json({ success: false, error: 'Vui lòng nhập email!' });
+    }
+    // Báo rõ khi server chưa cấu hình email, thay vì "Lỗi hệ thống"
+    if (!isMailConfigured()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Chức năng gửi OTP chưa được cấu hình trên máy chủ (thiếu EMAIL_USER / EMAIL_APP_PASSWORD).',
+      });
+    }
     const [userByEmail] = await userModel.getUserByEmail(email);
     if (!userByEmail) {
       return res.status(404).json({
@@ -150,6 +162,9 @@ async function handleForgotPassword(req, res) {
       return res.json({ success: true, message: 'OTP sent' });
     });
   } catch (error) {
+    if (error instanceof MailError) {
+      return res.status(503).json({ success: false, error: error.message });
+    }
     console.error('Lỗi handleForgotPassword:', error);
     return res.status(500).json({
       success: false,

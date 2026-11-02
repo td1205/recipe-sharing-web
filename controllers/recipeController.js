@@ -7,6 +7,7 @@ const ratingModel = require('../repositories/ratingRepository');
 const favoriteModel = require('../repositories/favoriteRepository');
 const recommender = require('../services/recommender');
 const { getRecipeCardsByIds } = require('../repositories/recommendationRepository');
+const { validateRecipeInput } = require('../utils/recipeValidation');
 
 // Nếu hệ gợi ý mới lỗi (vd chưa dựng xong mô hình) thì dùng cách cũ, trang vẫn hiển thị được
 function withFallback(promise, fallback, label) {
@@ -143,7 +144,14 @@ async function getAllRecipes(req, res) {
       category_name: recipe.category_name,
       meal_time_name: recipe.meal_time_name,
       // tag của món (dùng cho bộ lọc ?tag= ở trang danh sách, vd "thịt gà", "hải sản")
-      tag_names: (recipe.recipe_tags || []).map((item) => item.tags?.name).filter(Boolean),
+      // gồm tag tác giả gắn (recipe_tags) và tag cộng đồng bình chọn (user_tag_votes)
+      tag_names: [
+        ...new Set(
+          [...(recipe.recipe_tags || []), ...(recipe.user_tag_votes || [])]
+            .map((item) => item.tags?.name)
+            .filter(Boolean),
+        ),
+      ],
       avg_rating: recipe.avg_rating,
       total_ratings: recipe.total_ratings,
       view_count: recipe.view_count,
@@ -232,101 +240,52 @@ async function getCreatePage(req, res) {
     res.status(500).send('Server Error');
   }
 }
+// Kiểm tra các id tham chiếu (danh mục, bữa ăn, loại món) có tồn tại trong DB
+async function findMissingReferences(recipe) {
+  const errors = [];
+  const [category, mealTime, courseType] = await Promise.all([
+    prisma.categories.findUnique({ where: { id: recipe.category_id }, select: { id: true } }),
+    recipe.meal_time_id ? prisma.meal_times.findUnique({ where: { id: recipe.meal_time_id }, select: { id: true } }) : true,
+    recipe.course_type_id ? prisma.course_types.findUnique({ where: { id: recipe.course_type_id }, select: { id: true } }) : true,
+  ]);
+  if (!category) errors.push('Danh mục không tồn tại.');
+  if (!mealTime) errors.push('Bữa ăn không tồn tại.');
+  if (!courseType) errors.push('Loại món không tồn tại.');
+  return errors;
+}
+
+// Đọc + kiểm tra dữ liệu gửi lên; trả về null nếu đã trả lỗi 400 cho client
+async function readRecipeInput(req, res) {
+  const { errors, data } = validateRecipeInput(req.body);
+  if (errors.length === 0) errors.push(...(await findMissingReferences(data.recipe)));
+  if (errors.length > 0) {
+    res.status(400).json({ success: false, message: errors[0], errors });
+    return null;
+  }
+  return data;
+}
+
 async function handleCreateRecipe(req, res) {
   try {
     if (!req.session.user) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
-    const {
-      title,
-      description,
-      prep_time,
-      cook_time,
-      servings,
-      image_url,
-      category_id,
-      meal_time,
-      course_type,
-      video_url,
-      media_urls,
-      media_types,
-    } = req.body;
-    const recipeData = {
-      user_id: req.session.user.id,
-      category_id: parseInt(category_id),
-      title,
-      description,
-      prep_time: parseInt(prep_time) || 0,
-      cook_time: parseInt(cook_time) || 0,
-      servings: parseInt(servings) || 1,
-      image_url,
-      meal_time_id: parseInt(req.body.meal_time_id) || null,
-      course_type_id: parseInt(req.body.course_type_id) || null,
-    };
-    const ingNames = req.body.ing_name;
-    const ingAmounts = req.body.ing_amount;
-    const ingUnits = req.body.ing_unit;
-    const ingredients = [];
-    if (Array.isArray(ingNames)) {
-      for (let i = 0; i < ingNames.length; i++) {
-        ingredients.push({
-          name: ingNames[i],
-          amount: ingAmounts[i],
-          unit: ingUnits[i],
-        });
-      }
-    } else if (ingNames) {
-      ingredients.push({
-        name: ingNames,
-        amount: ingAmounts,
-        unit: ingUnits,
-      });
-    }
-    const stepInstructions = req.body.step_instruction;
-    const steps = [];
-    if (Array.isArray(stepInstructions)) {
-      for (let i = 0; i < stepInstructions.length; i++) {
-        steps.push({
-          step_number: i + 1,
-          instruction: stepInstructions[i],
-        });
-      }
-    } else if (stepInstructions) {
-      steps.push({
-        step_number: 1,
-        instruction: stepInstructions,
-      });
-    }
+    const input = await readRecipeInput(req, res);
+    if (!input) return;
 
-    const media = [];
-    if (Array.isArray(media_urls) && Array.isArray(media_types)) {
-      for (let i = 0; i < media_urls.length; i++) {
-        if (media_urls[i] && media_urls[i].trim() !== '') {
-          media.push({
-            media_url: media_urls[i].trim(),
-            media_type: media_types[i] || 'image'
-          });
-        }
-      }
-    } else if (media_urls) {
-      media.push({
-        media_url: media_urls.trim(),
-        media_type: media_types || 'image'
-      });
+    const recipeId = await recipeModel.createRecipe(
+      { ...input.recipe, user_id: req.session.user.id },
+      input.ingredients,
+      input.steps,
+      input.media,
+    );
+    if (input.tags && input.tags.length > 0) {
+      await recipeModel.setRecipeTags(recipeId, input.tags);
     }
-
-    if (video_url && video_url.trim() !== '') {
-      media.push({
-        media_url: video_url.trim(),
-        media_type: 'video'
-      });
-    }
-
-    await recipeModel.createRecipe(recipeData, ingredients, steps, media);
-    res.json({ success: true, message: 'Recipe created' });
+    res.status(201).json({ success: true, message: 'Recipe created', recipeId });
   } catch (err) {
-    console.error(err);
-    res.status(500).send('Server Error');
+    console.error('Lỗi đăng công thức:', err);
+    res.status(500).json({ success: false, message: 'Lỗi hệ thống khi đăng công thức, vui lòng thử lại.' });
   }
 }
 async function getEditPage(req, res) {
@@ -345,13 +304,14 @@ async function getEditPage(req, res) {
     ) {
       return res.status(403).json({ success: false, message: 'Forbidden' });
     }
-    const [ingredients, steps, categories, courseTypes, mealTimes, media] = await Promise.all([
+    const [ingredients, steps, categories, courseTypes, mealTimes, media, tags] = await Promise.all([
       recipeModel.getIngredientsByRecipeId(recipeId),
       recipeModel.getStepsByRecipeId(recipeId),
       categoryModel.getAll(),
       prisma.course_types.findMany(),
       prisma.meal_times.findMany(),
-      prisma.recipe_media.findMany({ where: { recipe_id: parseInt(recipeId) } })
+      prisma.recipe_media.findMany({ where: { recipe_id: parseInt(recipeId) } }),
+      recipeModel.getRecipeTagNames(recipeId),
     ]);
     res.json({
       success: true,
@@ -362,6 +322,7 @@ async function getEditPage(req, res) {
       courseTypes,
       mealTimes,
       media,
+      tags,
       user: req.session.user,
     });
   } catch (err) {
@@ -374,7 +335,10 @@ async function handleUpdateRecipe(req, res) {
     if (!req.session.user) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
-    const recipeId = req.params.id;
+    const recipeId = parseInt(req.params.id, 10);
+    if (!Number.isInteger(recipeId) || recipeId <= 0) {
+      return res.status(404).json({ success: false, message: 'Recipe not found' });
+    }
     const recipe = await recipeModel.getRecipeById(recipeId);
     if (!recipe) {
       return res.status(404).json({ success: false, message: 'Recipe not found' });
@@ -385,85 +349,18 @@ async function handleUpdateRecipe(req, res) {
     ) {
       return res.status(403).json({ success: false, message: 'Forbidden' });
     }
-    const {
-      title,
-      description,
-      prep_time,
-      cook_time,
-      servings,
-      image_url,
-      category_id,
-      meal_time,
-      course_type,
-      media_urls,
-      media_types
-    } = req.body;
-    const recipeData = {
-      category_id: parseInt(category_id),
-      title,
-      description,
-      prep_time: parseInt(prep_time) || 0,
-      cook_time: parseInt(cook_time) || 0,
-      servings: parseInt(servings) || 1,
-      image_url,
-      meal_time_id: parseInt(req.body.meal_time_id) || null,
-      course_type_id: parseInt(req.body.course_type_id) || null,
-    };
-    const ingNames = req.body.ing_name;
-    const ingAmounts = req.body.ing_amount;
-    const ingUnits = req.body.ing_unit;
-    const ingredients = [];
-    if (Array.isArray(ingNames)) {
-      for (let i = 0; i < ingNames.length; i++) {
-        ingredients.push({
-          name: ingNames[i],
-          amount: ingAmounts[i],
-          unit: ingUnits[i],
-        });
-      }
-    } else if (ingNames) {
-      ingredients.push({
-        name: ingNames,
-        amount: ingAmounts,
-        unit: ingUnits,
-      });
-    }
-    const stepInstructions = req.body.step_instruction;
-    const steps = [];
-    if (Array.isArray(stepInstructions)) {
-      for (let i = 0; i < stepInstructions.length; i++) {
-        steps.push({
-          step_number: i + 1,
-          instruction: stepInstructions[i],
-        });
-      }
-    } else if (stepInstructions) {
-      steps.push({
-        step_number: 1,
-        instruction: stepInstructions,
-      });
-    }
+    const input = await readRecipeInput(req, res);
+    if (!input) return;
 
-    const media = [];
-    if (Array.isArray(media_urls)) {
-      for (let i = 0; i < media_urls.length; i++) {
-        media.push({
-          media_url: media_urls[i],
-          media_type: media_types && media_types[i] ? media_types[i] : 'image',
-        });
-      }
-    } else if (media_urls) {
-      media.push({
-        media_url: media_urls,
-        media_type: media_types || 'image',
-      });
+    await recipeModel.updateRecipe(recipeId, input.recipe, input.ingredients, input.steps, input.media);
+    // tags === undefined: client cũ không gửi tag -> giữ nguyên tag hiện có
+    if (input.tags !== undefined) {
+      await recipeModel.setRecipeTags(recipeId, input.tags);
     }
-
-    await recipeModel.updateRecipe(recipeId, recipeData, ingredients, steps, media);
-    res.json({ success: true, message: 'Recipe updated' });
+    res.json({ success: true, message: 'Recipe updated', recipeId });
   } catch (err) {
-    console.error(err);
-    res.status(500).send('Server Error');
+    console.error('Lỗi cập nhật công thức:', err);
+    res.status(500).json({ success: false, message: 'Lỗi hệ thống khi cập nhật công thức, vui lòng thử lại.' });
   }
 }
 async function handleDeleteRecipe(req, res) {

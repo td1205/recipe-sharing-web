@@ -24,6 +24,7 @@ router.get('/recipes/:id', recipeController.getRecipeDetail);
 router.post('/recipes/create', recipeController.handleCreateRecipe);
 router.post('/recipes/edit/:id', recipeController.handleUpdateRecipe);
 router.post('/recipes/delete/:id', recipeController.handleDeleteRecipe);
+router.delete('/recipes/:id', recipeController.handleDeleteRecipe);
 router.post('/recipes/:id/tags', interactionController.addTag);
 router.post('/recipes/:id/comments', interactionController.addComment);
 router.post('/recipes/:id/rate', interactionController.addRating);

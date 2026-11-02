@@ -1,5 +1,6 @@
 const authController = require('../controllers/authController');
 const authMiddleware = require('../middlewares/authMiddleware');
+const { loginLimiter, otpSendLimiter, registerLimiter } = require('../middlewares/rateLimit');
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
@@ -50,9 +51,9 @@ function uploadAvatar(req, res, next) {
   });
 }
 router.get('/login', authController.getLoginPage);
-router.post('/login', authController.handleLogin);
+router.post('/login', loginLimiter, authController.handleLogin);
 router.get('/register', authController.getRegisterPage);
-router.post('/register', authController.handleRegister);
+router.post('/register', registerLimiter, authController.handleRegister);
 router.get('/logout', authController.logout);
 router.get(
   '/profile',
@@ -60,7 +61,7 @@ router.get(
   authController.renderProfile,
 );
 router.get('/forgot-password', authController.getForgotPasswordPage);
-router.post('/forgot-password', authController.handleForgotPassword);
+router.post('/forgot-password', otpSendLimiter, authController.handleForgotPassword);
 router.get(
   '/profile/edit',
   authMiddleware.isAuthenticated,
