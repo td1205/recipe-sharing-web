@@ -41,8 +41,9 @@ Recipe Sharing Web is a platform where users can browse a catalog of recipes, re
 
 ### Frontend
 
-- EJS
-- Vanilla CSS
+- React 19 + Vite (SPA in `frontend/`)
+- React Router, Axios, react-hot-toast
+- Cloudinary (direct browser uploads for recipe photos/videos)
 
 ### Backend
 
@@ -62,8 +63,9 @@ Recipe Sharing Web is a platform where users can browse a catalog of recipes, re
 
 ### Other
 
-- Nodemailer
-- Joi
+- Nodemailer (OTP emails via Gmail)
+- Google Gemini (`@google/genai`) – find a dish from a photo
+- Hybrid recommender (popularity, TF-IDF content-based, item-based CF) in `services/recommender/`
 
 ## Architecture
 
@@ -73,23 +75,28 @@ The application uses a layered structure that partially implements the Service-R
 - Controllers: Handle HTTP requests and responses.
 - Services: Implement business logic.
 - Repositories: Handle database access.
-- Views: Render the user interface using EJS.
+- Frontend: React SPA (`frontend/`) calling the REST API under `/api`.
 
 ## Project Structure
 
 ```text
 recipe-sharing-web/
-├── config/
-├── controllers/
-├── middlewares/
+├── config/            # Prisma client
+├── controllers/       # HTTP handlers
+├── data/vifoodrec/    # ViFoodRec dataset (import script input)
+├── docs/              # Recommender algorithm notes & evaluation results
+├── frontend/          # React + Vite SPA
+├── middlewares/       # auth, session refresh, rate limiting
 ├── prisma/
 │   └── schema.prisma
-├── public/
-├── repositories/
+├── public/images/     # README screenshots
+├── repositories/      # Data access (Prisma)
 ├── routes/
-├── services/
-├── utils/
-├── views/
+├── scripts/           # data import, simulation, evaluation, DB migrations
+├── services/          # auth, Gemini, recommender
+├── tests/             # node:test unit tests (npm test)
+├── utils/             # mail, validation helpers
+├── init_db.sql        # base tables + seed data
 ├── package.json
 └── README.md
 ```
@@ -117,17 +124,19 @@ npm install
 
 ### 3. Configure environment variables
 
-Create a `.env` file in the root directory and configure the required variables (see the Environment Variables section below).
+Copy `.env.example` to `.env` (backend) and `frontend/.env.example` to `frontend/.env` (Cloudinary), then fill in the values (see the Environment Variables section below).
 
 ### 4. Configure the database
 
-Ensure your MySQL server is running and matches the credentials in your `.env` file. Then, generate the Prisma Client from the existing schema:
+Ensure your MySQL server is running and matches the credentials in your `.env` file. Create the base tables and seed data, then sync the remaining columns/tables from the Prisma schema and generate the client:
 
 ```bash
+mysql -u root -p < init_db.sql
+npx prisma db push
 npx prisma generate
 ```
 
-_(Note: If you are connecting to an existing database without a synced schema file, use `npx prisma db pull` first)._
+Upgrading an existing database: run `npm run db:ratings-unique` once to remove duplicate ratings and add the `UNIQUE(user_id, recipe_id)` constraint on `ratings`.
 
 ### 5. Start the application
 
@@ -148,6 +157,10 @@ npm run dev
 | `SESSION_SECRET`     | Secret string for securing sessions        | Yes      |
 | `EMAIL_USER`         | Email address for sending OTPs             | Yes      |
 | `EMAIL_APP_PASSWORD` | Application password for the email account | Yes      |
+| `GEMINI_API_KEY`     | Google Gemini key for photo search ([get one](https://aistudio.google.com/apikey)) | For photo search |
+| `GEMINI_MODELS`      | Optional comma-separated model list to try in order | No |
+| `VITE_CLOUDINARY_CLOUD_NAME` (in `frontend/.env`) | Cloudinary cloud name | Yes |
+| `VITE_CLOUDINARY_UPLOAD_PRESET` (in `frontend/.env`) | Unsigned upload preset | Yes |
 
 ## Database Setup
 
@@ -186,7 +199,10 @@ The application implements the following security measures:
 - **Password Hashing:** Passwords are encrypted using bcrypt before being stored in the database.
 - **Session Management:** Sessions are securely stored in the MySQL database using `express-mysql-session`, preventing in-memory leaks.
 - **Role-based Access Control:** Middleware is used to restrict access to admin-only routes.
-- **OTP Verification:** Password recovery requires a one-time password (OTP) delivered securely via email.
+- **OTP Verification:** Password recovery requires a one-time password (OTP) delivered via email; it expires after 5 minutes, allows at most 5 wrong attempts and is single-use.
+- **Rate Limiting:** Login (5 failed attempts / 15 min per account), OTP requests (3 / 10 min per email) and registration (10 / hour per IP) are throttled.
+- **Input Validation:** Recipe create/update requests are validated server-side and return `400` with a Vietnamese message instead of a generic `500`.
+- **XSS Protection:** Article HTML is sanitized before rendering.
 
 ## Running the Application
 
@@ -196,7 +212,13 @@ To start the application in development mode with auto-reloading:
 npm run dev
 ```
 
-The application will be accessible locally at `http://localhost:3000`.
+The frontend runs at `http://localhost:5173` (Vite, proxying `/api` to the backend on port 3000).
+
+Run the unit tests (no database needed):
+
+```bash
+npm test
+```
 
 ## Usage
 
