@@ -19,6 +19,8 @@ import ArticleDetail from './pages/ArticleDetail';
 import ChangePassword from './pages/ChangePassword';
 import ForgotPassword from './pages/ForgotPassword';
 import OTP from './pages/OTP';
+import CookWithIngredients from './pages/CookWithIngredients';
+import About from './pages/About';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminCategories from './pages/admin/Categories';
 import AdminUsers from './pages/admin/Users';
@@ -44,10 +46,12 @@ function App() {
           <Route path="/popular" element={<PopularRecipes />} />
           <Route path="/popular-recipes" element={<PopularRecipes />} />
           <Route path="/recipes" element={<RecipeList />} />
-      <Route path="/recipes/:id" element={<RecipeDetail />} />
+          <Route path="/recipes/:id" element={<RecipeDetail />} />
           <Route path="/recipes/create" element={<RecipeCreate />} />
           <Route path="/recipes/edit/:id" element={<RecipeEdit />} />
           
+          <Route path="/cook-with-ingredients" element={<CookWithIngredients />} />
+          <Route path="/about" element={<About />} />
           <Route path="/articles" element={<Articles />} />
           <Route path="/articles/:id" element={<ArticleDetail />} />
           

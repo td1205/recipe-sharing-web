@@ -1,70 +1,76 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import toast from 'react-hot-toast';
 
-const Footer = () => {
-  const handleMockupClick = (e) => {
-    e.preventDefault();
-    toast.success('Tính năng đang phát triển', { style: { background: 'var(--color-bg-body)', color: 'var(--color-text-main)', border: '1px solid var(--color-border)' }});
-  };
+const REPO_URL = 'https://github.com/td1205/recipe-sharing-web';
 
-  return (
-    <footer className="steam-footer">
-      <div className="steam-footer-container">
-        
-        <div className="steam-footer-left">
-          <div className="steam-footer-brand">
-            <Link to="/" className="steam-logo steam-logo-footer">
-              <i className="fa-solid fa-book-open" aria-hidden="true"></i>
-              <span>Recipe Sharing</span>
-            </Link>
-          </div>
-          <div className="steam-footer-copy">
-            © 2026 Recipe Sharing. Bảo lưu mọi quyền. Tất cả các thương hiệu là tài sản của chủ sở hữu tương ứng tại Việt Nam và các quốc gia khác. Giá đã bao gồm VAT (nếu có).
-          </div>
-          <div className="steam-footer-socials">
-            <a href="#" onClick={handleMockupClick}><i className="fa-brands fa-youtube"></i></a>
-            <a href="#" onClick={handleMockupClick}><i className="fa-brands fa-x-twitter"></i></a>
-            <a href="#" onClick={handleMockupClick}><i className="fa-brands fa-facebook"></i></a>
-            <a href="#" onClick={handleMockupClick}><i className="fa-solid fa-link"></i></a>
-          </div>
+// Mọi liên kết đều trỏ tới trang có thật (trước đây là link mẫu "#")
+const FOOTER_COLUMNS = [
+  {
+    title: 'KHÁM PHÁ',
+    links: [
+      ['Tất cả công thức', '/recipes'],
+      ['Món phổ biến', '/popular'],
+      ['Công thức mới', '/new-recipes'],
+      ['Nấu gì với nguyên liệu có sẵn', '/cook-with-ingredients'],
+      ['Bài viết', '/articles'],
+    ],
+  },
+  {
+    title: 'CỘNG ĐỒNG',
+    links: [
+      ['Chia sẻ công thức', '/recipes/create'],
+      ['Tài khoản của tôi', '/profile'],
+      ['Quy định nội dung', '/about#quy-dinh'],
+    ],
+  },
+  {
+    title: 'RECIPE SHARING',
+    links: [
+      ['Giới thiệu', '/about'],
+      ['Nhóm thực hiện', '/about#nhom'],
+      ['Quyền riêng tư', '/about#quyen-rieng-tu'],
+      ['Nguồn dữ liệu', '/about#du-lieu'],
+    ],
+  },
+];
+
+const Footer = () => (
+  <footer className="steam-footer">
+    <div className="steam-footer-container">
+      <div className="steam-footer-left">
+        <div className="steam-footer-brand">
+          <Link to="/" className="steam-logo steam-logo-footer">
+            <i className="fa-solid fa-book-open" aria-hidden="true"></i>
+            <span>Recipe Sharing</span>
+          </Link>
         </div>
-
-        <div className="steam-footer-right">
-          <div className="steam-footer-column">
-            <h4>RECIPE SHARING</h4>
-            <a href="#" onClick={handleMockupClick}>Thông tin về Recipe Sharing</a>
-            <a href="#" onClick={handleMockupClick}>Thỏa thuận người dùng</a>
-            <a href="#" onClick={handleMockupClick}>Chia sẻ công thức</a>
-            <a href="#" onClick={handleMockupClick}>Quy định nội dung</a>
-            <a href="#" onClick={handleMockupClick}>Thẻ quà tặng</a>
-          </div>
-          <div className="steam-footer-column">
-            <h4>CỘNG ĐỒNG</h4>
-            <a href="#" onClick={handleMockupClick}>Thông tin về Cộng đồng</a>
-            <a href="#" onClick={handleMockupClick}>Tuyển dụng</a>
-            <a href="#" onClick={handleMockupClick}>Quy tắc ứng xử</a>
-            <a href="#" onClick={handleMockupClick}>Đóng góp ý kiến</a>
-          </div>
-          <div className="steam-footer-column">
-            <h4>PHÁP LÝ</h4>
-            <a href="#" onClick={handleMockupClick}>Quyền riêng tư</a>
-            <a href="#" onClick={handleMockupClick}>Hỗ trợ tiếp cận</a>
-            <a href="#" onClick={handleMockupClick}>Thông báo & Chính sách</a>
-            <a href="#" onClick={handleMockupClick}>Cookie</a>
-            <a href="#" onClick={handleMockupClick}>Bản quyền</a>
-          </div>
-          <div className="steam-footer-column">
-            <h4>KHÁC</h4>
-            <a href="#" onClick={handleMockupClick}>Tải ứng dụng</a>
-            <a href="#" onClick={handleMockupClick}>Nhận hỗ trợ</a>
-            <a href="#" onClick={handleMockupClick}>Tài khoản của tôi</a>
-          </div>
+        <div className="steam-footer-copy">
+          © 2026 Recipe Sharing – Đồ án liên ngành, Trường Công nghệ Thông tin Phenikaa, Đại học Phenikaa.
         </div>
-
+        <div className="steam-footer-socials">
+          <a href={REPO_URL} target="_blank" rel="noopener noreferrer" aria-label="Mã nguồn trên GitHub" title="Mã nguồn trên GitHub">
+            <i className="fa-brands fa-github" aria-hidden="true"></i>
+          </a>
+        </div>
       </div>
-    </footer>
-  );
-};
+
+      <div className="steam-footer-right">
+        {FOOTER_COLUMNS.map((column) => (
+          <div className="steam-footer-column" key={column.title}>
+            <h4>{column.title}</h4>
+            {column.links.map(([label, to]) => (
+              <Link key={to} to={to}>{label}</Link>
+            ))}
+          </div>
+        ))}
+        <div className="steam-footer-column">
+          <h4>HỖ TRỢ</h4>
+          <a href={`${REPO_URL}/issues`} target="_blank" rel="noopener noreferrer">Báo lỗi / góp ý</a>
+          <Link to="/about#lien-he">Liên hệ</Link>
+        </div>
+      </div>
+    </div>
+  </footer>
+);
 
 export default Footer;

@@ -6,6 +6,7 @@ import MainLayout from '../components/MainLayout';
 import SkeletonLoader from '../components/SkeletonLoader';
 import RecipeSlider from '../components/RecipeSlider';
 import LoginRequiredModal from '../components/LoginRequiredModal';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { AuthContext } from '../context/AuthContext';
 import './Home.css';
 import { scaleAmount } from '../utils/amount';
@@ -38,9 +39,10 @@ const RecipeDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
-  const [isTagModalOpen, setIsTagModalOpen] = useState(false);
   const [newTagName, setNewTagName] = useState('');
+  const [isSubmittingTag, setIsSubmittingTag] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   const [currentServings, setCurrentServings] = useState(1);
@@ -228,6 +230,47 @@ const RecipeDetail = () => {
     });
   };
 
+  // FR-12: tác giả hoặc admin xoá công thức
+  const handleDeleteRecipe = async () => {
+    setIsDeleting(true);
+    try {
+      await axios.delete(`/api/recipes/${id}`);
+      toast.success('Đã xoá công thức');
+      // Xoá khỏi "Xem gần đây" để không còn trỏ tới món không tồn tại
+      try {
+        const recents = JSON.parse(localStorage.getItem('recentlyViewedRecipes') || '[]');
+        localStorage.setItem('recentlyViewedRecipes', JSON.stringify(recents.filter((r) => String(r.id) !== String(id))));
+      } catch (storageError) {
+        console.error('Lỗi cập nhật lịch sử xem:', storageError);
+      }
+      setIsDeleteModalOpen(false);
+      navigate(user && user.id === recipe.user_id ? '/profile' : '/');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Không xoá được công thức');
+      setIsDeleting(false);
+    }
+  };
+
+  // Gắn tag cộng đồng (bấm lại tag đã gắn để bỏ). Tối đa 5 tag / người / món (giới hạn ở server).
+  const submitTag = (tagName) => {
+    const clean = tagName.replace(/^#+/, '').replace(/\s+/g, ' ').trim().toLowerCase();
+    if (!clean) return;
+    handleRequireLogin(async () => {
+      setIsSubmittingTag(true);
+      try {
+        const res = await axios.post(`/api/recipes/${id}/tags`, { tagName: clean });
+        toast.success(res.data.message || 'Đã cập nhật tag');
+        setNewTagName('');
+        const detail = await axios.get(`/api/recipes/${id}`);
+        if (detail.data.success) setTags(detail.data.tags || []);
+      } catch (err) {
+        toast.error(err.response?.data?.message || 'Không gắn được tag');
+      } finally {
+        setIsSubmittingTag(false);
+      }
+    });
+  };
+
   const toggleIng = (idx) => setCheckedIngs(prev => ({...prev, [idx]: !prev[idx]}));
   const handlePrint = () => window.print();
 
@@ -280,6 +323,7 @@ const RecipeDetail = () => {
   if (!recipe) return <MainLayout hideSidebar className="home-typography"><div style={{ textAlign: 'center', padding: '50px' }}>Không tìm thấy</div></MainLayout>;
 
   const ratio = currentServings / (recipe.servings || 1);
+  const canManage = Boolean(user && (user.id === recipe.user_id || user.role === 'admin'));
   const totalRecipeTime = (Number(recipe.prep_time) || 0) + (Number(recipe.cook_time) || 0);
   
   // Safeguard activeMediaIndex if media is empty
@@ -340,8 +384,11 @@ const RecipeDetail = () => {
                 ><i className={isLinkCopied ? 'fa-solid fa-check' : 'fa-solid fa-share'} aria-hidden="true"></i></button>
                 <button className="nyt-btn-circle" title="In công thức" aria-label="In công thức" onClick={handlePrint}><i className="fa-solid fa-print"></i></button>
                 
-                {user && user.id === recipe.user_id && (
-                  <button className="nyt-btn-circle" onClick={() => navigate(`/recipes/edit/${id}`)} title="Sửa công thức"><i className="fa-solid fa-pen"></i></button>
+                {canManage && (
+                  <>
+                    <button className="nyt-btn-circle" onClick={() => navigate(`/recipes/edit/${id}`)} title="Sửa công thức" aria-label="Sửa công thức"><i className="fa-solid fa-pen" aria-hidden="true"></i></button>
+                    <button className="nyt-btn-circle nyt-btn-circle-danger" onClick={() => setIsDeleteModalOpen(true)} title="Xoá công thức" aria-label="Xoá công thức"><i className="fa-solid fa-trash" aria-hidden="true"></i></button>
+                  </>
                 )}
               </div>
 
@@ -428,17 +475,45 @@ const RecipeDetail = () => {
 
           </div>
 
-          {/* TAGS */}
-          {tags.length > 0 && (
-            <div className="nyt-tags-section">
-              <h3 className="nyt-section-title" style={{ fontSize: '1rem' }}>Từ khóa</h3>
+          {/* TAGS – bấm tag để lọc danh sách theo tag (?tag=), có thể gắn thêm tag cộng đồng */}
+          <div className="nyt-tags-section">
+            <h3 className="nyt-section-title" style={{ fontSize: '1rem' }}>Từ khóa</h3>
+            {tags.length > 0 ? (
               <div className="nyt-tags-list">
-                {tags.map((tag, idx) => (
-                  <Link to={`/?search=${encodeURIComponent(tag.name)}`} key={idx} className="nyt-tag-pill">{tag.name}</Link>
+                {tags.map((tag) => (
+                  <Link
+                    to={`/recipes?tag=${encodeURIComponent(tag.name)}`}
+                    key={tag.id || tag.name}
+                    className="nyt-tag-pill"
+                    title={tag.voteCount ? `${tag.voteCount} người gắn tag này` : undefined}
+                  >
+                    #{tag.name}{tag.voteCount > 0 && <span className="nyt-tag-votes"> {tag.voteCount}</span>}
+                  </Link>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <p className="nyt-tags-empty">Chưa có tag nào.</p>
+            )}
+            <form
+              className="nyt-tag-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                submitTag(newTagName);
+              }}
+            >
+              <label htmlFor="detail-new-tag" className="visually-hidden">Gắn tag cho món này</label>
+              <input
+                id="detail-new-tag"
+                value={newTagName}
+                maxLength={50}
+                onChange={(e) => setNewTagName(e.target.value)}
+                placeholder="Gắn tag, vd: dễ làm"
+              />
+              <button type="submit" disabled={isSubmittingTag || !newTagName.trim()}>
+                {isSubmittingTag ? 'Đang gửi...' : 'Gắn tag'}
+              </button>
+            </form>
+          </div>
 
           {/* RATINGS AND COMMENTS */}
           <div className="nyt-comments-section">
@@ -525,6 +600,16 @@ const RecipeDetail = () => {
       </div>
 
       <LoginRequiredModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
+      <ConfirmDialog
+        isOpen={isDeleteModalOpen}
+        title="Xoá công thức này?"
+        message={`"${recipe.title}" cùng ảnh, bình luận và đánh giá liên quan sẽ bị xoá vĩnh viễn.`}
+        confirmLabel="Xoá"
+        danger
+        busy={isDeleting}
+        onConfirm={handleDeleteRecipe}
+        onClose={() => setIsDeleteModalOpen(false)}
+      />
 
     </MainLayout>
   );

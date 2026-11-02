@@ -27,6 +27,7 @@ const NAV_MENUS = [
         title: 'GỢI Ý HÔM NAY',
         links: [
           ['Phổ biến nhất (Top 50)', '/popular'],
+          ['Nấu với nguyên liệu có sẵn', '/cook-with-ingredients'],
           ['Nhanh gọn dưới 30 phút', recipesBy('duration', 'under_30')],
           ['Thanh đạm & Ăn chay', recipesBy('tag', 'món chay')],
           ['Món canh ấm bụng', recipesBy('category', 'Món Canh')],
@@ -188,10 +189,6 @@ const Navbar = () => {
     navigate('/login');
   };
 
-  const handleMockupClick = (e) => {
-    if (e) e.preventDefault();
-    toast.success('Tính năng đang phát triển', { style: { background: 'var(--color-bg-body)', color: 'var(--color-text-main)', border: '1px solid var(--color-border)' }});
-  };
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -220,7 +217,8 @@ const Navbar = () => {
       toast.success(`Đã nhận diện: ${keyword}`, { id: 'scan-toast' });
       navigate(`/recipes?search=${encodeURIComponent(keyword)}`);
     } catch (error) {
-      toast.error('Không thể nhận diện hình ảnh.', { id: 'scan-toast' });
+      // Server trả thông báo cụ thể (chưa cấu hình key, ảnh không phải món ăn, quá tải...)
+      toast.error(error.response?.data?.error || 'Không thể nhận diện hình ảnh.', { id: 'scan-toast' });
     } finally {
       setIsScanning(false);
     }
@@ -340,7 +338,7 @@ const Navbar = () => {
 
             {/* 7. About */}
             <li className="nyt-nav-item">
-              <Link to="/about" onClick={handleMockupClick}>Về chúng tôi</Link>
+              <Link to="/about">Về chúng tôi</Link>
             </li>
           </ul>
         </div>

@@ -8,6 +8,8 @@ import SkeletonLoader from '../components/SkeletonLoader';
 import toast from 'react-hot-toast';
 import './Home.css';
 import './recipeForm.css';
+import TagInput from '../components/TagInput';
+import { uploadToCloudinary } from '../utils/cloudinary';
 
 // Short label for a step, used in the drag-and-drop screen-reader announcements.
 const truncateStep = (text = '', max = 40) => {
@@ -38,6 +40,7 @@ const RecipeEdit = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [tags, setTags] = useState([]);
 
   // Editing is owner-only, so ask anonymous visitors to sign in first.
   const requireLogin = (action) => {
@@ -57,6 +60,7 @@ const RecipeEdit = () => {
           setCategories(res.data.categories || []);
           setCourseTypes(res.data.courseTypes || []);
           setMealTimes(res.data.mealTimes || []);
+          setTags(res.data.tags || []);
 
           setIngredients(res.data.ingredients && res.data.ingredients.length > 0
             ? res.data.ingredients.map(ing => ({ ...ing, id: crypto.randomUUID() }))
@@ -193,34 +197,23 @@ const RecipeEdit = () => {
     if (!file) return;
 
     // Show the picked file name right away, independent of the upload result.
-    setMediaList(mediaList.map(m =>
+    setMediaList(prev => prev.map(m =>
       m.id === rowId ? { ...m, fileName: file.name } : m
     ));
     e.target.value = '';
 
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', 'ml_default');
-
-    const mediaType = file.type.startsWith('video/') ? 'video' : 'image';
-
     setUploading(true);
     try {
-      const res = await fetch(`https://api.cloudinary.com/v1_1/lzqavovj/${mediaType}/upload`, {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message || 'Lỗi upload');
+      const { url, mediaType } = await uploadToCloudinary(file);
 
-      setMediaList(mediaList.map(m =>
-        m.id === rowId ? { ...m, media_url: data.secure_url, media_type: mediaType } : m
+      setMediaList(prev => prev.map(m =>
+        m.id === rowId ? { ...m, media_url: url, media_type: mediaType } : m
       ));
       setReplacingMediaId(null);
 
       // Update first image to recipe.image_url as fallback
       if (mediaList.findIndex(m => m.id === rowId) === 0 && mediaType === 'image') {
-        setRecipe(prev => ({ ...prev, image_url: data.secure_url }));
+        setRecipe(prev => ({ ...prev, image_url: url }));
       }
     } catch (error) {
       toast.error('Lỗi tải ảnh lên Cloudinary: ' + error.message);
@@ -246,7 +239,8 @@ const RecipeEdit = () => {
       ing_unit: ingredients.map(i => i.unit),
       step_instruction: steps.map(s => s.text),
       media_urls: [],
-      media_types: []
+      media_types: [],
+      tags,
     };
 
     mediaList.forEach(m => {
@@ -266,7 +260,7 @@ const RecipeEdit = () => {
       if (err.response?.status === 401) {
         setIsLoginModalOpen(true);
       } else {
-        toast.error('Lỗi khi cập nhật công thức');
+        toast.error(err.response?.data?.message || 'Lỗi khi cập nhật công thức');
       }
     }
   };
@@ -371,6 +365,11 @@ const RecipeEdit = () => {
                     {courseTypes.map(ct => <option key={ct.id} value={ct.id}>{ct.name}</option>)}
                   </select>
                 </div>
+              </div>
+
+              <div className="recipe-form-group">
+                <label className="recipe-form-label" htmlFor="edit-tags">Tag</label>
+                <TagInput id="edit-tags" value={tags} onChange={setTags} />
               </div>
 
               <div className="recipe-form-group">
