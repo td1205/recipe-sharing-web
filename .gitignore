@@ -1,3 +1,16 @@
 node_modules/
 .env
 uploads/
+
+# Skill do "prisma skills sync" (postinstall) tự sinh – không đưa vào repo
+/.agents/
+/.cursor/
+/.devin/
+/.claude/skills/prisma-*/
+
+# Tài liệu Word (báo cáo, đề xuất) không lưu trong repo
+*.docx
+~$*.docx
+
+# File môi trường của frontend
+frontend/.env
