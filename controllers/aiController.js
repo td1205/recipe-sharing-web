@@ -1,92 +1,51 @@
 const multer = require('multer');
-const { GoogleGenAI } = require('@google/genai');
+const geminiService = require('../services/geminiService');
 
-// Cấu hình Multer để lưu file trong RAM (memory storage)
-const storage = multer.memoryStorage();
-const upload = multer({ 
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 } // Giới hạn 5MB
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+
+// Lưu ảnh trong RAM, chỉ để gửi sang Gemini rồi bỏ
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // tối đa 5MB
+  fileFilter(req, file, cb) {
+    if (ALLOWED_TYPES.includes(file.mimetype)) return cb(null, true);
+    cb(new Error('INVALID_FILE_TYPE'));
+  },
 }).single('image');
 
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const STATUS_BY_CODE = {
+  NOT_CONFIGURED: 503,
+  NOT_FOOD: 422,
+  INVALID_KEY: 502,
+  OVERLOADED: 503,
+  FAILED: 502,
+};
 
-async function handleScanImage(req, res) {
+function handleScanImage(req, res) {
   upload(req, res, async (err) => {
     if (err) {
-      return res.status(400).json({ success: false, error: 'Lỗi tải ảnh lên!' });
+      let error = 'Lỗi tải ảnh lên!';
+      if (err.code === 'LIMIT_FILE_SIZE') error = 'Ảnh tối đa 5MB!';
+      else if (err.message === 'INVALID_FILE_TYPE') error = 'Chỉ chấp nhận ảnh JPG, PNG, WEBP hoặc HEIC!';
+      return res.status(400).json({ success: false, error });
     }
-
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'Vui lòng cung cấp hình ảnh!' });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    
-    // Nếu không có API Key, sử dụng Mock Data để test
-    if (!apiKey) {
-      await sleep(1500);
-      return res.json({ success: true, keyword: 'Gà rán' });
-    }
-
     try {
-      const ai = new GoogleGenAI({ apiKey });
-      const prompt = "Bạn là một chuyên gia ẩm thực. Hãy nhìn hình ảnh này và trả về ĐÚNG MỘT TỪ KHÓA ngắn gọn là tên món ăn (ví dụ: Phở bò, Gà rán, Cơm tấm) bằng tiếng Việt. Không giải thích, không thêm dấu chấm câu.";
-      
-      const fallbackModels = ['gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-3.8-flash', 'gemini-flash-latest'];
-      let response = null;
-      let lastError = null;
-      let attempts = 0;
-      const MAX_ATTEMPTS = 5;
-
-      while (attempts < MAX_ATTEMPTS && !response) {
-        for (let i = 0; i < fallbackModels.length; i++) {
-          const modelName = fallbackModels[i];
-          attempts++;
-          try {
-            response = await ai.models.generateContent({
-              model: modelName,
-              contents: [
-                prompt,
-                {
-                  inlineData: {
-                    data: req.file.buffer.toString('base64'),
-                    mimeType: req.file.mimetype
-                  }
-                }
-              ]
-            });
-            if (response) break;
-          } catch (err) {
-            console.warn(`Lỗi khi gọi model ${modelName}:`, err.message || err);
-            lastError = err;
-            if (err.status === 503 || err.status === 429) {
-              await sleep(3000);
-              // Thử sang model tiếp theo trong danh sách
-              continue; 
-            }
-            if (err.status === 404) {
-              // Model bị gỡ bỏ, thử model tiếp theo
-              continue;
-            }
-            throw err;
-          }
-        }
-      }
-
-      if (!response) {
-        throw lastError || new Error('Hệ thống AI quá tải sau nhiều lần thử.');
-      }
-
-      const keyword = response.text.trim().replace(/\.$/, '');
-      
+      const { keyword } = await geminiService.recognizeDish(req.file.buffer, req.file.mimetype);
       return res.json({ success: true, keyword });
     } catch (error) {
-      console.error('Lỗi Gemini API:', error);
-      return res.status(500).json({ success: false, error: 'Hệ thống AI đang quá tải, vui lòng thử lại sau.' });
+      const status = STATUS_BY_CODE[error.code] || 500;
+      if (status === 500) console.error('Lỗi nhận diện ảnh:', error);
+      return res.status(status).json({
+        success: false,
+        code: error.code || 'FAILED',
+        error: error.code ? error.message : 'Lỗi hệ thống khi nhận diện ảnh.',
+      });
     }
   });
 }
 
-module.exports = {
-  handleScanImage
-};
+module.exports = { handleScanImage };
