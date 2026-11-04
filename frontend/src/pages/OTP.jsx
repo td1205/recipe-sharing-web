@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
 import { OTP_LENGTH } from '../constants/auth';
 import './Home.css';
@@ -80,9 +80,9 @@ const OTP = () => {
           </form>
 
           <div className="auth-links">
-            <a href="/forgot-password">Gửi lại mã mới</a>
+            <Link to="/forgot-password">Gửi lại mã mới</Link>
             <br />
-            <a href="/login">Quay lại đăng nhập</a>
+            <Link to="/login">Quay lại đăng nhập</Link>
           </div>
         </div>
       </section>

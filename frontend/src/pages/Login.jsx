@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import MainLayout from '../components/MainLayout';
 import './Home.css';
@@ -14,6 +14,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,7 +24,11 @@ const Login = () => {
     try {
       const res = await login(username, password);
       if (res.success) {
-        navigate('/');
+        const previousLocation = location.state?.from;
+        const destination = previousLocation
+          ? `${previousLocation.pathname}${previousLocation.search || ''}${previousLocation.hash || ''}`
+          : '/';
+        navigate(destination, { replace: true });
       } else {
         setError(res.error || 'Lỗi đăng nhập');
       }

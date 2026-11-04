@@ -179,43 +179,44 @@ const Home = () => {
     }
   };
 
-  useEffect(() => {
-    const fetchHomeData = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const query = new URLSearchParams();
-        if (search) query.append('search', search);
-        if (category) query.append('category', category);
-        if (mealTime) query.append('meal_time', mealTime);
-        if (maxCookTime) query.append('max_cook_time', maxCookTime);
-        
-        const res = await axios.get(`/api/?${query.toString()}`);
-        if (!res.data.success) {
-          throw new Error('Không thể tải dữ liệu trang chủ.');
-        }
+  const fetchHomeData = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const query = new URLSearchParams();
+      if (search) query.append('search', search);
+      if (category) query.append('category', category);
+      if (mealTime) query.append('meal_time', mealTime);
+      if (maxCookTime) query.append('max_cook_time', maxCookTime);
 
-        setCategories(res.data.categories || []);
-        if (res.data.isSearch) {
-          setIsSearchMode(true);
-          setRecipes(res.data.recipes || []);
-        } else {
-          setIsSearchMode(false);
-          setLatestRecipes(res.data.latestRecipes || []);
-          setPopularRecipes(res.data.popularRecipes || []);
-          setTodayRecipes(res.data.todayRecipes || []);
-          setRecommendedRecipes(res.data.recommendedRecipes || []);
-        }
-      } catch (requestError) {
-        console.error('Lỗi khi tải trang chủ:', requestError);
-        setError('Không thể tải các công thức lúc này. Vui lòng thử lại.');
-      } finally {
-        setLoading(false);
+      const res = await axios.get(`/api/?${query.toString()}`);
+      if (!res.data.success) {
+        throw new Error('Không thể tải dữ liệu trang chủ.');
       }
-    };
 
+      setCategories(res.data.categories || []);
+      if (res.data.isSearch) {
+        setIsSearchMode(true);
+        setRecipes(res.data.recipes || []);
+      } else {
+        setIsSearchMode(false);
+        setLatestRecipes(res.data.latestRecipes || []);
+        setPopularRecipes(res.data.popularRecipes || []);
+        setTodayRecipes(res.data.todayRecipes || []);
+        setRecommendedRecipes(res.data.recommendedRecipes || []);
+      }
+    } catch (requestError) {
+      console.error('Lỗi khi tải trang chủ:', requestError);
+      setError('Không thể tải các công thức lúc này. Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
+    }
+  }, [category, maxCookTime, mealTime, search]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react/set-state-in-effect -- Fetching starts when the URL filters change.
     fetchHomeData();
-  }, [search, category, mealTime, maxCookTime]);
+  }, [fetchHomeData]);
 
   if (loading) {
     return <MainLayout categories={categories} hideSidebar className="home-typography"><SkeletonLoader /></MainLayout>;
@@ -226,7 +227,7 @@ const Home = () => {
       <MainLayout categories={categories} hideSidebar className="home-typography">
         <div className="home-status-state" role="alert">
           <p>{error}</p>
-          <button type="button" className="btn-primary" onClick={() => window.location.reload()}>
+          <button type="button" className="btn-primary" onClick={fetchHomeData}>
             Thử lại
           </button>
         </div>

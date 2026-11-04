@@ -709,6 +709,25 @@ footer {
   @apply text-center;
   font-weight: 500;
 }
+.page-error-state {
+  width: min(100%, 42rem);
+  margin: var(--space-5) auto;
+  padding: var(--space-5);
+  text-align: center;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-top: 3px solid var(--color-primary);
+}
+.page-error-state h1 {
+  margin-bottom: var(--space-2);
+  color: var(--color-text-main);
+  font-family: var(--font-serif);
+  font-size: var(--text-h2);
+}
+.page-error-state p {
+  margin-bottom: var(--space-3);
+  color: var(--color-text-muted);
+}
 .success-msg {
   color: #6FAF4F;
   @apply text-center;
@@ -1433,12 +1452,12 @@ body {
   padding: 8px 40px;
   border-radius: 20px;
   font-size: 14px;
-  width: 220px;
+  width: min(220px, 60vw);
   transition: all 0.3s;
 }
 
 .modern-search input:focus {
-  width: 280px;
+  width: min(280px, 70vw);
   outline: none;
   border-color: #38bdf8;
   background: rgba(0,0,0,0.5);

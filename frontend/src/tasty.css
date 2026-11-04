@@ -737,8 +737,9 @@ body, .container-full {
   border-bottom: none;
 }
 .mag-list-img {
-  width: 100px;
-  height: 100px;
+  width: min(100px, 25vw);
+  height: auto;
+  aspect-ratio: 1 / 1;
   object-fit: cover;
 }
 .mag-list-content {
@@ -1062,6 +1063,8 @@ body, .container-full {
   display: flex;
   gap: 60px;
   min-width: 500px;
+  max-width: 100vw;
+  overflow-x: auto;
   border-radius: 0 0 4px 4px;
 }
 .nyt-mega-col {
@@ -1147,8 +1150,10 @@ body, .container-full {
   align-items: flex-start;
 }
 .mag-list-card-first .mag-list-img {
-  width: 220px;
-  height: 150px;
+  width: min(220px, 40vw);
+  height: auto;
+  aspect-ratio: 220 / 150;
+  object-fit: cover;
 }
 .mag-list-card-first .mag-list-title {
   font-size: 22px;
@@ -2644,6 +2649,9 @@ body, .container-full {
 @media (max-width: 768px) {
   .nyt-hero-title {
     font-size: 32px;
+  }
+  .nyt-hero-img {
+    height: 300px;
   }
   .nyt-collections-grid {
     grid-template-columns: repeat(2, 1fr);

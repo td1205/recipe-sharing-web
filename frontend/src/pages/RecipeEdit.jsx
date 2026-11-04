@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
 import LoginRequiredModal from '../components/LoginRequiredModal';
-import { AuthContext } from '../context/AuthContext';
+
 import SkeletonLoader from '../components/SkeletonLoader';
 import toast from 'react-hot-toast';
 import './Home.css';
@@ -19,7 +19,6 @@ const truncateStep = (text = '', max = 40) => {
 
 const RecipeEdit = () => {
   const { id } = useParams();
-  const { user } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const [recipe, setRecipe] = useState({});
@@ -43,14 +42,6 @@ const RecipeEdit = () => {
   const [tags, setTags] = useState([]);
 
   // Editing is owner-only, so ask anonymous visitors to sign in first.
-  const requireLogin = (action) => {
-    if (user) {
-      action();
-      return;
-    }
-    setIsLoginModalOpen(true);
-  };
-
   useEffect(() => {
     const fetchEditPageData = async () => {
       try {

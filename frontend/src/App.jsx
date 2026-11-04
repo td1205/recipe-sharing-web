@@ -28,6 +28,8 @@ import AdminComments from './pages/admin/Comments';
 import AdminArticles from './pages/admin/Articles';
 import { Toaster } from 'react-hot-toast';
 import ScrollToTop from './components/ScrollToTop';
+import ProtectedRoute from './components/ProtectedRoute';
+import AdminRoute from './components/AdminRoute';
 
 function App() {
   return (
@@ -47,25 +49,28 @@ function App() {
           <Route path="/popular-recipes" element={<PopularRecipes />} />
           <Route path="/recipes" element={<RecipeList />} />
           <Route path="/recipes/:id" element={<RecipeDetail />} />
-          <Route path="/recipes/create" element={<RecipeCreate />} />
-          <Route path="/recipes/edit/:id" element={<RecipeEdit />} />
+          <Route path="/recipes/create" element={<ProtectedRoute><RecipeCreate /></ProtectedRoute>} />
+          <Route path="/recipes/edit/:id" element={<ProtectedRoute><RecipeEdit /></ProtectedRoute>} />
           
           <Route path="/cook-with-ingredients" element={<CookWithIngredients />} />
           <Route path="/about" element={<About />} />
           <Route path="/articles" element={<Articles />} />
           <Route path="/articles/:id" element={<ArticleDetail />} />
           
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/profile/edit" element={<ProfileEdit />} />
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/profile/edit" element={<ProtectedRoute><ProfileEdit /></ProtectedRoute>} />
           <Route path="/profile/:id" element={<PublicProfile />} />
           
           {/* Admin Routes */}
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/categories" element={<AdminCategories />} />
-          <Route path="/admin/users" element={<AdminUsers />} />
-          <Route path="/admin/comments" element={<AdminComments />} />
-          <Route path="/admin/articles" element={<AdminArticles />} />
-          <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="/admin" element={<AdminRoute />}>
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="categories" element={<AdminCategories />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="comments" element={<AdminComments />} />
+            <Route path="articles" element={<AdminArticles />} />
+            <Route path="*" element={<NotFound />} />
+          </Route>
 
           {/* Mọi đường dẫn không tồn tại -> trang 404 */}
           <Route path="*" element={<NotFound />} />

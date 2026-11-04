@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
-import { Link, useNavigate, NavLink } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 
@@ -141,9 +141,7 @@ const NAV_MENUS = [
 
 const Navbar = () => {
   const { user, logout } = useContext(AuthContext);
-  const [navData, setNavData] = useState({ courseTypes: [], categories: [], mealTimes: [] });
   const [searchQuery, setSearchQuery] = useState('');
-  const [isScanning, setIsScanning] = useState(false);
   const [isVisualSearchOpen, setIsVisualSearchOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -169,18 +167,6 @@ const Navbar = () => {
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    const fetchNavData = async () => {
-      try {
-        const response = await axios.get('/api/nav-data');
-        setNavData(response.data);
-      } catch (error) {
-        console.error('Lỗi khi tải dữ liệu menu:', error);
-      }
-    };
-    fetchNavData();
   }, []);
 
   const handleLogout = async (e) => {

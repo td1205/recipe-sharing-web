@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useContext } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
@@ -8,6 +8,7 @@ import Pagination from '../components/Pagination';
 import { DEFAULT_RECIPE_IMAGE } from '../components/MagazineCard';
 import { AuthContext } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import ErrorState from '../components/ErrorState';
 import './Home.css';
 
 // Total cook time, matching the homepage and recipe detail helpers.
@@ -35,6 +36,7 @@ const PopularRecipes = () => {
   const [recipes, setRecipes] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   // Filter states
@@ -59,39 +61,38 @@ const PopularRecipes = () => {
   // Newsletter email
   const [newsletterEmail, setNewsletterEmail] = useState('');
 
-  useEffect(() => {
-    const fetchPopularData = async () => {
-      try {
-        setLoading(true);
-        const res = await axios.get(`/api/recipes/popular?limit=50&period=${timeFilter}`);
-        if (res.data.success) {
-          setRecipes(res.data.recipes || []);
-          setCategories(res.data.categories || []);
-        } else {
-          const homeRes = await axios.get('/api/');
-          if (homeRes.data.success) {
-            setRecipes(homeRes.data.popularRecipes || homeRes.data.latestRecipes || []);
-            setCategories(homeRes.data.categories || []);
-          }
-        }
-      } catch (error) {
-        console.error('Lỗi khi tải công thức phổ biến:', error);
-        try {
-          const homeRes = await axios.get('/api/');
-          if (homeRes.data.success) {
-            setRecipes(homeRes.data.popularRecipes || homeRes.data.latestRecipes || []);
-            setCategories(homeRes.data.categories || []);
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      } finally {
-        setLoading(false);
+  const fetchPopularData = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await axios.get(`/api/recipes/popular?limit=50&period=${timeFilter}`);
+      if (!res.data.success) {
+        throw new Error('Popular endpoint returned an invalid response');
       }
-    };
-
-    fetchPopularData();
+      setRecipes(res.data.recipes || []);
+      setCategories(res.data.categories || []);
+    } catch (primaryError) {
+      console.error('Lỗi khi tải công thức phổ biến:', primaryError);
+      try {
+        const homeRes = await axios.get('/api/');
+        if (!homeRes.data.success) {
+          throw new Error('Home fallback returned an invalid response');
+        }
+        setRecipes(homeRes.data.popularRecipes || homeRes.data.latestRecipes || []);
+        setCategories(homeRes.data.categories || []);
+      } catch (fallbackError) {
+        console.error('Lỗi khi tải dữ liệu dự phòng:', fallbackError);
+        setError('Không thể tải danh sách công thức phổ biến lúc này.');
+      }
+    } finally {
+      setLoading(false);
+    }
   }, [timeFilter]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react/set-state-in-effect -- Fetching starts when the selected period changes.
+    fetchPopularData();
+  }, [fetchPopularData]);
 
   // Collections are derived from the loaded recipes: real category names,
   // real counts and real cover images. Nothing is invented here.
@@ -242,6 +243,14 @@ const PopularRecipes = () => {
     return (
       <MainLayout hideSidebar categories={categories} className="home-typography">
         <SkeletonLoader />
+      </MainLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <MainLayout hideSidebar categories={categories} className="home-typography">
+        <ErrorState message={error} onRetry={fetchPopularData} />
       </MainLayout>
     );
   }

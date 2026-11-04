@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
 import { PASSWORD_PATTERN, PASSWORD_REQUIREMENT } from '../constants/auth';
 import './Home.css';
@@ -143,7 +143,7 @@ const ChangePassword = () => {
           </form>
 
           <div className="auth-links">
-            <a href="/otp">Quay lại nhập mã OTP</a>
+            <Link to="/otp">Quay lại nhập mã OTP</Link>
           </div>
         </div>
       </section>

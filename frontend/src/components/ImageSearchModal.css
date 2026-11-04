@@ -24,6 +24,8 @@
   position: relative;
   width: 100%;
   max-width: 28rem;
+  max-height: 90vh;
+  overflow-y: auto;
   padding: var(--space-5);
   background: var(--color-bg-card);
   border: 1px solid var(--color-border);
