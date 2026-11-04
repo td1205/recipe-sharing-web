@@ -46,7 +46,7 @@
 /* Body Background & Reset */
 body, .container-full {
   background: var(--color-bg-body) !important;
-  color: var(--color-text-main);
+  color: var(--color-text-main) !important;
   font-family: var(--font-sans) !important;
 }
 

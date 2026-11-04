@@ -37,7 +37,15 @@ Tổng hợp theo thứ tự thời gian. Chi tiết đầy đủ xem các reply
 25. **"Xem gần đây" chứa entry mồ côi** (recipe 23 đã xoá) → clicking → 404 → "Không thể tải công thức". Fix đề xuất: validate tồn tại trước khi hiện, hoặc dọn localStorage.
 26. **Ảnh đại diện cá kho gừng lệch giữa card và trang chi tiết** — `image_url` rỗng vì cover-fallback chỉ chạy khi media đầu tiên là ảnh. Fix đề xuất: lấy media ảnh đầu tiên bất kể vị trí; backfill `image_url` cho recipe đang rỗng.
 
-## Còn tồn đọng / chưa làm
+## P1 (đã khắc phục) - bổ sung
+
+31. **Scan ảnh AI chậm ~12s và modal đóng ngay khi chọn file** — backend thử 3 model không tồn tại (gemini-3.6/3.7/3.8-flash) trước khi đến `gemini-flash-latest`, và modal đóng ngay khi chọn file nên user không thấy tiến trình. Khắc phục:
+   - `geminiService.js`: đặt `gemini-3.8-flash` và `gemini-flash-latest` (model thật) lên đầu, bỏ 3 model giả.
+   - `ImageSearchModal.jsx`: giữ modal mở trong lúc quét, hiện preview ảnh + spinner + "Đang nhận diện món ăn, vui lòng chờ...", nút "Huỷ quét" (AbortController).
+   - Thêm kiểm tra kích thước file (5MB) trước khi gửi.
+   - Hiển thị lỗi trong modal (không chỉ toast), cho phép chọn lại ảnh.
+   - `aiRoutes.js`: thêm rate limiter 5 lần/10 phút per IP.
+   - `Navbar.jsx`: `handleImageUpload` chỉ còn navigate, scan logic chuyển vào modal.
 
 27. **Initial state bookmark trên card vẫn lấy từ localStorage** — backend không có GET endpoint. Nếu đồng ý, thêm `GET /api/recipes/favorites/ids`.
 28. **Mobile chưa test trên device thật** — chỉ phân tích CSS. Cần mở DevTools responsive 390px để xác nhận.

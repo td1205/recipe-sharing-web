@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { toast } from 'react-hot-toast';
+
 
 import { AuthContext } from '../context/AuthContext';
 import LoginRequiredModal from './LoginRequiredModal';
@@ -184,30 +183,9 @@ const Navbar = () => {
     }
   };
 
-  const handleImageUpload = async (file) => {
-    if (!file) return;
-    setIsVisualSearchOpen(false);
-    setIsScanning(true);
-    toast.loading('Đang quét hình ảnh...', { id: 'scan-toast' });
-    try {
-      const formData = new FormData();
-      formData.append('image', file);
-      // The router exposes POST /scan-image under /api/ai (see routes/aiRoutes.js).
-      const response = await axios.post('/api/ai/scan-image', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      // The controller responds with { success, keyword }.
-      const keyword = response.data.keyword;
-      if (!keyword) throw new Error('Thiếu từ khoá trong phản hồi');
-
-      toast.success(`Đã nhận diện: ${keyword}`, { id: 'scan-toast' });
-      navigate(`/recipes?search=${encodeURIComponent(keyword)}`);
-    } catch (error) {
-      // Server trả thông báo cụ thể (chưa cấu hình key, ảnh không phải món ăn, quá tải...)
-      toast.error(error.response?.data?.error || 'Không thể nhận diện hình ảnh.', { id: 'scan-toast' });
-    } finally {
-      setIsScanning(false);
-    }
+  const handleImageUpload = (keyword) => {
+    if (!keyword) return;
+    navigate(`/recipes?search=${encodeURIComponent(keyword)}`);
   };
 
   const navRef = useRef(null);
@@ -335,7 +313,7 @@ const Navbar = () => {
       <ImageSearchModal
         isOpen={isVisualSearchOpen}
         onClose={() => setIsVisualSearchOpen(false)}
-        onPick={handleImageUpload}
+        onResult={handleImageUpload}
       />
     </>
   );

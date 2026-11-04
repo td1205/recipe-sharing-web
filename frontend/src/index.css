@@ -79,7 +79,7 @@ html, body {
     var(--font-sans);
 }
 body {
-  color: var(--color-text-main);
+  color: var(--color-text-main) !important;
   background: var(--color-bg-body);
   display: flex;
   @apply flex-col;

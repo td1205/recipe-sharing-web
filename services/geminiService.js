@@ -7,7 +7,7 @@ const { GoogleGenAI } = require('@google/genai');
 // Danh sách model thử lần lượt. Có thể ghi đè bằng biến môi trường GEMINI_MODELS
 // (nhiều model cách nhau bởi dấu phẩy), vd: GEMINI_MODELS=gemini-3.7-flash,gemini-3.6-flash
 // Tên model tham khảo: https://ai.google.dev/gemini-api/docs/models
-const DEFAULT_MODELS = ['gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
+const DEFAULT_MODELS = ['gemini-3.8-flash', 'gemini-flash-latest'];
 
 const PROMPT =
   'Bạn là một chuyên gia ẩm thực. Hãy nhìn hình ảnh này và trả về ĐÚNG MỘT TỪ KHÓA ngắn gọn ' +
