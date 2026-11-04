@@ -12,7 +12,6 @@ const FOOTER_COLUMNS = [
       ['Món phổ biến', '/popular'],
       ['Công thức mới', '/new-recipes'],
       ['Nấu gì với nguyên liệu có sẵn', '/cook-with-ingredients'],
-      ['Bài viết', '/articles'],
     ],
   },
   {

@@ -135,7 +135,7 @@ const NAV_MENUS = [
       },
     ],
   },
-  { key: 'articles', label: 'Bài viết', to: '/articles' },
+
 ];
 
 const Navbar = () => {

@@ -14,8 +14,7 @@ import Profile from './pages/Profile';
 import ProfileEdit from './pages/ProfileEdit';
 import PublicProfile from './pages/PublicProfile';
 import NotFound from './pages/NotFound';
-import Articles from './pages/Articles';
-import ArticleDetail from './pages/ArticleDetail';
+
 import ChangePassword from './pages/ChangePassword';
 import ForgotPassword from './pages/ForgotPassword';
 import OTP from './pages/OTP';
@@ -25,7 +24,7 @@ import AdminDashboard from './pages/admin/Dashboard';
 import AdminCategories from './pages/admin/Categories';
 import AdminUsers from './pages/admin/Users';
 import AdminComments from './pages/admin/Comments';
-import AdminArticles from './pages/admin/Articles';
+
 import { Toaster } from 'react-hot-toast';
 import ScrollToTop from './components/ScrollToTop';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -54,8 +53,7 @@ function App() {
           
           <Route path="/cook-with-ingredients" element={<CookWithIngredients />} />
           <Route path="/about" element={<About />} />
-          <Route path="/articles" element={<Articles />} />
-          <Route path="/articles/:id" element={<ArticleDetail />} />
+
           
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/profile/edit" element={<ProtectedRoute><ProfileEdit /></ProtectedRoute>} />
@@ -68,7 +66,7 @@ function App() {
             <Route path="categories" element={<AdminCategories />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="comments" element={<AdminComments />} />
-            <Route path="articles" element={<AdminArticles />} />
+
             <Route path="*" element={<NotFound />} />
           </Route>
 

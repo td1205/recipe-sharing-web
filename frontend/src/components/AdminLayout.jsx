@@ -36,11 +36,7 @@ const AdminLayout = ({ children, title = 'Admin Panel' }) => {
                 <i className="fa-solid fa-comments" style={{ width: '25px' }}></i> Quản lý Bình luận
               </Link>
             </li>
-            <li>
-              <Link to="/admin/articles" style={isActive('/admin/articles')}>
-                <i className="fa-solid fa-newspaper" style={{ width: '25px' }}></i> Quản lý Bài viết
-              </Link>
-            </li>
+  
           </ul>
         </aside>
         

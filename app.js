@@ -10,7 +10,7 @@ const categoryRoutes = require('./routes/categoryRoutes.js');
 const interactionRoutes = require('./routes/interactionRoutes.js');
 const adminCommentRoutes = require('./routes/admin.js');
 const aiRoutes = require('./routes/aiRoutes.js');
-const articleRoutes = require('./routes/articleRoutes.js');
+
 const { refreshSessionUser } = require('./middlewares/sessionUserMiddleware');
 const app = express();
 app.use(express.static(path.join(__dirname, 'frontend/dist')));
@@ -52,7 +52,7 @@ app.use('/api', interactionRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/admin', adminCommentRoutes);
-app.use(articleRoutes);
+
 
 app.use((req, res, next) => {
   if (req.method === 'GET' && !req.path.startsWith('/api')) {

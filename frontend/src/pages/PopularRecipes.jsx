@@ -548,7 +548,7 @@ const PopularRecipes = () => {
               <span>•</span>
               <Link to="/new-recipes">Công thức mới</Link>
               <span>•</span>
-              <Link to="/articles">Cẩm nang</Link>
+
             </div>
           </div>
         </section>
