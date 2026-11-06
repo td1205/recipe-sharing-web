@@ -3,7 +3,10 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
 import SkeletonLoader from '../components/SkeletonLoader';
-import { RecipeImage } from '../components/MagazineCard';
+import MagazineCard from '../components/MagazineCard';
+import './profile.css';
+
+const DEFAULT_AVATAR = '/default-avatar.svg';
 
 const Profile = () => {
   const [profileUser, setProfileUser] = useState(null);
@@ -13,124 +16,96 @@ const Profile = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    let active = true;
     const fetchProfile = async () => {
       try {
         const res = await axios.get('/api/profile');
+        if (!active) return;
         if (res.data.success) {
           setProfileUser(res.data.user);
           setFavouriteRecipes(res.data.favouriteRecipes || []);
           setMyRecipes(res.data.myRecipes || []);
         }
       } catch (err) {
+        if (!active) return;
         setError(err.response?.status === 401
           ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
-          : 'Không thể tải thông tin hồ sơ.');
+          : 'Không thể tải thông tin hồ sơ. Vui lòng thử lại sau.');
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
     fetchProfile();
+    return () => { active = false; };
   }, []);
 
-  if (loading) return <MainLayout hideSidebar><SkeletonLoader /></MainLayout>;
-  if (error) return <MainLayout hideSidebar><div className="error-msg">{error}</div></MainLayout>;
+  if (loading) return <MainLayout hideSidebar className="home-typography"><SkeletonLoader /></MainLayout>;
+  if (error) {
+    return (
+      <MainLayout hideSidebar className="home-typography">
+        <div className="profile-shell">
+          <div className="profile-alert-error" role="alert">{error}</div>
+          <Link to="/login" className="profile-btn-secondary">Đăng nhập</Link>
+        </div>
+      </MainLayout>
+    );
+  }
   if (!profileUser) return null;
 
   return (
-    <MainLayout hideSidebar>
-      <div className="steam-profile-container">
-        {/* Header Background */}
-        <div className="steam-profile-bg">
-          <div className="steam-profile-bg-gradient"></div>
-        </div>
-        
-        {/* Profile Content */}
-        <div className="steam-profile-content">
-          <div className="steam-profile-header">
-            <div className="steam-profile-avatar-wrapper">
-              <img 
-                src={profileUser.avatar_url || '/default-avatar.svg'} 
-                alt="Avatar" 
-                className="steam-profile-avatar-large"
-              />
+    <MainLayout hideSidebar className="home-typography">
+      <div className="profile-shell">
+        {/* Hero hồ sơ */}
+        <div className="profile-hero">
+          <img
+            src={profileUser.avatar_url || DEFAULT_AVATAR}
+            alt={`Ảnh đại diện của ${profileUser.username}`}
+            width={112}
+            height={112}
+            className="profile-avatar"
+            onError={(e) => {
+              if (!e.currentTarget.src.endsWith(DEFAULT_AVATAR)) e.currentTarget.src = DEFAULT_AVATAR;
+            }}
+          />
+          <div className="profile-info">
+            <h1 className="profile-name">{profileUser.username}</h1>
+            <div className="profile-role">
+              {profileUser.fullname ? `${profileUser.fullname} · ` : ''}
+              {profileUser.role === 'admin' ? 'Quản trị viên' : 'Thành viên'}
             </div>
-            
-            <div className="steam-profile-info">
-              <h1 className="steam-profile-name">{profileUser.username}</h1>
-              <div className="steam-profile-realname">
-                {profileUser.fullname && <span>{profileUser.fullname}</span>}
-                {profileUser.fullname && profileUser.role && <span className="steam-profile-separator">|</span>}
-                <span className="capitalize">{profileUser.role}</span>
-              </div>
-              <div className="steam-profile-bio">
-                {profileUser.bio ? profileUser.bio : 'Chưa có thông tin tóm tắt nào được cung cấp.'}
-              </div>
-            </div>
-
-            <div className="steam-profile-actions">
-              <Link to="/profile/edit" className="steam-btn-gray mt-15" style={{ display: 'block', textAlign: 'center' }}>
-                Sửa hồ sơ
-              </Link>
+            <p className={`profile-bio ${profileUser.bio ? '' : 'profile-bio-empty'}`}>
+              {profileUser.bio || 'Chưa có tóm tắt nào được cung cấp.'}
+            </p>
+            <div className="profile-stats">
+              <span><strong>{myRecipes.length}</strong> công thức đã chia sẻ</span>
+              <span><strong>{favouriteRecipes.length}</strong> món trong Hộp công thức</span>
             </div>
           </div>
-
-          <div className="steam-profile-body">
-            <div className="steam-profile-left">
-              {/* Left Column content like Badges, Recent Activity */}
-              <div className="steam-profile-box">
-                <div className="steam-profile-box-title">Thống kê hoạt động</div>
-                <div className="steam-profile-box-content">
-                  <div style={{ color: 'var(--color-text-muted)', fontSize: '14px', marginBottom: '8px' }}>
-                    <strong>{myRecipes.length}</strong> công thức đã chia sẻ
-                  </div>
-                  <div style={{ color: 'var(--color-text-muted)', fontSize: '14px' }}>
-                    <strong>{favouriteRecipes.length}</strong> công thức yêu thích
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="steam-profile-right">
-              {/* Right Column - My Recipes */}
-              <div className="steam-profile-box" style={{ marginBottom: '20px' }}>
-                <div className="steam-profile-box-title">Công thức của tôi ({myRecipes.length})</div>
-                <div className="steam-profile-box-content">
-                  {myRecipes.length === 0 ? (
-                    <p style={{ color: 'var(--color-text-muted)', fontSize: '13px' }}>Chưa có công thức nào được chia sẻ.</p>
-                  ) : (
-                    <div className="steam-profile-fav-list">
-                      {myRecipes.map((recipe) => (
-                        <Link to={`/recipes/${recipe.id}`} key={recipe.id} className="steam-profile-fav-item">
-                          <RecipeImage src={recipe.image_url || (recipe.video_url && recipe.video_url.includes('cloudinary') ? recipe.video_url.replace(/\.[^/.]+$/, '.jpg') : undefined)} alt={recipe.title} />
-                          <div className="steam-profile-fav-title">{recipe.title}</div>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Right Column content like Friends, Favorite Recipes */}
-              <div className="steam-profile-box">
-                <div className="steam-profile-box-title">Món ăn yêu thích ({favouriteRecipes.length})</div>
-                <div className="steam-profile-box-content">
-                  {favouriteRecipes.length === 0 ? (
-                    <p style={{ color: 'var(--color-text-muted)', fontSize: '13px' }}>Chưa có công thức yêu thích nào.</p>
-                  ) : (
-                    <div className="steam-profile-fav-list">
-                      {favouriteRecipes.map((recipe) => (
-                        <Link to={`/recipes/${recipe.id}`} key={recipe.id} className="steam-profile-fav-item">
-                          <RecipeImage src={recipe.image_url || (recipe.video_url && recipe.video_url.includes('cloudinary') ? recipe.video_url.replace(/\.[^/.]+$/, '.jpg') : undefined)} alt={recipe.title} />
-                          <div className="steam-profile-fav-title">{recipe.title}</div>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+          <div className="profile-actions">
+            <Link to="/profile/recipe-box" className="profile-btn-secondary profile-btn-box">
+              Hộp công thức ({favouriteRecipes.length})
+            </Link>
+            <Link to="/profile/edit" className="profile-btn-edit">Sửa hồ sơ</Link>
           </div>
         </div>
+
+        {/* Công thức của tôi */}
+        <section className="profile-section">
+          <h2 className="profile-section-title">Công thức của tôi ({myRecipes.length})</h2>
+          {myRecipes.length === 0 ? (
+            <div className="profile-empty">
+              <div className="profile-empty-title">Chưa có công thức nào được chia sẻ</div>
+              <p>Đăng món đầu tiên của bạn để cả cộng đồng cùng nấu thử.</p>
+              <Link to="/recipes/create" className="profile-empty-cta">Đăng công thức</Link>
+            </div>
+          ) : (
+            <div className="profile-grid">
+              {myRecipes.map((recipe) => (
+                <MagazineCard key={recipe.id} recipe={recipe} />
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </MainLayout>
   );

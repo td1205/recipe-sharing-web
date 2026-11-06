@@ -1,5 +1,5 @@
 const prisma = require('../config/prisma');
-const { SAFE_USER_SELECT } = require('../utils/userSelect');
+const { SAFE_USER_SELECT, PUBLIC_USER_SELECT } = require('../utils/userSelect');
 
 const User = {};
 
@@ -35,7 +35,11 @@ async function getFavouriteRecipesByUser(userId) {
     where: { user_id: parseInt(userId) },
     include: { 
       recipes: {
-        include: { recipe_media: true }
+        include: {
+          recipe_media: true,
+          users: { select: PUBLIC_USER_SELECT },
+          categories: { select: { name: true } },
+        }
       } 
     },
   });
@@ -53,7 +57,11 @@ async function getFavouriteRecipesByUser(userId) {
 async function getRecipesByUser(userId) {
   const recipes = await prisma.recipes.findMany({
     where: { user_id: parseInt(userId) },
-    include: { recipe_media: true },
+    include: {
+      recipe_media: true,
+      users: { select: PUBLIC_USER_SELECT },
+      categories: { select: { name: true } },
+    },
     orderBy: { created_at: 'desc' },
   });
 
