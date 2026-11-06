@@ -35,7 +35,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    await axios.get('/api/logout');
+    // POST thay vì GET: thao tác đổi trạng thái không nên là GET (chống CSRF qua <img src>)
+    await axios.post('/api/logout');
     setUser(null);
   };
 

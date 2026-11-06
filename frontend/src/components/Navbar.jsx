@@ -213,11 +213,13 @@ const Navbar = () => {
             <span>Recipe Sharing</span>
           </Link>
 
-          <form className="nyt-search-form" onSubmit={handleSearchSubmit}>
-            <i className="fa-solid fa-magnifying-glass"></i>
-            <input 
-              type="text" 
-              placeholder="Bạn muốn nấu gì hôm nay?" 
+          <form className="nyt-search-form" role="search" onSubmit={handleSearchSubmit}>
+            <i className="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+            <input
+              type="search"
+              placeholder="Bạn muốn nấu gì hôm nay?"
+              aria-label="Tìm công thức"
+              maxLength={200}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />

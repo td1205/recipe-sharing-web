@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import MainLayout from '../components/MainLayout';
 import SkeletonLoader from '../components/SkeletonLoader';
-import { DEFAULT_RECIPE_IMAGE } from '../components/MagazineCard';
+import { RecipeImage } from '../components/MagazineCard';
 import LoginRequiredModal from '../components/LoginRequiredModal';
 import Pagination from '../components/Pagination';
 import { AuthContext } from '../context/AuthContext';
@@ -72,7 +72,8 @@ const RecipeList = () => {
 
     fetchRecipes();
     return () => { active = false; };
-  }, []);
+    // Server giờ lọc theo các tham số này — URL đổi thì tải lại danh sách đã lọc
+  }, [searchParams.get('search'), searchParams.get('category'), searchParams.get('meal_time'), searchParams.get('max_cook_time')]);
 
   const updateParam = useCallback((name, value) => {
     const next = new URLSearchParams(searchParams);
@@ -172,7 +173,19 @@ const RecipeList = () => {
       if (minimumRating && Number(recipe.avg_rating || 0) < minimumRating) return false;
 
       if (normalizedKeyword) {
-        const searchable = normalizeText(`${recipe.title || ''} ${recipe.description || ''}`);
+        // Phạm vi khớp phía client: khớp với phạm vi server đã lọc
+        // (title + mô tả + nguyên liệu + tag + danh mục)
+        const searchable = normalizeText(
+          [
+            recipe.title,
+            recipe.description,
+            ...(recipe.ingredient_names || []),
+            ...(recipe.tag_names || []),
+            recipe.category_name,
+          ]
+            .filter(Boolean)
+            .join(' '),
+        );
         if (!searchable.includes(normalizedKeyword)) return false;
       }
 
@@ -378,7 +391,7 @@ const RecipeList = () => {
                   <article key={recipe.id} className="nyt-popular-card">
                     <div className="nyt-popular-card-img-wrap">
                       <Link to={`/recipes/${recipe.id}`} className="nyt-card-image-link">
-                        <img src={recipe.image_url || DEFAULT_RECIPE_IMAGE} alt={recipe.title} loading="lazy" />
+                        <RecipeImage src={recipe.image_url} alt={recipe.title} />
                       </Link>
 
                       <button

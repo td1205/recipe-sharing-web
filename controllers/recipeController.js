@@ -124,8 +124,17 @@ async function getPopularRecipes(req, res) {
 
 async function getAllRecipes(req, res) {
   try {
+    // Cap độ dài từ khoá để truy vấn không thể phình to (B2)
+    const search = String(req.query.search || '').trim().slice(0, 200);
+    // Chỉ nhận category/meal_time dạng số; dạng tên để frontend tự lọc
+    const numeric = (v) => (/^\d+$/.test(String(v || '')) ? parseInt(v, 10) : null);
     const [recipes, categories, mealTimes] = await Promise.all([
-      recipeModel.getAllRecipes(),
+      recipeModel.getAllRecipes(
+        search,
+        numeric(req.query.category),
+        numeric(req.query.meal_time),
+        numeric(req.query.max_cook_time),
+      ),
       categoryModel.getAll(),
       prisma.meal_times.findMany({ orderBy: { name: 'asc' } }),
     ]);
@@ -143,6 +152,8 @@ async function getAllRecipes(req, res) {
       author_name: recipe.author_name,
       category_name: recipe.category_name,
       meal_time_name: recipe.meal_time_name,
+      // Tên nguyên liệu (cho tìm kiếm phía client khớp với phạm vi tìm server)
+      ingredient_names: (recipe.ingredients || []).map((item) => item.name),
       // tag của món (dùng cho bộ lọc ?tag= ở trang danh sách, vd "thịt gà", "hải sản")
       // gồm tag tác giả gắn (recipe_tags) và tag cộng đồng bình chọn (user_tag_votes)
       tag_names: [

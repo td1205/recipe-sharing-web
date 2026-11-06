@@ -14,24 +14,30 @@ function normalizeLog(value, maximum) {
 const Recipe = {
   async getAllRecipes(search = '', categoryId = null, mealTimeId = null, maxCookTime = null) {
     const where = {};
-    const searchString = search.trim();
+    const searchString = String(search || '').trim();
     let keywords = [];
 
     if (searchString !== '') {
-      // Split into keywords
-      keywords = searchString.toLowerCase().split(/\s+/).filter(w => w.length > 0);
-      
+      // Tách từ khoá (giới hạn 20 từ để truy vấn không phình to)
+      keywords = searchString.toLowerCase().split(/\s+/).filter(Boolean).slice(0, 20);
+
       if (keywords.length > 0) {
+        // Escape ký tự wildcard của LIKE để tìm đúng nghĩa (% và _ là ký tự thường)
+        const escapeLike = (kw) => kw.replace(/[\\%_]/g, (ch) => '\\' + ch);
         // Find recipes matching at least ONE keyword
         const orConditions = [];
         for (const kw of keywords) {
-          orConditions.push({ title: { contains: kw } });
-          orConditions.push({ description: { contains: kw } });
+          const esc = escapeLike(kw);
+          orConditions.push({ title: { contains: esc } });
+          orConditions.push({ description: { contains: esc } });
+          // Mở rộng phạm vi: tìm cả trong nguyên liệu và tag của món
+          orConditions.push({ ingredients: { some: { name: { contains: esc } } } });
+          orConditions.push({ recipe_tags: { some: { tags: { name: { contains: esc } } } } });
         }
         where.OR = orConditions;
       }
     }
-    
+
     if (categoryId) {
       where.category_id = parseInt(categoryId);
     }
@@ -49,15 +55,28 @@ const Recipe = {
       include: {
         users: { select: PUBLIC_USER_SELECT },
         categories: true,
-        ratings: true,
         meal_times: true,
         recipe_media: true,
+        ingredients: { select: { name: true } },
         recipe_tags: { select: { tags: { select: { name: true } } } },
         user_tag_votes: { select: { tags: { select: { name: true } } } },
-        _count: { select: { recipe_views: true } },
+        // Chỉ đếm, không kéo toàn bộ rating rows (trước đây include ratings: true
+        // làm tải ~47k dòng mỗi request chỉ để tính trung bình)
+        _count: { select: { ratings: true, recipe_views: true } },
       },
       orderBy: { created_at: 'desc' },
     });
+
+    // Tính trung bình sao bằng 1 truy vấn groupBy thay vì tính từ full list
+    const ratingAgg = await prisma.ratings.groupBy({
+      by: ['recipe_id'],
+      where: { recipe_id: { in: recipes.map((r) => r.id) } },
+      _avg: { star_count: true },
+      _count: { _all: true },
+    });
+    const ratingMap = new Map(
+      ratingAgg.map((g) => [g.recipe_id, { avg: g._avg.star_count || 0, count: g._count._all }]),
+    );
 
     // Apply Scoring if searching
     if (keywords.length > 0) {
@@ -105,12 +124,9 @@ const Recipe = {
 
     // Định dạng lại dữ liệu giống với SQL cũ
     return recipes.map((r) => {
-      const totalRatings = r.ratings ? r.ratings.length : 0;
-      const avgRating =
-        totalRatings > 0
-          ? r.ratings.reduce((sum, cur) => sum + cur.star_count, 0) /
-            totalRatings
-          : 0;
+      const ratingInfo = ratingMap.get(r.id);
+      const totalRatings = ratingInfo ? ratingInfo.count : 0;
+      const avgRating = totalRatings > 0 ? ratingInfo.avg : 0;
 
       let video_url = null;
       if (r.recipe_media) {
