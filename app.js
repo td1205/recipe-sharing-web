@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
+const helmet = require('helmet');
 const session = require('express-session');
 const MySQLStore = require('express-mysql-session')(session);
 const authRoutes = require('./routes/authRoutes.js');
@@ -13,6 +14,20 @@ const aiRoutes = require('./routes/aiRoutes.js');
 
 const { refreshSessionUser } = require('./middlewares/sessionUserMiddleware');
 const app = express();
+// Không tiết lộ framework/phiên bản qua response header
+app.disable('x-powered-by');
+// Security headers: HSTS, X-Frame-Options, noSniff, Referrer-Policy...
+// CSP mở img-src https: vì ảnh công thức trỏ tới Flickr/Wikimedia/monngonmoingay...
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        'img-src': ["'self'", 'data:', 'blob:', 'https:'],
+      },
+    },
+  }),
+);
 app.use(express.static(path.join(__dirname, 'frontend/dist')));
 // Ảnh đại diện người dùng tải lên
 app.use('/avatars', express.static(path.join(__dirname, 'uploads/avatars')));
@@ -34,7 +49,10 @@ app.use(
     saveUninitialized: false,
     store: sessionStore,
     cookie: {
-      secure: false,
+      // 'auto': HTTPS thì bật Secure, HTTP (dev) thì tắt — cookie không bị rò rỉ khi deploy
+      secure: 'auto',
+      // Chống CSRF: cookie không gửi trong cross-site POST
+      sameSite: 'lax',
       maxAge: 1000 * 60 * 60 * 24,
     },
   }),

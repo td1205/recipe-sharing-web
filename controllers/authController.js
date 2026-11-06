@@ -5,21 +5,10 @@ const authService = require('../services/authService');
 
 const OTP_TTL_MS = 5 * 60 * 1000; // OTP hết hạn sau 5 phút
 const OTP_MAX_ATTEMPTS = 5; // tối đa 5 lần nhập sai
-function validatePassword(password) {
-  if (password.length < 8) {
-    return 'Mật khẩu phải chứa ít nhất 8 ký tự!';
-  }
-  if (!/[0-9]/.test(password)) {
-    return 'Mật khẩu phải chứa ít nhất 1 chữ số!';
-  }
-  if (!/[a-zA-Z]/.test(password)) {
-    return 'Mật khẩu phải chứa ít nhất 1 chữ cái!';
-  }
-  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-    return 'Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt (ví dụ: !, @, #, $, %...)!';
-  }
-  return null;
-}
+// Thông báo chung, không tiết lộ email/tài khoản có tồn tại hay không (chống enumeration)
+const OTP_SENT_MESSAGE = 'Nếu email tồn tại trong hệ thống, mã OTP đã được gửi. Vui lòng kiểm tra hộp thư!';
+
+const { validatePassword } = require('../utils/passwordPolicy');
 
 function getLoginPage(req, res) {
   res.json({ success: true, message: 'Login page endpoint' });
@@ -43,18 +32,25 @@ async function handleLogin(req, res) {
     // Đăng nhập đúng -> xoá bộ đếm số lần sai
     if (req.rateLimit) req.rateLimit.reset();
     const user = result.user;
-    req.session.user = {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      role: user.role,
-    };
-    req.session.save((err) => {
-      if (err) {
-        console.error('Lỗi lưu session:', err);
-        return res.status(500).json({ success: false, error: 'Lỗi hệ thống!' });
+    // Tạo session mới (regenerate) để chống session fixation: id session cũ bị bỏ
+    req.session.regenerate((regenErr) => {
+      if (regenErr) {
+        console.error('Lỗi tạo session mới:', regenErr);
+        return res.status(500).json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại!' });
       }
-      return res.json({ success: true, user: req.session.user });
+      req.session.user = {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+      };
+      req.session.save((err) => {
+        if (err) {
+          console.error('Lỗi lưu session:', err);
+          return res.status(500).json({ success: false, error: 'Lỗi hệ thống!' });
+        }
+        return res.json({ success: true, user: req.session.user });
+      });
     });
   } catch (error) {
     console.error('Lỗi handleLogin:', error);
@@ -83,11 +79,12 @@ async function handleRegister(req, res) {
 
     const [user] = await userModel.getUserByUsername(username);
     if (user !== undefined) {
-      return res.status(400).json({ success: false, error: 'Tài khoản đã tồn tại!' });
+      // Chống enumeration: không nói rõ tài khoản hay email nào đã tồn tại
+      return res.status(400).json({ success: false, error: 'Đăng ký không thành công: tài khoản hoặc email đã tồn tại, hoặc thông tin không hợp lệ!' });
     }
     const [userByEmail] = await userModel.getUserByEmail(email);
     if (userByEmail !== undefined) {
-      return res.status(400).json({ success: false, error: 'Email đã được sử dụng!' });
+      return res.status(400).json({ success: false, error: 'Đăng ký không thành công: tài khoản hoặc email đã tồn tại, hoặc thông tin không hợp lệ!' });
     }
     const hashedPassword = await bcrypt.hash(password, 10);
     await userModel.createUser(username, hashedPassword, email, fullname);
@@ -138,32 +135,37 @@ async function handleForgotPassword(req, res) {
       });
     }
     const [userByEmail] = await userModel.getUserByEmail(email);
-    if (!userByEmail) {
-      return res.status(404).json({
-        success: false,
-        error: 'Không tìm thấy tài khoản nào với Email này!',
-      });
+    if (userByEmail) {
+      req.session.resetEmail = email;
+      req.session.otp = false;
+      req.session.otpExpiresAt = Date.now() + OTP_TTL_MS;
+      req.session.otpAttempts = 0;
+      const otp = await authService.createOtp(email);
+      await sendMail(email, otp);
     }
-    req.session.resetEmail = email;
-    req.session.otp = false;
-    req.session.otpExpiresAt = Date.now() + OTP_TTL_MS;
-    req.session.otpAttempts = 0;
-    const otp = await authService.createOtp(email);
-    await sendMail(email, otp);
-
+    // Luôn trả thông báo chung (kể cả khi email không tồn tại / gửi mail lỗi)
+    // để không ai dò được email nào đã đăng ký
     req.session.save((err) => {
       if (err) {
-        console.error('Lỗi lưu session:', err);
+        console.error('Lỗi lưu phiên:', err);
         return res.status(500).json({
           success: false,
           error: 'Lỗi khi lưu phiên!',
         });
       }
-      return res.json({ success: true, message: 'OTP sent' });
+      return res.json({ success: true, message: OTP_SENT_MESSAGE });
     });
   } catch (error) {
     if (error instanceof MailError) {
-      return res.status(503).json({ success: false, error: error.message });
+      // Lỗi hạ tầng email vẫn trả thông báo chung — nếu báo lỗi riêng,
+      // kẻ dò sẽ biết email tồn tại (chỉ email tồn tại mới chạm tới bước gửi thư).
+      // Vẫn lưu session đã thiết lập để người dùng có thể yêu cầu gửi lại từ trang OTP.
+      return req.session.save((saveErr) => {
+        if (saveErr) {
+          return res.status(500).json({ success: false, error: 'Lỗi khi lưu phiên!' });
+        }
+        return res.json({ success: true, message: OTP_SENT_MESSAGE });
+      });
     }
     console.error('Lỗi handleForgotPassword:', error);
     return res.status(500).json({

@@ -13,9 +13,13 @@ async function addComment(req, res) {
     }
     const recipeId = req.params.id;
     const userId = req.session.user.id;
-    const { content } = req.body;
-    if (!content || content.trim() === '') {
+    const content = String(req.body.content || '').trim();
+    if (content === '') {
       return res.status(400).json({ success: false, message: 'Empty comment' });
+    }
+    // Giới hạn độ dài để tránh payload khổng lồ / spam
+    if (content.length > 2000) {
+      return res.status(400).json({ success: false, message: 'Bình luận tối đa 2000 ký tự!' });
     }
     await commentModel.createComment(userId, recipeId, content);
     res.json({ success: true, message: 'Comment added' });

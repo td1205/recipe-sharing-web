@@ -1,8 +1,19 @@
 const adminModel = require('../repositories/adminRepository');
 const userModel = require('../repositories/userRepository');
 const bcrypt = require('bcrypt');
+const { validatePassword } = require('../utils/passwordPolicy');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+
+// id từ URL phải là số nguyên dương, tránh NaN chạm vào Prisma
+function parseIdOr400(req, res) {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(400).json({ success: false, message: 'ID không hợp lệ' });
+    return null;
+  }
+  return id;
+}
 async function renderDashboard(req, res) {
   try {
     const [totalUsers, totalRecipes, totalCategories, totalComments, chartData] =
@@ -110,19 +121,22 @@ async function handleChangePassword(req, res) {
 
 async function handleAdminChangePassword(req, res) {
   try {
-    const userId = req.params.id;
+    const userId = parseIdOr400(req, res);
+    if (!userId) return;
     const { newPassword } = req.body;
-    
-    if (!newPassword || newPassword.length < 6) {
-       return res.status(400).json({ success: false, message: 'Mật khẩu phải từ 6 ký tự' });
+
+    // Dùng chung chính sách mật khẩu của hệ thống (8+ ký tự, chữ, số, đặc biệt)
+    const passwordError = validatePassword(newPassword || '');
+    if (passwordError) {
+      return res.status(400).json({ success: false, message: passwordError });
     }
-    
+
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await prisma.users.update({
-      where: { id: parseInt(userId) },
+      where: { id: userId },
       data: { password: hashedPassword }
     });
-    
+
     res.json({ success: true, message: 'Đã đổi mật khẩu thành công' });
   } catch (error) {
     res.status(500).json({ success: false, message: '500 Server Error' });

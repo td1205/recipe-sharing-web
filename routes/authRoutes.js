@@ -39,9 +39,43 @@ const multerUpload = multer({
   },
 }).single('avatar');
 
-// Bọc multer để lỗi upload trả về JSON 400 thay vì trang lỗi HTML
+// Kiểm tra "chữ ký" (magic bytes) của file: MIME type client tự khai báo có thể bị giả mạo.
+async function verifyImageMagic(filePath) {
+  const handle = await fs.promises.open(filePath, 'r');
+  try {
+    const { buffer } = await handle.read(Buffer.alloc(12), 0, 12, 0);
+    const startsWith = (bytes) => bytes.every((b, i) => buffer[i] === b);
+    const ascii = buffer.toString('latin1');
+    return (
+      startsWith([0xff, 0xd8, 0xff]) || // JPEG
+      startsWith([0x89, 0x50, 0x4e, 0x47]) || // PNG
+      ascii.startsWith('GIF8') || // GIF87a / GIF89a
+      (ascii.startsWith('RIFF') && ascii.slice(8, 12) === 'WEBP') // WEBP
+    );
+  } finally {
+    await handle.close();
+  }
+}
+
+// Bọc multer để lỗi upload trả về JSON 400 thay vì trang lỗi HTML,
+// đồng thời xác thực magic bytes trước khi cho đi tiếp
 function uploadAvatar(req, res, next) {
-  multerUpload(req, res, (err) => {
+  multerUpload(req, res, async (err) => {
+    if (!err && req.file) {
+      let isImage = false;
+      try {
+        isImage = await verifyImageMagic(req.file.path);
+      } catch (readErr) {
+        console.error('Lỗi đọc file ảnh tải lên:', readErr);
+      }
+      if (!isImage) {
+        fs.promises.unlink(req.file.path).catch(() => {});
+        return res
+          .status(400)
+          .json({ success: false, error: 'Tệp tải lên không phải ảnh hợp lệ!' });
+      }
+      return next();
+    }
     if (!err) return next();
     let message = 'Lỗi tải ảnh lên!';
     if (err.code === 'LIMIT_FILE_SIZE') message = 'Ảnh đại diện tối đa 2MB!';
@@ -54,7 +88,8 @@ router.get('/login', authController.getLoginPage);
 router.post('/login', loginLimiter, authController.handleLogin);
 router.get('/register', authController.getRegisterPage);
 router.post('/register', registerLimiter, authController.handleRegister);
-router.get('/logout', authController.logout);
+router.get('/logout', authController.logout); // GET giữ lại cho tương thích cũ
+router.post('/logout', authController.logout); // POST: dùng ở frontend, tránh CSRF qua GET
 router.get(
   '/profile',
   authMiddleware.isAuthenticated,

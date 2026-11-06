@@ -61,6 +61,30 @@ const loginLimiter = createRateLimiter({
   message: 'Bạn đã đăng nhập sai quá nhiều lần. Vui lòng thử lại sau {minutes} phút.',
 });
 
+// Đăng nhập theo IP: chặn password-spray (thử 1 mật khẩu trên hàng loạt tài khoản khác nhau)
+const loginIpLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  key: () => 'login-ip',
+  message: 'Quá nhiều lần đăng nhập từ địa chỉ của bạn. Vui lòng thử lại sau {minutes} phút.',
+});
+
+// Tương tác (bình luận / đánh giá / yêu thích / tag): 30 lần / phút theo người dùng hoặc IP
+const interactionLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 30,
+  key: (req) => `int:${req.session.user ? 'u' + req.session.user.id : req.ip}`,
+  message: 'Bạn thao tác quá nhanh. Vui lòng thử lại sau {minutes} phút.',
+});
+
+// Đăng / sửa / xoá công thức: 20 lần / giờ theo người dùng
+const recipeWriteLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  key: (req) => `rw:${req.session.user ? 'u' + req.session.user.id : req.ip}`,
+  message: 'Bạn đã thực hiện quá nhiều thao tác với công thức. Vui lòng thử lại sau {minutes} phút.',
+});
+
 // Gửi OTP: tối đa 3 lần / 10 phút cho mỗi email
 const otpSendLimiter = createRateLimiter({
   windowMs: 10 * 60 * 1000,
@@ -77,4 +101,4 @@ const registerLimiter = createRateLimiter({
   message: 'Bạn đã đăng ký quá nhiều lần. Vui lòng thử lại sau {minutes} phút.',
 });
 
-module.exports = { createRateLimiter, loginLimiter, otpSendLimiter, registerLimiter };
+module.exports = { createRateLimiter, loginLimiter, loginIpLimiter, otpSendLimiter, registerLimiter, interactionLimiter, recipeWriteLimiter };
