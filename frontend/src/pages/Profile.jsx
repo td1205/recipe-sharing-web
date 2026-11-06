@@ -1,13 +1,11 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
-import { AuthContext } from '../context/AuthContext';
 import SkeletonLoader from '../components/SkeletonLoader';
+import { RecipeImage } from '../components/MagazineCard';
 
 const Profile = () => {
-  const { user } = useContext(AuthContext);
-  const navigate = useNavigate();
   const [profileUser, setProfileUser] = useState(null);
   const [favouriteRecipes, setFavouriteRecipes] = useState([]);
   const [myRecipes, setMyRecipes] = useState([]);
@@ -15,9 +13,6 @@ const Profile = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (user === null) {
-       // navigate('/login'); // AuthContext already handles this or API will return 401
-    }
     const fetchProfile = async () => {
       try {
         const res = await axios.get('/api/profile');
@@ -27,17 +22,15 @@ const Profile = () => {
           setMyRecipes(res.data.myRecipes || []);
         }
       } catch (err) {
-        if (err.response?.status === 401) {
-          navigate('/login');
-        } else {
-          setError('Không thể tải thông tin hồ sơ.');
-        }
+        setError(err.response?.status === 401
+          ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
+          : 'Không thể tải thông tin hồ sơ.');
       } finally {
         setLoading(false);
       }
     };
     fetchProfile();
-  }, [navigate, user]);
+  }, []);
 
   if (loading) return <MainLayout hideSidebar><SkeletonLoader /></MainLayout>;
   if (error) return <MainLayout hideSidebar><div className="error-msg">{error}</div></MainLayout>;
@@ -108,13 +101,7 @@ const Profile = () => {
                     <div className="steam-profile-fav-list">
                       {myRecipes.map((recipe) => (
                         <Link to={`/recipes/${recipe.id}`} key={recipe.id} className="steam-profile-fav-item">
-                          {recipe.image_url ? (
-                            <img src={recipe.image_url} alt={recipe.title} />
-                          ) : recipe.video_url && recipe.video_url.includes('cloudinary') ? (
-                            <img src={recipe.video_url.replace(/\.[^/.]+$/, ".jpg")} alt={recipe.title} />
-                          ) : (
-                            <div className="steam-profile-fav-placeholder"></div>
-                          )}
+                          <RecipeImage src={recipe.image_url || (recipe.video_url && recipe.video_url.includes('cloudinary') ? recipe.video_url.replace(/\.[^/.]+$/, '.jpg') : undefined)} alt={recipe.title} />
                           <div className="steam-profile-fav-title">{recipe.title}</div>
                         </Link>
                       ))}
@@ -133,13 +120,7 @@ const Profile = () => {
                     <div className="steam-profile-fav-list">
                       {favouriteRecipes.map((recipe) => (
                         <Link to={`/recipes/${recipe.id}`} key={recipe.id} className="steam-profile-fav-item">
-                          {recipe.image_url ? (
-                            <img src={recipe.image_url} alt={recipe.title} />
-                          ) : recipe.video_url && recipe.video_url.includes('cloudinary') ? (
-                            <img src={recipe.video_url.replace(/\.[^/.]+$/, ".jpg")} alt={recipe.title} />
-                          ) : (
-                            <div className="steam-profile-fav-placeholder"></div>
-                          )}
+                          <RecipeImage src={recipe.image_url || (recipe.video_url && recipe.video_url.includes('cloudinary') ? recipe.video_url.replace(/\.[^/.]+$/, '.jpg') : undefined)} alt={recipe.title} />
                           <div className="steam-profile-fav-title">{recipe.title}</div>
                         </Link>
                       ))}

@@ -5,7 +5,7 @@ import MainLayout from '../components/MainLayout';
 import SkeletonLoader from '../components/SkeletonLoader';
 import LoginRequiredModal from '../components/LoginRequiredModal';
 import Pagination from '../components/Pagination';
-import { DEFAULT_RECIPE_IMAGE } from '../components/MagazineCard';
+import { DEFAULT_RECIPE_IMAGE, RecipeImage } from '../components/MagazineCard';
 import { AuthContext } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import ErrorState from '../components/ErrorState';
@@ -356,8 +356,8 @@ const PopularRecipes = () => {
             {heroRecipe ? (
               <Link to={`/recipes/${heroRecipe.id}`} className="nyt-hero-featured-card">
                 <div className="nyt-hero-featured-img-wrap">
-                  <img
-                    src={heroRecipe.image_url || DEFAULT_RECIPE_IMAGE}
+                  <RecipeImage
+                    src={heroRecipe.image_url}
                     alt={heroRecipe.title}
                   />
                   <span className="nyt-featured-badge gold">
@@ -435,10 +435,9 @@ const PopularRecipes = () => {
                   {/* Image with Rank Badge & Quick Bookmark */}
                   <div className="nyt-popular-card-img-wrap">
                     <Link to={`/recipes/${recipe.id}`} style={{ display: 'block', width: '100%', height: '100%' }}>
-                      <img
-                        src={recipe.image_url || DEFAULT_RECIPE_IMAGE}
+                      <RecipeImage
+                        src={recipe.image_url}
                         alt={recipe.title}
-                        loading="lazy"
                       />
                     </Link>
 

@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useSearchParams, Link } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
 import SkeletonLoader from '../components/SkeletonLoader';
-import MagazineCard, { DEFAULT_RECIPE_IMAGE, handleImageError } from '../components/MagazineCard';
+import MagazineCard, { DEFAULT_RECIPE_IMAGE, RecipeImage } from '../components/MagazineCard';
 import RecipeSlider from '../components/RecipeSlider';
 import './Home.css';
 
@@ -69,7 +69,7 @@ const SidebarListCard = ({ recipe, isFirst }) => (
       </div>
     </div>
     <div className="mag-list-img-wrapper">
-      <img src={recipe.image_url || DEFAULT_RECIPE_IMAGE} alt={recipe.title} className="mag-list-img" loading="lazy" />
+      <RecipeImage src={recipe.image_url} alt={recipe.title} className="mag-list-img" />
     </div>
   </Link>
 );
@@ -348,11 +348,9 @@ const Home = () => {
                         {recentlyViewed.slice(0, 10).map(r => (
                           <Link to={`/recipes/${r.id}`} key={`recent-${r.id}`} className="mag-recently-card">
                             <div className="mag-recently-img-wrap">
-                              <img
-                                src={r.image_url || DEFAULT_RECIPE_IMAGE}
+                              <RecipeImage
+                                src={r.image_url}
                                 alt={r.title}
-                                loading="lazy"
-                                onError={handleImageError}
                               />
                             </div>
                             <h4>{r.title}</h4>

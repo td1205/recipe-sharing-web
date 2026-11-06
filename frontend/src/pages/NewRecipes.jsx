@@ -1,35 +1,50 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
 import SkeletonLoader from '../components/SkeletonLoader';
-import { DEFAULT_RECIPE_IMAGE } from '../components/MagazineCard';
+import { RecipeImage } from '../components/MagazineCard';
+import ErrorState from '../components/ErrorState';
 
 const NewRecipes = () => {
   const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const fetchNewRecipes = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await axios.get('/api/');
+      if (!res.data.success) {
+        throw new Error('Invalid recipes response');
+      }
+      setRecipes(res.data.latestRecipes || []);
+    } catch (requestError) {
+      console.error('Lỗi khi tải danh sách công thức mới:', requestError);
+      setError('Không thể tải danh sách công thức mới lúc này.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchNewRecipes = async () => {
-      try {
-        const res = await axios.get('/api/');
-        if (res.data.success) {
-          // Lấy latestRecipes từ API trang chủ làm danh sách mới ra mắt
-          setRecipes(res.data.latestRecipes || []);
-        }
-      } catch (error) {
-        console.error('Lỗi khi tải danh sách công thức mới:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    // eslint-disable-next-line react/set-state-in-effect -- Fetching starts when the route mounts.
     fetchNewRecipes();
-  }, []);
+  }, [fetchNewRecipes]);
 
   if (loading) {
     return (
       <MainLayout hideSidebar>
         <SkeletonLoader />
+      </MainLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <MainLayout hideSidebar>
+        <ErrorState message={error} onRetry={fetchNewRecipes} />
       </MainLayout>
     );
   }
@@ -55,7 +70,7 @@ const NewRecipes = () => {
             <div className="steam-featured-grid">
               {featuredRecipes.map(recipe => (
                 <Link to={`/recipes/${recipe.id}`} key={`feat-${recipe.id}`} className="steam-featured-card">
-                  <img src={recipe.image_url || DEFAULT_RECIPE_IMAGE} alt={recipe.title} />
+                  <RecipeImage src={recipe.image_url} alt={recipe.title} />
                   <div className="steam-featured-overlay">
                     <span className="steam-featured-tag">Công thức nổi bật tháng này</span>
                     <div className="steam-featured-price">
@@ -80,7 +95,7 @@ const NewRecipes = () => {
                 
                 {/* Image */}
                 <div className="steam-list-img-container">
-                  <img src={recipe.image_url || DEFAULT_RECIPE_IMAGE} alt={recipe.title} />
+                  <RecipeImage src={recipe.image_url} alt={recipe.title} />
                 </div>
                 
                 {/* Middle Content */}

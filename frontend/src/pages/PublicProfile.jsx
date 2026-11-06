@@ -4,7 +4,7 @@ import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
 import SkeletonLoader from '../components/SkeletonLoader';
 import Pagination from '../components/Pagination';
-import { DEFAULT_RECIPE_IMAGE } from '../components/MagazineCard';
+import { RecipeImage } from '../components/MagazineCard';
 import { AuthContext } from '../context/AuthContext';
 import NotFound from './NotFound';
 import './NotFound.css';
@@ -117,7 +117,7 @@ const PublicProfile = () => {
                     <div className="steam-profile-fav-list">
                       {recipes.map((recipe) => (
                         <Link to={`/recipes/${recipe.id}`} key={recipe.id} className="steam-profile-fav-item">
-                          <img src={recipe.image_url || DEFAULT_RECIPE_IMAGE} alt={recipe.title} loading="lazy" />
+                          <RecipeImage src={recipe.image_url} alt={recipe.title} />
                           <div className="steam-profile-fav-title">{recipe.title}</div>
                         </Link>
                       ))}

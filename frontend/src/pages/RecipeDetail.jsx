@@ -10,7 +10,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import { AuthContext } from '../context/AuthContext';
 import './Home.css';
 import { scaleAmount } from '../utils/amount';
-import { DEFAULT_RECIPE_IMAGE } from '../components/MagazineCard';
+import { RecipeImage } from '../components/MagazineCard';
 
 // How many suggestions to show in the slider.
 const SUGGESTION_LIMIT = 16;
@@ -433,7 +433,7 @@ const RecipeDetail = () => {
                   {mainMedia.media_type === 'video' ? (
                     <video key={mainMedia.media_url} src={mainMedia.media_url} autoPlay loop muted playsInline className="nyt-hero-img" style={{ pointerEvents: 'none' }} />
                   ) : (
-                    <img key={mainMedia.media_url} src={mainMedia.media_url || DEFAULT_RECIPE_IMAGE} alt={recipe.title} className="nyt-hero-img" />
+                    <RecipeImage key={mainMedia.media_url} src={mainMedia.media_url} alt={recipe.title} className="nyt-hero-img" />
                   )}
                   <p className="nyt-hero-caption">Ảnh minh họa cho {recipe.title}. Nguồn: Cộng đồng Recipe Sharing.</p>
                 </div>
