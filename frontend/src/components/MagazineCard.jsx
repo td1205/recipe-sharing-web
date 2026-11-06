@@ -10,13 +10,16 @@ export const handleImageError = (event) => {
 };
 
 // Ảnh công thức có fallback "chữ cái đầu tên món trên nền giấy" (phong cách editorial).
-// Dùng khi: chưa có image_url, hoặc link ảnh lỗi (host chết, 404, timeout...).
-// Host chết kiểu "treo kết nối" (không trả lỗi) cũng được xử lý: quá timeoutMs
-// mà chưa tải xong thì coi như hỏng, hiện placeholder luôn thay vì ô trống.
-// LƯU Ý: KHÔNG dùng loading="lazy" — ảnh lazy ngoài viewport không tải, timer
-// sẽ hiểu nhầm là ảnh hỏng và hiện placeholder oan cho ảnh sống.
+// Dùng khi: chưa có image_url, hoặc link ảnh lỗi (host chết, 404...).
+// Timer kiểm tra TRẠNG THÁI THẬT của thẻ <img> thay vì kết luận mù quáng:
+//   - đã hiển thị (naturalWidth > 0)      -> giữ ảnh, không bao giờ đập placeholder
+//   - lỗi thật (complete, naturalWidth=0) -> placeholder
+//   - đang tải dở                          -> chờ thêm (poll 1s, trần ~30s)
+// LƯU Ý: KHÔNG dùng loading="lazy" — ảnh lazy ngoài viewport không tải, dễ bị
+// hiểu nhầm là ảnh hỏng.
 // className truyền vào áp cho cả <img> lẫn div placeholder để giữ đúng kích thước khung ảnh.
 export function RecipeImage({ src, alt, className = '', timeoutMs = 8000, ...rest }) {
+  const imgRef = React.useRef(null);
   const [failed, setFailed] = React.useState(!src);
   const [loaded, setLoaded] = React.useState(false);
   React.useEffect(() => {
@@ -26,10 +29,34 @@ export function RecipeImage({ src, alt, className = '', timeoutMs = 8000, ...res
 
   React.useEffect(() => {
     if (!src || failed || loaded) return undefined;
-    const timer = window.setTimeout(() => {
+    let cancelled = false;
+    let timer;
+    const startedAt = Date.now();
+    const check = () => {
+      if (cancelled) return;
+      const el = imgRef.current;
+      if (el) {
+        if (el.complete && el.naturalWidth > 0) {
+          setLoaded(true); // ảnh thực sự đã hiển thị — giữ nguyên
+          return;
+        }
+        if (el.complete && el.naturalWidth === 0) {
+          setFailed(true); // lỗi thật (404, từ chối kết nối...)
+          return;
+        }
+      }
+      // vẫn đang tải: chờ tiếp, tối đa ~30s rồi mới bỏ
+      if (Date.now() - startedAt < 30000) {
+        timer = window.setTimeout(check, 1000);
+        return;
+      }
       setFailed(true);
-    }, timeoutMs);
-    return () => window.clearTimeout(timer);
+    };
+    timer = window.setTimeout(check, timeoutMs);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [src, failed, loaded, timeoutMs]);
 
   if (failed) {
@@ -47,6 +74,7 @@ export function RecipeImage({ src, alt, className = '', timeoutMs = 8000, ...res
 
   return (
     <img
+      ref={imgRef}
       src={src}
       alt={alt}
       className={className}

@@ -124,7 +124,8 @@ const Home = () => {
     let recents = [];
     try {
       recents = JSON.parse(localStorage.getItem('recentlyViewedRecipes') || '[]');
-      setRecentlyViewed(recents);
+      // CHÚ Ý: không render snapshot localStorage — id cũ có thể đã bị xoá,
+      // bấm vào sẽ 404. Chỉ hiển thị sau khi /api/recipe-cards xác nhận còn tồn tại.
     } catch (e) {
       console.error(e);
     }
@@ -342,7 +343,7 @@ const Home = () => {
                 {/* RECENTLY VIEWED */}
                 {recentlyViewed.length > 0 && (
                   <div className="mag-recently-viewed">
-                    <h3 className="mag-side-list-header">XEM GẦN ĐÂY <i className="fa-solid fa-chevron-right"></i></h3>
+                    <h3 className="mag-side-list-header">XEM GẦN ĐÂY</h3>
                     <div className="mag-recently-grid-wrapper">
                       <div className="mag-recently-grid" ref={recentScrollRef} onScroll={updateRecentControls}>
                         {recentlyViewed.slice(0, 10).map(r => (
@@ -371,7 +372,9 @@ const Home = () => {
                   </div>
                 )}
 
-                <h3 className="mag-side-list-header">CÔNG THỨC MỚI NHẤT <i className="fa-solid fa-chevron-right"></i></h3>
+                <h3 className="mag-side-list-header">
+                  <Link to="/recipes?sort=newest" className="mag-side-list-header-link">CÔNG THỨC MỚI NHẤT <i className="fa-solid fa-chevron-right" aria-hidden="true"></i></Link>
+                </h3>
                 <div className="mag-side-list">
                   {sideRecipes.map((recipe, index) => (
                     <SidebarListCard key={`side-${recipe.id}`} recipe={recipe} isFirst={index === 0} />
@@ -408,7 +411,7 @@ const Home = () => {
             <div className="magazine-section">
               <div className="magazine-section-header">
                 <h2 className="magazine-section-title">Hôm nay ăn gì?</h2>
-                <Link to="/?category=Tất cả" className="magazine-section-link">Xem tất cả <i className="fa-solid fa-chevron-right"></i></Link>
+                <Link to="/meals" className="magazine-section-link">Xem tất cả <i className="fa-solid fa-chevron-right"></i></Link>
               </div>
               <RecipeSlider recipes={todaySliderRecipes} label="Hôm nay ăn gì" />
             </div>
@@ -419,7 +422,7 @@ const Home = () => {
             <div className="magazine-section">
               <div className="magazine-section-header">
                 <h2 className="magazine-section-title">Dành Riêng Cho Bạn</h2>
-                <Link to="/?category=Tất cả" className="magazine-section-link">Xem tất cả <i className="fa-solid fa-chevron-right"></i></Link>
+                <Link to="/recipes" className="magazine-section-link">Xem tất cả <i className="fa-solid fa-chevron-right"></i></Link>
               </div>
               <RecipeSlider recipes={recommendedSliderRecipes} label="Dành riêng cho bạn" />
             </div>

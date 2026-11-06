@@ -6,12 +6,14 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import NewRecipes from './pages/NewRecipes';
 import PopularRecipes from './pages/PopularRecipes';
+import Meals from './pages/Meals';
 import RecipeDetail from './pages/RecipeDetail';
 import RecipeCreate from './pages/RecipeCreate';
 import RecipeEdit from './pages/RecipeEdit';
 import RecipeList from './pages/RecipeList';
 import Profile from './pages/Profile';
 import ProfileEdit from './pages/ProfileEdit';
+import RecipeBox from './pages/RecipeBox';
 import PublicProfile from './pages/PublicProfile';
 import NotFound from './pages/NotFound';
 
@@ -44,6 +46,7 @@ function App() {
           <Route path="/otp" element={<OTP />} />
           <Route path="/change-password" element={<ChangePassword />} />
           <Route path="/new-recipes" element={<NewRecipes />} />
+          <Route path="/meals" element={<Meals />} />
           <Route path="/popular" element={<PopularRecipes />} />
           <Route path="/popular-recipes" element={<PopularRecipes />} />
           <Route path="/recipes" element={<RecipeList />} />
@@ -56,6 +59,7 @@ function App() {
 
           
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/profile/recipe-box" element={<ProtectedRoute><RecipeBox /></ProtectedRoute>} />
           <Route path="/profile/edit" element={<ProtectedRoute><ProfileEdit /></ProtectedRoute>} />
           <Route path="/profile/:id" element={<PublicProfile />} />
           

@@ -243,7 +243,7 @@ const Navbar = () => {
               Đăng công thức
             </button>
             {/* "Hộp công thức" = các món đã lưu (yêu thích), hiển thị ở trang hồ sơ */}
-            <Link to={user ? '/profile' : '/login'} className="nyt-action-link nyt-recipe-box-link">
+            <Link to={user ? '/profile/recipe-box' : '/login'} className="nyt-action-link nyt-recipe-box-link">
                <i className="fa-regular fa-bookmark"></i>
                <span className="nyt-action-label">Hộp công thức</span>
             </Link>
