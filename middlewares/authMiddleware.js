@@ -30,7 +30,9 @@ function isEmail(req, res, next) {
 }
 
 function isOTP(req, res, next) {
-  if (req.session.otp === true) return next();
+  if (req.session.otp === true && req.session.resetGrantExpiresAt > Date.now()) return next();
+  delete req.session.otp;
+  delete req.session.resetGrantExpiresAt;
   return res
     .status(403)
     .json({ success: false, error: 'Bạn cần xác thực mã OTP trước!' });

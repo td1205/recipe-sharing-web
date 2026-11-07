@@ -1,5 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const validation = require('../utils/apiValidation');
+const prisma = require('../config/prisma');
 const recipeModel = require('../repositories/recipeRepository');
 const categoryModel = require('../repositories/categoryRepository');
 const commentModel = require('../repositories/commentRepository');
@@ -18,7 +18,8 @@ function withFallback(promise, fallback, label) {
 }
 async function getHomePage(req, res) {
   try {
-    const search = req.query.search ? req.query.search.trim() : '';
+    validation.listingQuery(req.query);
+    const search = validation.text(req.query.search, 'search', 200, false);
     const maxCookTime = req.query.max_cook_time ? parseInt(req.query.max_cook_time) : null;
 
     let categoryId = null;
@@ -94,16 +95,17 @@ async function getHomePage(req, res) {
       isSearch: false
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).send('Server Error');
+    console.error('Yêu cầu thất bại:', err.code || err.name);
+    return validation.apiError(res, err);
   }
 }
 
 async function getPopularRecipes(req, res) {
   try {
-    const limit = parseInt(req.query.limit) || 50;
+    const limit = validation.integer(req.query.limit, 'limit', 50, 1, 100);
     const allowedPeriods = ['all', 'month', 'week'];
-    const period = allowedPeriods.includes(req.query.period) ? req.query.period : 'all';
+    const period = req.query.period || 'all';
+    if (!allowedPeriods.includes(period)) throw Object.assign(new Error('period không hợp lệ'), { status: 400 });
     const [popularRecipes, categories] = await Promise.all([
       recipeModel.getPopularRecipes(limit, period),
       categoryModel.getAll(),
@@ -117,13 +119,22 @@ async function getPopularRecipes(req, res) {
       period,
     });
   } catch (err) {
-    console.error('Lỗi khi lấy công thức phổ biến:', err);
-    res.status(500).json({ success: false, message: 'Server Error' });
+    console.error('Lỗi khi lấy công thức phổ biến:', err.code || err.name);
+    return validation.apiError(res, err);
   }
 }
 
 async function getAllRecipes(req, res) {
   try {
+    if (req.query.page !== undefined || req.query.limit !== undefined) {
+      const query = validation.listingQuery(req.query);
+      const [listing, categories, mealTimes] = await Promise.all([
+        require('../repositories/recipeListingRepository').getPage(query), categoryModel.getAll(),
+        prisma.meal_times.findMany({ orderBy: { name: 'asc' } }),
+      ]);
+      return res.json({ success: true, ...listing, categories, mealTimes });
+    }
+    validation.listingQuery(req.query);
     // Cap độ dài từ khoá để truy vấn không thể phình to (B2)
     const search = String(req.query.search || '').trim().slice(0, 200);
     // Chỉ nhận category/meal_time dạng số; dạng tên để frontend tự lọc
@@ -176,17 +187,40 @@ async function getAllRecipes(req, res) {
       total: publicRecipes.length,
     });
   } catch (err) {
-    console.error('Lỗi khi lấy tất cả công thức:', err);
-    res.status(500).json({ success: false, message: 'Server Error' });
+    console.error('Lỗi khi lấy tất cả công thức:', err.code || err.name);
+    return validation.apiError(res, err);
+  }
+}
+
+// Gợi ý tìm kiếm (typeahead)
+async function getSearchSuggestions(req, res) {
+  try {
+    const suggestions = await recipeModel.getSearchSuggestions(validation.text(req.query.q, 'q', 100, false));
+    return res.json({ success: true, suggestions });
+  } catch (err) {
+    console.error('Lỗi gợi ý tìm kiếm:', err.code || err.name);
+    return validation.apiError(res, err);
+  }
+}
+
+// Danh sách tiêu đề cho typeahead (client tự lọc)
+async function getRecipeTitles(req, res) {
+  try {
+    const titles = await recipeModel.getAllRecipeTitles();
+    return res.json({ success: true, titles });
+  } catch (err) {
+    console.error('Lỗi lấy tiêu đề gợi ý:', err.code || err.name);
+    return validation.apiError(res, err);
   }
 }
 
 async function getRecipeDetail(req, res) {
   try {
-    const recipeId = req.params.id;
-    const recentIds = String(req.query.recent || '')
+    const recipeId = validation.id(req.params.id);
+    const recentIds = validation.text(req.query.recent, 'recent', 300, false)
       .split(',')
-      .map((id) => parseInt(id))
+      .filter(Boolean)
+      .map((id) => validation.id(id))
       .filter((id) => Number.isInteger(id) && id > 0)
       .slice(0, 20);
     const recipe = await recipeModel.getRecipeById(recipeId);
@@ -231,8 +265,8 @@ async function getRecipeDetail(req, res) {
       relatedRecipes,
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).send('Server Error');
+    console.error('Yêu cầu thất bại:', err.code || err.name);
+    return validation.apiError(res, err);
   }
 }
 async function getCreatePage(req, res) {
@@ -247,8 +281,8 @@ async function getCreatePage(req, res) {
     ]);
     res.json({ success: true, categories, courseTypes, mealTimes, user: req.session.user });
   } catch (err) {
-    console.error(err);
-    res.status(500).send('Server Error');
+    console.error('Yêu cầu thất bại:', err.code || err.name);
+    return validation.apiError(res, err);
   }
 }
 // Kiểm tra các id tham chiếu (danh mục, bữa ăn, loại món) có tồn tại trong DB
@@ -289,14 +323,13 @@ async function handleCreateRecipe(req, res) {
       input.ingredients,
       input.steps,
       input.media,
+      input.tags,
     );
-    if (input.tags && input.tags.length > 0) {
-      await recipeModel.setRecipeTags(recipeId, input.tags);
-    }
+
     res.status(201).json({ success: true, message: 'Recipe created', recipeId });
   } catch (err) {
-    console.error('Lỗi đăng công thức:', err);
-    res.status(500).json({ success: false, message: 'Lỗi hệ thống khi đăng công thức, vui lòng thử lại.' });
+    console.error('Lỗi đăng công thức:', err.code || err.name);
+    return validation.apiError(res, err);
   }
 }
 async function getEditPage(req, res) {
@@ -304,7 +337,7 @@ async function getEditPage(req, res) {
     if (!req.session.user) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
-    const recipeId = req.params.id;
+    const recipeId = validation.id(req.params.id);
     const recipe = await recipeModel.getRecipeById(recipeId);
     if (!recipe) {
       return res.status(404).json({ success: false, message: 'Recipe not found' });
@@ -337,8 +370,8 @@ async function getEditPage(req, res) {
       user: req.session.user,
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).send('Server Error');
+    console.error('Yêu cầu thất bại:', err.code || err.name);
+    return validation.apiError(res, err);
   }
 }
 async function handleUpdateRecipe(req, res) {
@@ -346,7 +379,7 @@ async function handleUpdateRecipe(req, res) {
     if (!req.session.user) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
-    const recipeId = parseInt(req.params.id, 10);
+    const recipeId = validation.id(req.params.id);
     if (!Number.isInteger(recipeId) || recipeId <= 0) {
       return res.status(404).json({ success: false, message: 'Recipe not found' });
     }
@@ -363,15 +396,11 @@ async function handleUpdateRecipe(req, res) {
     const input = await readRecipeInput(req, res);
     if (!input) return;
 
-    await recipeModel.updateRecipe(recipeId, input.recipe, input.ingredients, input.steps, input.media);
-    // tags === undefined: client cũ không gửi tag -> giữ nguyên tag hiện có
-    if (input.tags !== undefined) {
-      await recipeModel.setRecipeTags(recipeId, input.tags);
-    }
+    await recipeModel.updateRecipe(recipeId, input.recipe, input.ingredients, input.steps, input.media, input.tags);
     res.json({ success: true, message: 'Recipe updated', recipeId });
   } catch (err) {
-    console.error('Lỗi cập nhật công thức:', err);
-    res.status(500).json({ success: false, message: 'Lỗi hệ thống khi cập nhật công thức, vui lòng thử lại.' });
+    console.error('Lỗi cập nhật công thức:', err.code || err.name);
+    return validation.apiError(res, err);
   }
 }
 async function handleDeleteRecipe(req, res) {
@@ -379,7 +408,7 @@ async function handleDeleteRecipe(req, res) {
     if (!req.session.user) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
-    const recipeId = req.params.id;
+    const recipeId = validation.id(req.params.id);
     const recipe = await recipeModel.getRecipeById(recipeId);
     if (!recipe) {
       return res.status(404).json({ success: false, message: 'Recipe not found' });
@@ -393,17 +422,18 @@ async function handleDeleteRecipe(req, res) {
     await recipeModel.deleteRecipe(recipeId);
     res.json({ success: true, message: 'Recipe deleted' });
   } catch (err) {
-    console.error(err);
-    res.status(500).send('Server Error');
+    console.error('Yêu cầu thất bại:', err.code || err.name);
+    return validation.apiError(res, err);
   }
 }
 // GET /api/recipe-cards?ids=3,1,2 -> thông tin thẻ món theo đúng thứ tự, bỏ qua món đã bị xóa.
 // Dùng để làm mới danh sách "Xem gần đây" (lưu ở trình duyệt) theo dữ liệu hiện tại.
 async function getRecipeCards(req, res) {
   try {
-    const ids = String(req.query.ids || '')
+    const ids = validation.text(req.query.ids, 'ids', 400, false)
       .split(',')
-      .map((id) => parseInt(id, 10))
+      .filter(Boolean)
+      .map((id) => validation.id(id))
       .filter((id) => Number.isInteger(id) && id > 0)
       .slice(0, 30);
     const cards = await getRecipeCardsByIds(ids);
@@ -417,8 +447,8 @@ async function getRecipeCards(req, res) {
       })),
     });
   } catch (err) {
-    console.error('Lỗi lấy thẻ món:', err);
-    res.status(500).json({ success: false, message: 'Server Error' });
+    console.error('Lỗi lấy thẻ món:', err.code || err.name);
+    return validation.apiError(res, err);
   }
 }
 
@@ -426,6 +456,8 @@ module.exports = {
   getRecipeCards,
   getHomePage,
   getAllRecipes,
+  getSearchSuggestions,
+  getRecipeTitles,
   getPopularRecipes,
   getRecipeDetail,
   getCreatePage,

@@ -128,7 +128,7 @@ Copy `.env.example` to `.env` (backend) and `frontend/.env.example` to `frontend
 
 ### 4. Configure the database
 
-Ensure your MySQL server is running and matches the credentials in your `.env` file. Create the base tables and seed data, then sync the remaining columns/tables from the Prisma schema and generate the client:
+Legacy local bootstrap below creates seed data and changes schema. Use it ONLY for a newly provisioned disposable database after explicit approval; never run it against an existing development/production database or as part of tests. For deployment use the reviewed schema/migration procedure, not this bootstrap:
 
 ```bash
 mysql -u root -p < init_db.sql
@@ -239,11 +239,43 @@ npm test
 
 ## Testing
 
-Automated tests are not currently configured.
+### Isolated MySQL integration (prepared, NOT VERIFIED)
+
+`npm run test:database` skips by default without loading dotenv, Prisma, MySQL or the app. To opt in, an operator must first provision disposable **empty** databases with the approved current schema, including the session table. Provisioning/migrations are not part of the test command.
+
+Set `RUN_DATABASE_TESTS=yes`, `TEST_DB_CONFIRMED=yes`, `TEST_DATABASE_URL` and `TEST_SESSION_DATABASE_URL` explicitly in the test process. Both URLs must use loopback MySQL and database names matching `recipe_test_*`; `recipe_db` and remote hosts are rejected. The harness verifies `SELECT DATABASE()`, empty users and empty sessions before creating fixtures. It tests HTTP login/logout/permissions, recipe CRUD, interactions, SQL listing, pantry recommendations, last-admin competition and injected recipe/tag rollback, then removes only its own fixture IDs. Email/AI/Cloudinary adapters are blocked. Do not opt in against a shared database; credentials need access only to the disposable test databases. This harness has not been run against MySQL in this work session.
+
+### Production deployment and recovery (procedures, NOT VERIFIED)
+
+Use a pinned release artifact and Node >=22.12. Run `npm ci`, `npm ci --prefix frontend`, `npm run test:safe`, `npm run lint --prefix frontend`, and `npm run build --prefix frontend` in the build environment. CI also executes the isolated loopback router and Gemini mock tests; no CI database mutation job is enabled.
+
+Set `NODE_ENV=production`, a random `SESSION_SECRET` of at least 32 characters, a canonical HTTPS `APP_ORIGIN` without trailing slash, a MySQL `DATABASE_URL`, and the independent `DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME` session-store configuration. Behind TLS termination, allow only the actual proxy IP/subnets in `TRUST_PROXY`. Verify HTTPS cookie Secure/HttpOnly/SameSite behavior and rejection of forged forwarded headers on staging. Persist `uploads/avatars` outside release replacement and protect backup access. Startup does not create session tables or run migrations.
+
+`npm start` starts the release. `/healthz` is process liveness; `/readyz` probes both Prisma and the session table and returns 503 on timeout, failure or drain without revealing connection details. SIGTERM/SIGINT stop admission through readiness, drain HTTP, close idle connections, session pool and the shared Prisma client; a ten-second deadline terminates a stuck shutdown. Probe timeout does not cancel a driver query, so driver connection timeouts must also be bounded in deployment configuration.
+
+Before any approved deployment, take a consistent backup using a restricted backup account (for example `mysqldump --login-path=recipe-backup --single-transaction --routines --triggers --result-file=backup.sql recipe_db`). Encrypt and restrict access to the dump: it can contain personal data, password hashes and sessions. Do not store it in Git. Record the release/schema versions and checksum outside public logs.
+
+Rehearse restore only into a separately verified disposable `recipe_test_restore` database with a test-only login path. Inspect the dump for `USE`, `CREATE DATABASE`, qualified production names, and definers before import; never import a dump blindly through a production account. Verify table counts, constraints, session isolation and critical journeys after restore. No backup or restore command was executed here.
+
+For rollback, redeploy the previous validated artifact only after checking schema compatibility. If a data/schema rollback is necessary, stop writes and follow a reviewed restore/migration plan with an approved backup; do not use code rollback as proof that data was restored. Migration history, clean-clone deployment, remote CI execution, live outage recovery, reverse-proxy TLS and restore rehearsal remain NOT VERIFIED until staging and permission are provided.
+
+### Offline recommendation evaluation
+
+`npm run recommend:evaluate:offline -- INPUT.json OUTPUT.json` reads only a local dataset and never connects to a database or external service. Output must not already exist. Input requires `kind` (`real` or `simulated`), a provenance `label`, `recipes` with unique IDs/title/ingredients/tags, and `interactions` with pseudonymous integer user IDs, recipe IDs and favorite/rating/comment/view types (ratings 1–5). Do not export names, emails, session IDs or credentials. A single file must represent one verified source kind; the operator must confirm provenance because the validator cannot establish it independently.
+
+The report compares popularity, content, CF, hybrid and switching on the same seeded leave-one-out split, K=10 and production diversification; it records Precision@10, Recall@10, NDCG@10, seeds, settings and model/dataset hashes. Cold-start histories use the same protocol. Recall equals HitRate with one held-out positive. No eligible users produces an error rather than a misleading all-zero quality report. The local ViFoodRec archive supplies recipes only; no approved interaction dataset was found, so no relevance scores were generated in this work session. Fixture tests verify protocol mechanics only. Temporal evaluation and real-user A/B remain separate work requiring suitable data/permission.
+
+Run `npm run test:safe` for the explicitly selected memory-only suite. Route sandbox: `node --test tests/rateLimitRoutes.test.js` uses ephemeral loopback HTTP and mocked controllers/session store, not the live server. Tests do not establish real database atomicity or E2E coverage.
+
+Production: build with `npm run build --prefix frontend`, then `npm start` (Node >=22.12). Required configuration: DATABASE_URL, DB_HOST, DB_USER, DB_NAME, SESSION_SECRET; DB_PASSWORD/DB_PORT must point to the intended session store. Use an independent test database for BOTH Prisma and sessions. No migration or seed runs automatically at startup. `/healthz` reports process liveness only, not database readiness.
+
+Set PORT as needed. Behind TLS termination, explicitly set TRUST_PROXY to trusted proxy IPs/subnets and APP_ORIGIN to the public origin; do not trust arbitrary forwarded headers. Existing sessions created before password fingerprinting require login again. All old logged-in sessions are rejected on their next API request after a password change. OTP/reset grants expire after five minutes and successful reset consumes the previous password version atomically.
+
+Before release: verify schema parity and migrations on a permitted database copy, rehearse backup/restore and rollback, confirm session-store isolation/TLS/proxy, persistent uploads and environment secrets. These deployment checks have not been executed on the real database.
 
 ## Future Improvements
 
-- Add automated tests
+- Extend isolated database integration and browser E2E tests
 - Implement image upload functionality
 - Improve recipe search and filtering
 - Enhance input validation and error handling

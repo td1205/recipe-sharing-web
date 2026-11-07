@@ -24,9 +24,13 @@ const toArray = (value) => {
   if (value === undefined || value === null || value === '') return [];
   return Array.isArray(value) ? value : [value];
 };
-const str = (value) => (value === undefined || value === null ? '' : String(value).trim());
+const str = (value) => typeof value === 'string' ? value.trim() : typeof value === 'number' && Number.isFinite(value) ? String(value) : '';
 
 function parseIntField(value, { name, min, max, required, errors }) {
+  if (value != null && !['string', 'number'].includes(typeof value)) {
+    errors.push(`${name} phải là số nguyên.`);
+    return null;
+  }
   const raw = str(value);
   if (raw === '') {
     if (required) errors.push(`${name} là bắt buộc.`);
@@ -55,7 +59,7 @@ function isHttpUrl(value) {
 
 // Tag: chữ thường, bỏ dấu # đầu, gộp khoảng trắng, bỏ trùng
 function normalizeTags(value) {
-  const list = toArray(value).flatMap((item) => String(item).split(','));
+  const list = toArray(value).flatMap((item) => typeof item === 'string' ? item.split(',') : []);
   const seen = new Set();
   const tags = [];
   for (const item of list) {
@@ -70,6 +74,15 @@ function normalizeTags(value) {
 
 function validateRecipeInput(body = {}) {
   const errors = [];
+  if (!body || typeof body !== 'object' || Array.isArray(body)) body = {};
+  for (const field of ['title', 'description', 'image_url', 'video_url']) {
+    if (body[field] != null && typeof body[field] !== 'string') errors.push(`${field} phải là chuỗi.`);
+  }
+  for (const field of ['ing_name', 'ing_amount', 'ing_unit', 'step_instruction', 'media_urls', 'media_types', 'tags']) {
+    if (toArray(body[field]).some(value => typeof value !== 'string' && !(field === 'ing_amount' && typeof value === 'number'))) {
+      errors.push(`${field} chứa dữ liệu sai kiểu.`);
+    }
+  }
 
   const title = str(body.title);
   if (!title) errors.push('Tên món là bắt buộc.');

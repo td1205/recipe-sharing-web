@@ -6,6 +6,14 @@ async function getAll() {
   });
 }
 
+// Danh mục kèm số món đang thuộc danh mục (cảnh báo trước khi xoá dây chuyền)
+async function getAllWithRecipeCount() {
+  return prisma.categories.findMany({
+    orderBy: { name: 'asc' },
+    include: { _count: { select: { recipes: true } } },
+  });
+}
+
 async function getAllCourseTypes() {
   return await prisma.course_types.findMany({
     orderBy: { id: 'asc' },
@@ -45,6 +53,7 @@ async function remove(id) {
 
 module.exports = {
   getAll,
+  getAllWithRecipeCount,
   getAllCourseTypes,
   getAllMealTimes,
   getById,

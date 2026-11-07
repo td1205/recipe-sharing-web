@@ -80,6 +80,8 @@ model recipes {
   cook_time      Int
   servings       Int
   image_url      String?        @db.VarChar(255)
+  calories       Int?
+  difficulty     String?        @db.VarChar(20)
   created_at     DateTime?      @default(now()) @db.Timestamp(0)
   course_type_id Int?
   meal_time_id   Int?

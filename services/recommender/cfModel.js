@@ -17,7 +17,9 @@
 
 class CFModel {
   // userItemScores: Map(userId -> Map(recipeId -> điểm)); chỉ dùng điểm > 0
-  constructor(userItemScores) {
+  constructor(userItemScores, { shrinkage = 5 } = {}) {
+    if (!Number.isFinite(shrinkage) || shrinkage < 0) throw new RangeError('Invalid CF shrinkage');
+    this.shrinkage = shrinkage;
     this.userItems = new Map();
     this.itemUsers = new Map();
     userItemScores.forEach((items, userId) => {
@@ -58,15 +60,19 @@ class CFModel {
     const result = new Map();
     if (users) {
       const dotProducts = new Map();
+      const commonUsers = new Map();
       users.forEach((scoreI, userId) => {
         this.userItems.get(userId).forEach((scoreJ, otherId) => {
           if (otherId === id) return;
           dotProducts.set(otherId, (dotProducts.get(otherId) || 0) + scoreI * scoreJ);
+          commonUsers.set(otherId, (commonUsers.get(otherId) || 0) + 1);
         });
       });
       const normI = this.itemNorms.get(id);
       dotProducts.forEach((value, otherId) => {
-        result.set(otherId, value / (normI * this.itemNorms.get(otherId)));
+        const support = commonUsers.get(otherId);
+        const confidence = support / (support + this.shrinkage);
+        result.set(otherId, confidence * value / (normI * this.itemNorms.get(otherId)));
       });
     }
     if (this.cache.size > 5000) this.cache.clear();

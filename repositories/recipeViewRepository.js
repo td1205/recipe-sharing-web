@@ -12,9 +12,11 @@ function createViewerHash(userId, sessionId) {
 }
 
 async function recordQualifiedView(recipeId, userId, sessionId) {
-  const parsedRecipeId = parseInt(recipeId);
+  const parsedRecipeId = Number(recipeId);
+  return prisma.$transaction(async (tx) => {
+  await tx.$queryRaw`SELECT id FROM recipes WHERE id = ${parsedRecipeId} FOR UPDATE`;
   const parsedUserId = userId ? parseInt(userId) : null;
-  const recipe = await prisma.recipes.findUnique({
+  const recipe = await tx.recipes.findUnique({
     where: { id: parsedRecipeId },
     select: { user_id: true },
   });
@@ -24,7 +26,7 @@ async function recordQualifiedView(recipeId, userId, sessionId) {
   }
 
   if (parsedUserId && recipe.user_id === parsedUserId) {
-    const viewCount = await prisma.recipe_views.count({
+    const viewCount = await tx.recipe_views.count({
       where: { recipe_id: parsedRecipeId },
     });
     return { counted: false, viewCount };
@@ -32,7 +34,7 @@ async function recordQualifiedView(recipeId, userId, sessionId) {
 
   const viewerHash = createViewerHash(parsedUserId, sessionId);
   const viewedAfter = new Date(Date.now() - VIEW_DEDUPLICATION_WINDOW_MS);
-  const recentView = await prisma.recipe_views.findFirst({
+  const recentView = await tx.recipe_views.findFirst({
     where: {
       recipe_id: parsedRecipeId,
       viewer_hash: viewerHash,
@@ -43,7 +45,7 @@ async function recordQualifiedView(recipeId, userId, sessionId) {
 
   let counted = false;
   if (!recentView) {
-    await prisma.recipe_views.create({
+    await tx.recipe_views.create({
       data: {
         recipe_id: parsedRecipeId,
         user_id: parsedUserId,
@@ -53,11 +55,12 @@ async function recordQualifiedView(recipeId, userId, sessionId) {
     counted = true;
   }
 
-  const viewCount = await prisma.recipe_views.count({
+  const viewCount = await tx.recipe_views.count({
     where: { recipe_id: parsedRecipeId },
   });
 
   return { counted, viewCount };
+  });
 }
 
 module.exports = {

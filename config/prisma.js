@@ -2,8 +2,8 @@ const { PrismaClient } = require('@prisma/client');
 
 // Khởi tạo Prisma Client
 const prisma = new PrismaClient({
-  // Chỉ bật log lỗi và cảnh báo để tránh rối mắt ở terminal
-  log: ['warn', 'error'],
+  // Controller logs codes; avoid Prisma query/parameter dumps containing user data.
+  log: ['warn'],
 });
 
 module.exports = prisma;

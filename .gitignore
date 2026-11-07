@@ -2,8 +2,17 @@ node_modules/
 .env
 uploads/
 
+# Python environments and test caches
+.venv/
+__pycache__/
+.pytest_cache/
+
 # Skill do "prisma skills sync" (postinstall) tự sinh – không đưa vào repo
-/.agents/
+/.agents/*
+!/.agents/skills/
+/.agents/skills/*
+!/.agents/skills/quality-assurance/
+!/.agents/skills/report-sync/
 /.cursor/
 /.devin/
 /.claude/skills/prisma-*/
@@ -14,3 +23,5 @@ uploads/
 
 # File môi trường của frontend
 frontend/.env
+# Playwright CLI output (may contain credentials)
+.playwright-cli/

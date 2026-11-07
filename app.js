@@ -1,4 +1,6 @@
 require('dotenv').config();
+// Fail before creating database/session clients. Importing does not start a listener.
+if (require.main === module) require('./config/runtime').validateRuntime(process.env);
 const express = require('express');
 const path = require('path');
 const helmet = require('helmet');
@@ -16,6 +18,8 @@ const { refreshSessionUser } = require('./middlewares/sessionUserMiddleware');
 const app = express();
 // Không tiết lộ framework/phiên bản qua response header
 app.disable('x-powered-by');
+if (process.env.TRUST_PROXY) app.set('trust proxy', process.env.TRUST_PROXY.split(',').map(value => value.trim()));
+app.get('/healthz', (_req, res) => res.json({ success: true }));
 // Security headers: HSTS, X-Frame-Options, noSniff, Referrer-Policy...
 // CSP mở img-src https: vì ảnh công thức trỏ tới Flickr/Wikimedia/monngonmoingay...
 app.use(
@@ -35,13 +39,33 @@ app.use('/avatars', express.static(path.join(__dirname, 'uploads/avatars')));
 app.use('/avatars', express.static(path.join(__dirname, 'frontend/public/avatars')));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+// Preserve existing error/message consumers while converging on a JSON error contract.
+app.use((_req, res, next) => {
+  const json = res.json.bind(res);
+  res.json = (body) => {
+    if (body?.success === false) {
+      const message = body.error || body.message || 'Yêu cầu không thành công';
+      body = { ...body, error: message, message };
+    }
+    return json(body);
+  };
+  next();
+});
 const sessionStore = new MySQLStore({
+  createDatabaseTable: false,
   password: process.env.DB_PASSWORD,
   user: process.env.DB_USER,
   database: process.env.DB_NAME,
   host: process.env.DB_HOST,
   port: process.env.DB_PORT,
 });
+let draining = false;
+app.locals.closeResources = () => Promise.all([sessionStore.close(), require('./config/prisma').$disconnect()]);
+app.get('/readyz', require('./config/operations').readiness({
+  probeDatabase: () => require('./config/prisma').$queryRaw`SELECT 1`,
+  probeSessions: () => sessionStore.query('SELECT session_id FROM sessions LIMIT 0'),
+  isDraining: () => draining,
+}));
 app.use(
   session({
     secret: process.env.SESSION_SECRET,
@@ -63,6 +87,16 @@ app.use((req, res, next) => {
 });
 // Kiểm tra tài khoản bị khóa / đổi quyền ở mỗi request API
 app.use('/api', refreshSessionUser);
+app.use('/api', (req, res, next) => {
+  // Same-origin browser writes; requests without Origin (non-browser clients) remain compatible.
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && req.headers.origin) {
+    const expected = process.env.APP_ORIGIN || `${req.protocol}://${req.get('host')}`;
+    const developmentOrigin = process.env.NODE_ENV !== 'production' && !process.env.APP_ORIGIN
+      && ['http://localhost:5173', 'http://127.0.0.1:5173'].includes(req.headers.origin);
+    if (req.headers.origin !== expected && !developmentOrigin) return res.status(403).json({ success: false, error: 'Nguồn yêu cầu không hợp lệ' });
+  }
+  next();
+});
 app.use('/api', recipeRoutes);
 app.use('/api', authRoutes);
 app.use('/api', categoryRoutes);
@@ -79,7 +113,33 @@ app.use((req, res, next) => {
     next();
   }
 });
-const PORT = 3000;
-app.listen(PORT, () => {
-  console.log(`Server đang chạy tại cổng ${PORT}`);
+app.use('/api', (_req, res) => res.status(404).json({ success: false, error: 'Không tìm thấy API' }));
+app.use((error, _req, res, _next) => {
+  if (res.headersSent) return _next(error);
+  const status = error.status === 400 ? 400 : error.status === 413 ? 413 : 500;
+  if (status === 500) return require('./utils/apiValidation').apiError(res, error);
+  const message = status === 400 ? 'Dữ liệu JSON không hợp lệ' : status === 413 ? 'Dữ liệu gửi quá lớn' : 'Lỗi hệ thống, vui lòng thử lại';
+  res.status(status).json({ success: false, error: message, message });
 });
+module.exports = app;
+if (require.main === module) {
+  const PORT = Number(process.env.PORT || 3000);
+  const server = app.listen(PORT, () => console.log(`Server đang chạy tại cổng ${PORT}`));
+  let stopping = false;
+  const shutdown = () => {
+    if (stopping) return;
+    stopping = true;
+    draining = true;
+    const deadline = setTimeout(() => process.exit(1), 10000);
+    deadline.unref();
+    server.close(async () => {
+      try {
+        await app.locals.closeResources();
+        clearTimeout(deadline);
+      } catch { process.exitCode = 1; }
+    });
+    server.closeIdleConnections();
+  };
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
+}

@@ -1,9 +1,9 @@
 import React from 'react';
 import Navbar from './Navbar';
 import Footer from './Footer';
-import Sidebar from './Sidebar';
 
-const MainLayout = ({ children, categories = [], hideSidebar = true, className }) => {
+
+const MainLayout = ({ children, categories = [], className }) => {
   return (
     <div className={`main-layout ${className || ''}`}>
       <Navbar categories={categories} />

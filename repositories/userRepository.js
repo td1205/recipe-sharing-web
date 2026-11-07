@@ -99,7 +99,7 @@ async function updateUserProfile(id, fullname, email, avatar_url, bio) {
 async function updateOTP(email, otp) {
   return await prisma.users.update({
     where: { email },
-    data: { otp },
+    data: { otp, OTPExpiredAt: otp ? new Date(Date.now() + 5 * 60 * 1000) : null },
   });
 }
 
@@ -116,8 +116,10 @@ module.exports = {
   getUserById,
   getFavouriteRecipesByUser,
   updatePasswordByEmail,
+  consumePasswordReset: (email, previous, password) => prisma.users.updateMany({ where: { email, password: previous }, data: { password } }),
   updateUserInfo,
   updateOTP,
+  consumeOTP: (email, otp) => prisma.users.updateMany({ where: { email, otp, OTPExpiredAt: { gt: new Date() } }, data: { otp: null, OTPExpiredAt: null } }),
   getOTPbyEmail,
   getRecipesByUser,
 };

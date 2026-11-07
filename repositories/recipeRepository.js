@@ -11,6 +11,27 @@ function normalizeLog(value, maximum) {
   return maximum > 0 ? Math.log1p(value) / Math.log1p(maximum) : 0;
 }
 
+// Gợi ý tìm kiếm (typeahead): theo tiêu đề, tối đa 8 món
+async function getSearchSuggestions(query) {
+  const q = String(query || '').trim().slice(0, 100);
+  if (q.length < 2) return [];
+  const esc = q.replace(/[\\%_]/g, (ch) => '\\' + ch);
+  return prisma.recipes.findMany({
+    where: { title: { contains: esc } },
+    select: { id: true, title: true, image_url: true },
+    orderBy: { created_at: 'desc' },
+    take: 8,
+  });
+}
+
+// Danh sách tiêu đề cho typeahead (client tự lọc thời gian thực)
+async function getAllRecipeTitles() {
+  return prisma.recipes.findMany({
+    select: { id: true, title: true },
+    orderBy: { title: 'asc' },
+  });
+}
+
 const Recipe = {
   async getAllRecipes(search = '', categoryId = null, mealTimeId = null, maxCookTime = null) {
     const where = {};
@@ -450,8 +471,9 @@ const Recipe = {
     }
   },
 
-  async createRecipe(recipeData, ingredients, steps, media) {
-    const newRecipe = await prisma.recipes.create({
+  async createRecipe(recipeData, ingredients, steps, media, tags, tx) {
+    if (!tx) return prisma.$transaction((client) => this.createRecipe(recipeData, ingredients, steps, media, tags, client));
+    const newRecipe = await tx.recipes.create({
       data: {
         user_id: parseInt(recipeData.user_id),
         category_id: parseInt(recipeData.category_id),
@@ -492,11 +514,13 @@ const Recipe = {
         }
       },
     });
+    if (tags !== undefined) await this.setRecipeTags(newRecipe.id, tags, tx);
     return newRecipe.id;
   },
 
-  async updateRecipe(recipeId, recipeData, ingredients, steps, media) {
-    await prisma.recipes.update({
+  async updateRecipe(recipeId, recipeData, ingredients, steps, media, tags, tx) {
+    if (!tx) return prisma.$transaction((client) => this.updateRecipe(recipeId, recipeData, ingredients, steps, media, tags, client));
+    await tx.recipes.update({
       where: { id: parseInt(recipeId) },
       data: {
         category_id: parseInt(recipeData.category_id),
@@ -540,13 +564,14 @@ const Recipe = {
         }
       },
     });
+    if (tags !== undefined) await this.setRecipeTags(recipeId, tags, tx);
   },
 
   // Tag do tác giả gắn cho món (bảng recipe_tags). Thay toàn bộ danh sách cũ.
-  async setRecipeTags(recipeId, tagNames) {
+  async setRecipeTags(recipeId, tagNames, client) {
     const id = parseInt(recipeId);
     const names = [...new Set((tagNames || []).map((n) => String(n).trim().toLowerCase()).filter(Boolean))];
-    await prisma.$transaction(async (tx) => {
+    const writeTags = async (tx) => {
       const tags = [];
       for (const name of names) {
         tags.push(
@@ -564,7 +589,9 @@ const Recipe = {
           skipDuplicates: true,
         });
       }
-    });
+    };
+    if (client) return writeTags(client);
+    return prisma.$transaction(writeTags);
   },
 
   // Tên các tag tác giả đã gắn (dùng cho form sửa công thức)
@@ -583,4 +610,4 @@ const Recipe = {
   },
 };
 
-module.exports = Recipe;
+module.exports = { ...Recipe, getSearchSuggestions, getAllRecipeTitles };

@@ -49,7 +49,7 @@ const METHODS = [
 
 // coldStartItems: nếu đặt (vd 3), mỗi người dùng được kiểm tra chỉ giữ lại N món
 // ngẫu nhiên trong lịch sử -> mô phỏng NGƯỜI DÙNG MỚI có rất ít dữ liệu.
-function evaluate({ recipes, interactions, k = 10, minLiked = 5, seed = 42, maxUsers = Infinity, coldStartItems = null }) {
+function evaluate({ recipes, interactions, k = 10, minLiked = 5, seed = 42, maxUsers = Infinity, coldStartItems = null, diversify = true }) {
   const random = seededRandom(seed);
   const byUser = groupByUser(interactions);
 
@@ -94,7 +94,7 @@ function evaluate({ recipes, interactions, k = 10, minLiked = 5, seed = 42, maxU
           list.push(pool.splice(Math.floor(random() * pool.length), 1)[0]);
         }
       } else {
-        list = recommendForUser(models, userItems, { limit: k, strategy: key, diversify: false }).map(
+        list = recommendForUser(models, userItems, { limit: k, strategy: key, diversify }).map(
           (item) => item.recipeId,
         );
       }
@@ -109,12 +109,14 @@ function evaluate({ recipes, interactions, k = 10, minLiked = 5, seed = 42, maxU
   const userCount = heldOut.size;
   return {
     k,
+    protocol: { split: 'seeded-random-leave-one-out', seed, diversify, mode: diversify ? 'production-postprocessing' : 'ablation-no-diversity' },
     userCount,
     recipeCount: recipes.length,
     interactionCount: interactions.length,
     results: METHODS.map(({ key, label }) => ({
       key,
       label,
+      recall: userCount ? totals[key].hit / userCount : 0,
       hitRate: userCount ? totals[key].hit / userCount : 0,
       precision: userCount ? totals[key].hit / userCount / k : 0,
       ndcg: userCount ? totals[key].ndcg / userCount : 0,
@@ -129,9 +131,10 @@ function evaluateAveraged(options, seeds = [1, 2, 3, 4, 5]) {
   return {
     ...first,
     runs: runs.length,
+    protocol: { ...first.protocol, seeds },
     results: first.results.map((row, index) => {
       const mean = (field) => runs.reduce((sum, run) => sum + run.results[index][field], 0) / runs.length;
-      return { ...row, hitRate: mean('hitRate'), precision: mean('precision'), ndcg: mean('ndcg') };
+      return { ...row, recall: mean('recall'), hitRate: mean('hitRate'), precision: mean('precision'), ndcg: mean('ndcg') };
     }),
   };
 }

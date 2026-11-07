@@ -10,6 +10,7 @@ async function getCommentsByRecipeId(recipeId) {
 
   return comments.map((c) => ({
     ...c,
+    user: c.users, // RecipeDetail dùng cùng cấu trúc tác giả khi tải lại và khi vừa gửi.
     username: c.users?.username, // Đảm bảo EJS đọc được như cũ
   }));
 }

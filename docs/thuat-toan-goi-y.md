@@ -1,3 +1,5 @@
+> Cập nhật source 07/11/2026: mô tả implementation, không phải kết quả relevance mới. Số liệu trong các tài liệu đánh giá cũ là lịch sử, không xác nhận phiên bản hiện tại.
+
 # Hệ gợi ý món ăn: thuật toán và cách giải thích
 
 Tài liệu này giải thích hệ gợi ý của recipe_web, dùng cho báo cáo và thuyết trình.
@@ -28,10 +30,12 @@ Người dùng ít khi chấm sao, nhưng mỗi lần xem hay thả tim đều c
 | Hành vi | Điểm |
 |---|---|
 | Xem món (tính 1 lần) | +1 |
-| Bình luận | +1 |
+| Bình luận (tối đa một lần cho mỗi user–món) | +0,25 |
 | Yêu thích | +3 |
 | Chấm 5 sao / 4 sao / 3 sao | +3 / +2 / 0 |
 | Chấm 1–2 sao | −2 |
+
+Đánh giá 1–2 sao ghi đè các hành vi dương của cùng user–món thành −2; món bị chê được loại khỏi nhãn thích. Profile content có thành phần âm để giảm các món tương tự; CF chỉ học điểm dương. Không phân tích ngữ nghĩa bình luận và không có time decay trong hệ chính.
 
 ## 3. Content-based filtering: TF-IDF và cosine (`contentModel.js`)
 
@@ -73,6 +77,8 @@ sim(i, j) = ---------------------------
 
 score(u, j) = Σ_{i: món u đã tương tác} sim(i, j) × r(u, i)
 ```
+
+Cosine CF được nhân hệ số độ tin cậy `n_chung / (n_chung + 5)`; shrinkage mặc định 5. Đây là chính sách hiện hành, chưa phải giá trị tối ưu đã được thực nghiệm lại.
 
 - Ưu điểm: phát hiện được những liên hệ mà nội dung không thấy, và độ chính xác cao khi có đủ dữ liệu.
 - Nhược điểm: món mới chưa ai tương tác thì không được gợi ý, và cần người dùng có lịch sử (cold start).
@@ -153,3 +159,7 @@ Kết quả tham khảo: 1.187 món, 300 người dùng mô phỏng. Mỗi con s
 - **Hệ thống có chậm không?** Mô hình được dựng trong bộ nhớ khoảng 0,1 giây cho 1.187 món và tự dựng lại sau mỗi 10 phút. Mỗi lượt gợi ý mất dưới 30ms. Lịch sử của người dùng được đọc mới mỗi lần, nên vừa thả tim là gợi ý thay đổi ngay.
 - **Món mới đăng có được gợi ý không?** Có, qua content-based (30% trong hybrid) và mục "món tương tự".
 - **Xem thuật toán nào đang áp dụng cho mình?** Gọi `GET /api/recommendations/explain`.
+
+## Giới hạn giao thức đánh giá hiện hành
+
+Evaluator nhận `diversify` (mặc định true, cùng post-processing production); false là ablation và được ghi trong protocol đầu ra. Split vẫn seeded random leave-one-out; chưa có temporal evaluation hoặc khoảng tin cậy mới do chưa có dataset test được phép. Các endpoint popular theo tuần/tháng và popularity của mô hình chính có phạm vi thống kê khác nhau; không coi là cùng bảng xếp hạng. Không thay trọng số hoặc ngưỡng switching để khớp số liệu cũ. Pantry kiểm requireAll trên toàn bộ nguyên liệu, nhưng coverage/missing chỉ tính nguyên liệu chính; gia vị không được mặc nhiên xem là đã đủ định lượng.

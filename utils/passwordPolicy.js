@@ -1,6 +1,7 @@
 // Chính sách mật khẩu dùng chung cho đăng ký và admin đặt lại mật khẩu.
 // Đưa ra utils để cả authController và adminController dùng một chuẩn duy nhất.
 function validatePassword(password) {
+  if (typeof password !== 'string' || password.length > 200) return 'Mật khẩu không hợp lệ!';
   if (password.length < 8) {
     return 'Mật khẩu phải chứa ít nhất 8 ký tự!';
   }

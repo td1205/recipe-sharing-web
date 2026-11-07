@@ -1,0 +1,17 @@
+.app-modal {
+  width: min(36rem, calc(100vw - var(--space-5) * 2));
+  max-height: calc(100dvh - var(--space-5) * 2);
+  overflow: auto;
+  padding: var(--space-5);
+  background: var(--color-bg-card);
+  color: var(--color-text-main);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 4px);
+  font-family: var(--font-home);
+}
+.app-modal::backdrop { background: rgb(0 0 0 / 45%); }
+.app-modal h2 { margin: 0 0 var(--space-4); font-family: inherit; font-size: 1.25rem; }
+.app-modal label { display: block; margin-bottom: var(--space-2); }
+.app-modal input, .app-modal textarea { width: 100%; box-sizing: border-box; }
+.app-modal-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-5); }
+.app-modal-message { color: var(--color-text-muted); }

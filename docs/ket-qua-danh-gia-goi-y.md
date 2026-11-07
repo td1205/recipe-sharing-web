@@ -1,3 +1,5 @@
+> Kết quả lịch sử trước các thay đổi feedback/shrinkage và production post-processing mới. Chưa chạy lại trên dataset được phép; không dùng các số dưới đây để kết luận chất lượng phiên bản hiện tại.
+
 # Kết quả đánh giá hệ gợi ý
 
 Ngày chạy: 12:27:21 24/10/2026

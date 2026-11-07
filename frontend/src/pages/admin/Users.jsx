@@ -1,17 +1,29 @@
+import { apiErrorMessage } from '../../utils/apiError';
+import Modal from '../../components/Modal';
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import AdminLayout from '../../components/AdminLayout';
 import SkeletonLoader from '../../components/SkeletonLoader';
+import ConfirmDialog from '../../components/ConfirmDialog';
+import { validatePassword } from '../../utils/passwordPolicy';
 import toast from 'react-hot-toast';
+import './admin.css';
+import AdminPageHeader from '../../components/AdminPageHeader';
 
 const AdminUsers = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [sortBy, setSortBy] = useState('newest');
   const [editingPasswordUser, setEditingPasswordUser] = useState(null);
   const [newPassword, setNewPassword] = useState('');
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [confirmBusy, setConfirmBusy] = useState(false);
+  const [confirmState, setConfirmState] = useState(null); // { title, message, confirmLabel, onConfirm }
 
   const fetchUsers = async () => {
     try {
@@ -45,36 +57,52 @@ const AdminUsers = () => {
     }
   };
 
-  const handleBanToggle = async (user) => {
-    if (!window.confirm(`Bạn có chắc muốn ${user.is_banned ? 'mở khóa' : 'khóa'} tài khoản của ${user.username}?`)) return;
-    try {
-      await axios.post(`/api/admin/users/ban/${user.id}`, {
-        is_banned: !user.is_banned
-      });
-      toast.success(user.is_banned ? 'Đã mở khóa tài khoản!' : 'Đã khóa tài khoản!', { style: { background: 'var(--color-bg-body)', color: 'var(--color-text-main)' } });
-      fetchUsers();
-    } catch (err) {
-      toast.error('Lỗi khi cập nhật trạng thái');
-    }
+  const handleBanToggle = (user) => {
+    setConfirmState({
+      title: user.is_banned ? 'Mở khóa tài khoản' : 'Khóa tài khoản',
+      message: `${user.is_banned ? 'Mở khóa' : 'Khóa'} tài khoản của ${user.username}?`,
+      confirmLabel: user.is_banned ? 'Mở khóa' : 'Khóa',
+      onConfirm: async () => {
+        try {
+          await axios.post(`/api/admin/users/ban/${user.id}`, { is_banned: !user.is_banned });
+          toast.success(user.is_banned ? 'Đã mở khóa tài khoản!' : 'Đã khóa tài khoản!', { style: { background: 'var(--color-bg-body)', color: 'var(--color-text-main)' } });
+          fetchUsers();
+        } catch (err) {
+          toast.error(apiErrorMessage(err, 'Lỗi khi cập nhật trạng thái'));
+        }
+        setConfirmState(null);
+      },
+    });
   };
 
-  const handleDelete = async (user) => {
-    if (!window.confirm(`NGUY HIỂM: Bạn có chắc muốn xóa vĩnh viễn tài khoản ${user.username}? Toàn bộ công thức của họ cũng sẽ bị xóa.`)) return;
-    try {
-      await axios.post(`/api/admin/users/delete/${user.id}`);
-      toast.success('Đã xóa tài khoản!', { style: { background: 'var(--color-bg-body)', color: 'var(--color-text-main)' } });
-      fetchUsers();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Lỗi khi xóa người dùng');
-    }
+  const handleDelete = (user) => {
+    setConfirmState({
+      title: 'Xoá vĩnh viễn tài khoản',
+      message: `NGUY HIỂM: Xoá vĩnh viễn tài khoản ${user.username}? Toàn bộ công thức của họ cũng sẽ bị xoá.`,
+      confirmLabel: 'Xoá vĩnh viễn',
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await axios.post(`/api/admin/users/delete/${user.id}`);
+          toast.success('Đã xóa tài khoản!', { style: { background: 'var(--color-bg-body)', color: 'var(--color-text-main)' } });
+          fetchUsers();
+        } catch (err) {
+          toast.error(err.response?.data?.message || 'Lỗi khi xóa người dùng');
+        }
+        setConfirmState(null);
+      },
+    });
   };
 
   const handleUpdatePassword = async (e) => {
     e.preventDefault();
-    if (newPassword.length < 6) {
-      toast.error('Mật khẩu phải từ 6 ký tự');
+    if (passwordBusy) return;
+    const policyError = validatePassword(newPassword);
+    if (policyError) {
+      toast.error(policyError);
       return;
     }
+    setPasswordBusy(true);
     try {
       await axios.post(`/api/admin/users/password/${editingPasswordUser.id}`, { newPassword });
       toast.success('Đổi mật khẩu thành công!', { style: { background: 'var(--color-bg-body)', color: 'var(--color-text-main)' } });
@@ -82,133 +110,150 @@ const AdminUsers = () => {
       setNewPassword('');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Lỗi đổi mật khẩu');
-    }
+    } finally { setPasswordBusy(false); }
   };
 
   if (loading) return <AdminLayout title="Quản lý Người dùng"><SkeletonLoader /></AdminLayout>;
   if (error) return <AdminLayout title="Quản lý Người dùng"><div className="error-msg">{error}</div></AdminLayout>;
 
-  const filteredUsers = users.filter(u => 
-    u.username.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    u.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = users.filter((u) => {
+    const q = searchTerm.toLowerCase();
+    const matchSearch = u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+    const matchRole = !roleFilter || (u.role || 'user') === roleFilter;
+    const matchStatus = !statusFilter || (statusFilter === 'banned' ? Boolean(u.is_banned) : !u.is_banned);
+    return matchSearch && matchRole && matchStatus;
+  }).sort((a, b) => {
+    if (sortBy === 'oldest') return new Date(a.created_at) - new Date(b.created_at);
+    if (sortBy === 'name') return String(a.username || '').localeCompare(String(b.username || ''), 'vi');
+    if (sortBy === 'mostRecipes') return (b._count?.recipes || 0) - (a._count?.recipes || 0);
+    if (sortBy === 'mostComments') return (b._count?.comments || 0) - (a._count?.comments || 0);
+    return new Date(b.created_at) - new Date(a.created_at); // newest
+  });
 
   return (
     <AdminLayout title="Quản lý Người dùng">
-      <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
-        
-        {/* Tiêu đề & Công cụ tìm kiếm */}
-        <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '15px' }}>
-          <div>
-            <h2 style={{ fontSize: '28px', margin: '0 0 5px 0', color: '#fff', fontWeight: '300' }}>Thành viên</h2>
-            <p style={{ color: 'var(--color-text-muted)', margin: 0, fontSize: '15px' }}>Quản lý tài khoản, phân quyền và trạng thái hoạt động</p>
-          </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <div style={{ position: 'relative' }}>
-              <i className="fa-solid fa-search" style={{ position: 'absolute', left: '15px', top: '12px', color: 'var(--color-text-muted)' }}></i>
-              <input 
-                type="text" 
-                placeholder="Tìm kiếm username, email..." 
-                className="admin-input"
-                style={{ paddingLeft: '40px', width: '300px', borderRadius: '20px' }}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+      <div className="admin-shell">
+
+        <AdminPageHeader
+          title="Thành viên"
+          subtitle="Quản lý tài khoản, phân quyền và trạng thái hoạt động"
+          actions={(
+            <div className="admin-toolbar-filters">
+            <input
+              type="search"
+              placeholder="Tìm kiếm username, email..."
+              className="admin-search"
+              aria-label="Tìm kiếm người dùng"
+              maxLength={200}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <select className="admin-select" aria-label="Lọc vai trò" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
+              <option value="">Tất cả vai trò</option>
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
+            <select className="admin-select" aria-label="Lọc trạng thái" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <option value="">Tất cả trạng thái</option>
+              <option value="active">Hoạt động</option>
+              <option value="banned">Bị khóa</option>
+            </select>
+            <select className="admin-select" aria-label="Sắp xếp người dùng" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+              <option value="newest">Mới nhất trước</option>
+              <option value="oldest">Cũ nhất trước</option>
+              <option value="name">Tên A–Z</option>
+              <option value="mostRecipes">Nhiều công thức nhất</option>
+              <option value="mostComments">Nhiều bình luận nhất</option>
+            </select>
             </div>
-          </div>
-        </div>
+          )}
+        />
+
+        <p className="admin-page-sub" style={{ marginBottom: '12px' }}>
+          Hiển thị {filteredUsers.length.toLocaleString('vi-VN')} / {users.length.toLocaleString('vi-VN')} người dùng
+        </p>
 
         {/* Bảng dữ liệu */}
-        <div style={{ 
-          background: 'rgba(27, 40, 56, 0.6)', 
-          border: '1px solid var(--color-border)', 
-          borderRadius: '12px',
-          overflow: 'hidden',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
-        }}>
-          <div style={{ overflowX: 'auto' }}>
-            <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div className="admin-table-box">
+            <table className="admin-card-table">
               <thead>
-                <tr style={{ background: 'rgba(16, 24, 34, 0.8)', borderBottom: '1px solid var(--color-border)' }}>
-                  <th style={{ padding: '15px 20px', textAlign: 'left', color: 'var(--color-text-muted)', fontWeight: '600', fontSize: '13px' }}>ID</th>
-                  <th style={{ padding: '15px 20px', textAlign: 'left', color: 'var(--color-text-muted)', fontWeight: '600', fontSize: '13px' }}>NGƯỜI DÙNG</th>
-                  <th style={{ padding: '15px 20px', textAlign: 'center', color: 'var(--color-text-muted)', fontWeight: '600', fontSize: '13px' }}>HOẠT ĐỘNG</th>
-                  <th style={{ padding: '15px 20px', textAlign: 'left', color: 'var(--color-text-muted)', fontWeight: '600', fontSize: '13px' }}>VAI TRÒ</th>
-                  <th style={{ padding: '15px 20px', textAlign: 'center', color: 'var(--color-text-muted)', fontWeight: '600', fontSize: '13px' }}>TRẠNG THÁI</th>
-                  <th style={{ padding: '15px 20px', textAlign: 'right', color: 'var(--color-text-muted)', fontWeight: '600', fontSize: '13px' }}>HÀNH ĐỘNG</th>
+                <tr>
+                  <th>ID</th>
+                  <th>Người dùng</th>
+                  <th style={{ textAlign: 'center' }}>Hoạt động</th>
+                  <th>Vai trò</th>
+                  <th style={{ textAlign: 'center' }}>Trạng thái</th>
+                  <th style={{ textAlign: 'right' }}>Hành động</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredUsers.length === 0 ? (
-                  <tr><td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-muted)' }}>Không tìm thấy người dùng nào.</td></tr>
+                  <tr><td colSpan="6" className="admin-empty-cell">Không tìm thấy người dùng nào.</td></tr>
                 ) : (
                   filteredUsers.map(u => (
-                    <tr key={u.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s' }} className="admin-table-row">
-                      <td style={{ padding: '15px 20px', color: 'var(--color-text-muted)' }}>#{u.id}</td>
-                      <td style={{ padding: '15px 20px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                          <img src={u.avatar_url || '/default-avatar.svg'} alt="avatar" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
-                          <div>
-                            <div style={{ color: '#fff', fontWeight: '500', fontSize: '15px' }}>{u.username}</div>
-                            <div style={{ color: 'var(--color-text-muted)', fontSize: '13px' }}>{u.email}</div>
+                    <tr key={u.id}>
+                      <td className="admin-cell-sub">#{u.id}</td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <img src={u.avatar_url || '/default-avatar.svg'} alt={`Avatar của ${u.username}`} className="admin-avatar" width={36} height={36} />
+                          <div style={{ minWidth: 0 }}>
+                            <div className="admin-cell-title">{u.username}</div>
+                            <div className="admin-cell-sub">{u.email}</div>
                           </div>
                         </div>
                       </td>
-                      <td style={{ padding: '15px 20px', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', color: 'var(--color-text-muted)', fontSize: '13px' }}>
-                          <span title="Số công thức" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><i className="fa-solid fa-utensils"></i> {u._count?.recipes || 0}</span>
-                          <span title="Số bình luận" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><i className="fa-solid fa-comments"></i> {u._count?.comments || 0}</span>
+                      <td style={{ textAlign: 'center' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '14px' }}>
+                          <span title="Số công thức" className="admin-cell-sub"><i className="fa-solid fa-utensils" aria-hidden="true"></i> {u._count?.recipes || 0}</span>
+                          <span title="Số bình luận" className="admin-cell-sub"><i className="fa-solid fa-comments" aria-hidden="true"></i> {u._count?.comments || 0}</span>
                         </div>
                       </td>
-                      <td style={{ padding: '15px 20px' }}>
-                        <select 
-                          value={u.role || 'user'} 
+                      <td>
+                        <select
+                          value={u.role || 'user'}
                           onChange={(e) => handleUpdateRole(u, e.target.value)}
-                          className="admin-input"
-                          style={{ 
-                            width: '100px', 
-                            padding: '6px 10px', 
-                            borderRadius: '4px',
-                            background: u.role === 'admin' ? 'rgba(56, 189, 248, 0.1)' : 'rgba(255,255,255,0.05)',
-                            color: u.role === 'admin' ? '#38bdf8' : 'var(--color-text-main)',
-                            border: `1px solid ${u.role === 'admin' ? 'rgba(56, 189, 248, 0.3)' : 'var(--color-border)'}`
-                          }}
+                          className="admin-select"
+                          style={{ padding: '5px 8px' }}
+                          aria-label={`Đổi vai trò của ${u.username}`}
                         >
                           <option value="user">User</option>
                           <option value="admin">Admin</option>
                         </select>
                       </td>
-                      <td style={{ padding: '15px 20px', textAlign: 'center' }}>
-                        {u.is_banned ? (
-                          <span style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '4px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold' }}>BỊ KHÓA</span>
-                        ) : (
-                          <span style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '4px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold' }}>HOẠT ĐỘNG</span>
-                        )}
+                      <td style={{ textAlign: 'center' }}>
+                        <span className={`admin-badge ${u.is_banned ? 'admin-badge-banned' : 'admin-badge-ok'}`}>
+                          {u.is_banned ? 'Bị khóa' : 'Hoạt động'}
+                        </span>
                       </td>
-                      <td style={{ padding: '15px 20px', textAlign: 'right' }}>
-                        <button 
-                          className="btn-secondary" 
+                      <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <button
+                          type="button"
+                          className="admin-btn-icon"
                           onClick={() => setEditingPasswordUser(u)}
                           title="Đổi mật khẩu"
-                          style={{ padding: '6px 12px', marginRight: '10px', color: '#38bdf8', borderColor: '#38bdf8', background: 'transparent' }}
+                          aria-label={`Đổi mật khẩu của ${u.username}`}
                         >
-                          <i className="fa-solid fa-key"></i>
+                          <i className="fa-solid fa-key" aria-hidden="true"></i>
                         </button>
-                        <button 
-                          className="btn-secondary" 
+                        <button
+                          type="button"
+                          className={`admin-btn-icon ${u.is_banned ? 'admin-btn-icon-success' : ''}`}
+                          style={{ marginLeft: '8px' }}
                           onClick={() => handleBanToggle(u)}
-                          title={u.is_banned ? "Mở khóa tài khoản" : "Khóa tài khoản"}
-                          style={{ padding: '6px 12px', marginRight: '10px', color: u.is_banned ? '#10b981' : '#f59e0b', borderColor: u.is_banned ? '#10b981' : '#f59e0b', background: 'transparent' }}
+                          title={u.is_banned ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
+                          aria-label={`${u.is_banned ? 'Mở khóa' : 'Khóa'} tài khoản của ${u.username}`}
                         >
-                          <i className={`fa-solid ${u.is_banned ? 'fa-unlock' : 'fa-lock'}`}></i>
+                          <i className={`fa-solid ${u.is_banned ? 'fa-unlock' : 'fa-lock'}`} aria-hidden="true"></i>
                         </button>
-                        <button 
-                          className="btn-secondary" 
+                        <button
+                          type="button"
+                          className="admin-btn-icon admin-btn-icon-danger"
+                          style={{ marginLeft: '8px' }}
                           onClick={() => handleDelete(u)}
                           title="Xóa vĩnh viễn"
-                          style={{ padding: '6px 12px', color: '#ef4444', borderColor: '#ef4444', background: 'transparent' }}
+                          aria-label={`Xóa vĩnh viễn tài khoản của ${u.username}`}
                         >
-                          <i className="fa-solid fa-trash"></i>
+                          <i className="fa-solid fa-trash" aria-hidden="true"></i>
                         </button>
                       </td>
                     </tr>
@@ -219,32 +264,36 @@ const AdminUsers = () => {
           </div>
         </div>
 
-      </div>
-
       {editingPasswordUser && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'var(--color-bg-body)', padding: '30px', borderRadius: '12px', width: '400px', border: '1px solid var(--color-border)', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}>
-            <h3 style={{ margin: '0 0 20px 0', color: '#fff', fontSize: '20px', fontWeight: '500' }}>Đổi mật khẩu</h3>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: '14px', marginBottom: '20px' }}>Tài khoản: <strong style={{ color: '#fff' }}>{editingPasswordUser.username}</strong></p>
-            <form onSubmit={handleUpdatePassword}>
-              <div style={{ marginBottom: '25px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', color: 'var(--color-text-muted)', fontSize: '13px', fontWeight: 'bold' }}>Mật khẩu mới</label>
-                <input 
-                  type="text" 
-                  value={newPassword}
-                  onChange={e => setNewPassword(e.target.value)}
-                  className="admin-input" 
-                  placeholder="Nhập ít nhất 6 ký tự..."
-                  required
-                />
-              </div>
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                <button type="button" className="btn-secondary" onClick={() => { setEditingPasswordUser(null); setNewPassword(''); }}>Hủy</button>
-                <button type="submit" className="btn-primary" style={{ background: '#38bdf8', color: '#000', border: 'none' }}>Lưu thay đổi</button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <Modal title="Đổi mật khẩu" busy={passwordBusy} onClose={() => { setEditingPasswordUser(null); setNewPassword(''); }}>
+          <p>Tài khoản: <strong>{editingPasswordUser.username}</strong></p>
+          <form onSubmit={handleUpdatePassword}>
+            <label htmlFor="admin-new-password">Mật khẩu mới</label>
+            <input id="admin-new-password" type="password" autoComplete="new-password" value={newPassword}
+              onChange={event => setNewPassword(event.target.value)} className="admin-input" minLength={8} maxLength={200}
+              placeholder="Ít nhất 8 ký tự, gồm chữ, số và ký tự đặc biệt" required disabled={passwordBusy} />
+            <div className="app-modal-actions">
+              <button type="button" className="btn-secondary" disabled={passwordBusy} onClick={() => { setEditingPasswordUser(null); setNewPassword(''); }}>Hủy</button>
+              <button type="submit" className="btn-primary" disabled={passwordBusy}>{passwordBusy ? 'Đang lưu…' : 'Lưu thay đổi'}</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+      {confirmState && (
+        <ConfirmDialog
+          isOpen
+          title={confirmState.title}
+          message={confirmState.message}
+          confirmLabel={confirmState.confirmLabel}
+          danger={confirmState.danger}
+          busy={confirmBusy}
+          onConfirm={async () => {
+            if (confirmBusy) return;
+            setConfirmBusy(true);
+            try { await confirmState.onConfirm(); } finally { setConfirmBusy(false); }
+          }}
+          onClose={() => setConfirmState(null)}
+        />
       )}
     </AdminLayout>
   );

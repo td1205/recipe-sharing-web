@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import './admin.css';
 import AdminLayout from '../../components/AdminLayout';
 import SkeletonLoader from '../../components/SkeletonLoader';
+import ErrorState from '../../components/ErrorState';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -27,73 +29,89 @@ ChartJS.register(
   Filler
 );
 
+const StatCard = ({ title, value }) => (
+    <div className="admin-kpi">
+      <div className="admin-kpi-label">{title}</div>
+      <div className="admin-kpi-value">{value.toLocaleString('vi-VN')}</div>
+    </div>
+  );
+
 const AdminDashboard = () => {
   const [stats, setStats] = useState({ users: 0, recipes: 0, categories: 0, comments: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const navigate = useNavigate();
 
   const [serverChartData, setServerChartData] = useState(null);
+  const [recent, setRecent] = useState(null);
+  const [days, setDays] = useState(7);
+  const [lastFetched, setLastFetched] = useState(null);
+
+  const fetchDashboard = useCallback(async (rangeDays = 7) => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await axios.get('/api/admin/dashboard', { params: { days: rangeDays } });
+      if (!res.data.success) {
+        throw new Error('Invalid dashboard response');
+      }
+      setStats(res.data.stats);
+      setServerChartData(res.data.chartData);
+      setRecent(res.data.recent || null);
+      setLastFetched(res.data.stats.lastFetched || new Date().toISOString());
+    } catch (requestError) {
+      if (requestError.response?.status === 401 || requestError.response?.status === 403) {
+        setError('Phiên đăng nhập không còn quyền truy cập trang quản trị.');
+      } else {
+        setError('Không thể tải trang Dashboard.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchDashboard = async () => {
-      try {
-        const res = await axios.get('/api/admin/dashboard');
-        if (res.data.success) {
-          setStats(res.data.stats);
-          setServerChartData(res.data.chartData);
-        }
-      } catch (err) {
-        if (err.response?.status === 401 || err.response?.status === 403) {
-          navigate('/');
-        } else {
-          setError('Không thể tải trang Dashboard');
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDashboard();
-  }, [navigate]);
+    // eslint-disable-next-line react/set-state-in-effect -- Fetching starts when the protected route mounts.
+    fetchDashboard(7);
+  }, [fetchDashboard]);
 
   if (loading) return <AdminLayout title="Bảng điều khiển"><SkeletonLoader /></AdminLayout>;
-  if (error) return <AdminLayout title="Bảng điều khiển"><div className="error-msg">{error}</div></AdminLayout>;
+  if (error) return <AdminLayout title="Bảng điều khiển"><ErrorState message={error} onRetry={fetchDashboard} /></AdminLayout>;
 
   const labels = serverChartData ? Object.keys(serverChartData.users) : [];
   const usersData = serverChartData ? Object.values(serverChartData.users) : [];
   const recipesData = serverChartData ? Object.values(serverChartData.recipes) : [];
 
   const chartData = {
-    labels: labels,
+    labels,
     datasets: [
       {
         label: 'Công thức mới',
         data: recipesData,
-        borderColor: '#f97316', // Orange matching Steam primary accent
-        backgroundColor: 'rgba(249, 115, 22, 0.15)',
+        borderColor: '#e85d04',
+        backgroundColor: 'rgba(232, 93, 4, 0.12)',
         tension: 0.4,
         fill: true,
-        pointBackgroundColor: 'var(--color-bg-body)',
-        pointBorderColor: '#f97316',
-        pointHoverBackgroundColor: '#f97316',
-        pointHoverBorderColor: '#fff',
-        pointRadius: 4,
-        pointHoverRadius: 6,
+        pointBackgroundColor: '#ffffff',
+        pointBorderColor: '#e85d04',
+        pointHoverBackgroundColor: '#e85d04',
+        pointHoverBorderColor: '#ffffff',
+        pointRadius: 3,
+        pointHoverRadius: 5,
       },
       {
         label: 'Người dùng mới',
         data: usersData,
-        borderColor: '#38bdf8', // Light blue
-        backgroundColor: 'rgba(56, 189, 248, 0.1)',
+        borderColor: '#8a8a8a',
+        backgroundColor: 'rgba(138, 138, 138, 0.08)',
         tension: 0.4,
         fill: true,
         borderDash: [5, 5],
-        pointBackgroundColor: 'var(--color-bg-body)',
-        pointBorderColor: '#38bdf8',
-        pointHoverBackgroundColor: '#38bdf8',
-        pointHoverBorderColor: '#fff',
-        pointRadius: 4,
-        pointHoverRadius: 6,
+        pointBackgroundColor: '#ffffff',
+        pointBorderColor: '#8a8a8a',
+        pointHoverBackgroundColor: '#8a8a8a',
+        pointHoverBorderColor: '#ffffff',
+        pointRadius: 3,
+        pointHoverRadius: 5,
       }
     ],
   };
@@ -105,17 +123,17 @@ const AdminDashboard = () => {
       legend: {
         position: 'top',
         labels: {
-          color: 'var(--color-text-main)',
-          font: { family: "'Motiva Sans', 'Inter', sans-serif", size: 13 },
+          color: '#111111',
+          font: { family: "Roboto, Arial, sans-serif", size: 13 },
           usePointStyle: true,
           boxWidth: 8
         }
       },
       tooltip: {
-        backgroundColor: 'rgba(16, 24, 34, 0.9)',
-        titleColor: '#fff',
-        bodyColor: 'var(--color-text-main)',
-        borderColor: 'var(--color-border)',
+        backgroundColor: '#ffffff',
+        titleColor: '#111111',
+        bodyColor: '#5a5a5a',
+        borderColor: '#d0ccc2',
         borderWidth: 1,
         padding: 12,
         displayColors: true,
@@ -126,22 +144,22 @@ const AdminDashboard = () => {
       y: {
         beginAtZero: true,
         grid: {
-          color: 'rgba(255, 255, 255, 0.05)',
+          color: 'rgba(17, 17, 17, 0.07)',
           drawBorder: false,
         },
         ticks: {
-          color: 'var(--color-text-muted)',
-          font: { family: "'Motiva Sans', 'Inter', sans-serif", size: 12 }
+          color: '#5a5a5a',
+          font: { family: "Roboto, Arial, sans-serif", size: 12 }
         }
       },
       x: {
         grid: {
-          color: 'rgba(255, 255, 255, 0.05)',
-          drawBorder: false,
+          display: false,
         },
         ticks: {
-          color: 'var(--color-text-muted)',
-          font: { family: "'Motiva Sans', 'Inter', sans-serif", size: 12 }
+          color: '#5a5a5a',
+          font: { family: "Roboto, Arial, sans-serif", size: 12 },
+          maxTicksLimit: 10,
         }
       }
     },
@@ -151,116 +169,135 @@ const AdminDashboard = () => {
     },
   };
 
-  const StatCard = ({ title, value, icon, color, gradient }) => (
-    <div style={{
-      background: `linear-gradient(135deg, rgba(27, 40, 56, 0.9) 0%, rgba(16, 24, 34, 0.95) 100%)`,
-      padding: '24px',
-      borderRadius: '8px',
-      border: '1px solid var(--color-border)',
-      position: 'relative',
-      overflow: 'hidden',
-      boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
-      cursor: 'default',
-    }}>
-      <div style={{
-        position: 'absolute',
-        top: 0, right: 0, bottom: 0, left: 0,
-        background: `radial-gradient(circle at top right, ${gradient}, transparent 70%)`,
-        opacity: 0.5,
-        pointerEvents: 'none'
-      }}></div>
-      
-      <div style={{ position: 'relative', zIndex: 1 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
-          <div style={{ color: 'var(--color-text-muted)', fontSize: '12px', fontWeight: 'bold', letterSpacing: '1px', textTransform: 'uppercase' }}>
-            {title}
-          </div>
-          <div style={{ 
-            background: `rgba(${color.replace('#', '').match(/.{2}/g).map(x => parseInt(x, 16)).join(',')}, 0.15)`,
-            color: color,
-            width: '40px', height: '40px', 
-            borderRadius: '8px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '18px'
-          }}>
-            <i className={icon}></i>
-          </div>
-        </div>
-        <div style={{ fontSize: '36px', fontWeight: '300', color: '#fff', letterSpacing: '-1px' }}>
-          {value.toLocaleString()}
-        </div>
-      </div>
-    </div>
-  );
+
+
 
   return (
     <AdminLayout title="Bảng điều khiển">
-      <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
-        
-        {/* Tiêu đề & Lời chào */}
-        <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+      <div className="admin-shell">
+
+        {/* Tiêu đề & lời chào */}
+        <div className="admin-page-header">
           <div>
-            <h2 style={{ fontSize: '28px', margin: '0 0 5px 0', color: '#fff', fontWeight: '300' }}>Tổng quan hệ thống</h2>
-            <p style={{ color: 'var(--color-text-muted)', margin: 0, fontSize: '15px' }}>Số liệu thống kê và hoạt động gần đây</p>
+            <h1 className="admin-page-title">Tổng quan hệ thống</h1>
+            <p className="admin-page-sub">Số liệu thống kê và hoạt động gần đây</p>
           </div>
-          <div style={{ color: 'var(--color-text-muted)', fontSize: '13px' }}>
+          <div className="admin-updated">
             <i className="fa-regular fa-calendar" style={{ marginRight: '8px' }}></i>
-            Cập nhật lần cuối: {new Date().toLocaleTimeString('vi-VN')}
+            Cập nhật lần cuối: {lastFetched ? new Date(lastFetched).toLocaleTimeString('vi-VN') : '—'}
+            <button className="admin-updated-btn" onClick={() => fetchDashboard(days)} aria-label="Làm mới số liệu">
+              <i className="fa-solid fa-rotate-right" aria-hidden="true"></i>
+            </button>
           </div>
         </div>
 
         {/* 4 Thẻ chỉ số tổng quan */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '35px' }}>
-          <StatCard 
-            title="Tổng người dùng" 
-            value={stats.users} 
-            icon="fa-solid fa-users" 
-            color="#38bdf8" 
-            gradient="rgba(56, 189, 248, 0.15)"
-          />
-          <StatCard 
-            title="Tổng công thức" 
-            value={stats.recipes} 
-            icon="fa-solid fa-utensils" 
-            color="#f97316" 
-            gradient="rgba(249, 115, 22, 0.15)"
-          />
-          <StatCard 
-            title="Danh mục món ăn" 
-            value={stats.categories} 
-            icon="fa-solid fa-layer-group" 
-            color="#10b981" 
-            gradient="rgba(16, 185, 129, 0.15)"
-          />
-          <StatCard 
-            title="Bình luận & Đánh giá" 
-            value={stats.comments} 
-            icon="fa-solid fa-comments" 
-            color="#ec4899" 
-            gradient="rgba(236, 72, 153, 0.15)"
-          />
+        <div className="admin-kpi-grid">
+          <StatCard title="Tổng người dùng" value={stats.users} />
+          <StatCard title="Tổng công thức" value={stats.recipes} />
+          <StatCard title="Danh mục món ăn" value={stats.categories} />
+          <StatCard title="Bình luận" value={stats.comments} />
         </div>
 
         {/* Khu vực Biểu đồ */}
-        <div style={{ 
-          background: 'rgba(27, 40, 56, 0.6)', 
-          border: '1px solid var(--color-border)', 
-          borderRadius: '12px',
-          padding: '25px',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
-            <div>
-              <h3 style={{ margin: '0 0 5px 0', color: '#fff', fontSize: '18px', fontWeight: '500' }}>Biểu đồ tăng trưởng</h3>
-              <p style={{ color: 'var(--color-text-muted)', margin: 0, fontSize: '13px' }}>So sánh lượng người dùng và công thức mới trong 7 ngày qua</p>
-            </div>
-            <button className="btn-secondary" onClick={() => window.location.reload()} style={{ padding: '6px 12px', fontSize: '12px' }}>
-              <i className="fa-solid fa-rotate-right"></i> Làm mới
-            </button>
+        <div className="admin-section-header">
+          <div>
+            <h2 className="admin-section-title">Biểu đồ tăng trưởng</h2>
+            <p className="admin-section-sub">Người dùng và công thức mới trong {days} ngày qua</p>
           </div>
-          
-          <div style={{ height: '380px', width: '100%', position: 'relative' }}>
-            <Line data={chartData} options={chartOptions} />
+          <div className="admin-range-group">
+            {[7, 30, 90].map((d) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => { setDays(d); fetchDashboard(d); }}
+                className={`admin-range-btn ${days === d ? 'active' : ''}`}
+                aria-pressed={days === d}
+              >
+                {d} ngày
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="admin-chart-box">
+          <div style={{ height: '360px', width: '100%', position: 'relative' }}>
+            <Line data={chartData} options={chartOptions} aria-label="Biểu đồ người dùng và công thức mới" role="img" />
+          </div>
+        </div>
+
+        {/* Hoạt động gần đây */}
+        <div className="admin-section-header">
+          <div>
+            <h2 className="admin-section-title">Hoạt động gần đây</h2>
+            <p className="admin-section-sub">Người dùng, công thức và bình luận mới nhất</p>
+          </div>
+        </div>
+        <div className="admin-feed-grid">
+          <div className="admin-feed-card">
+            <h3>Người dùng mới nhất</h3>
+            {(recent?.users || []).map((u) => (
+              <div key={u.id} className="admin-feed-row">
+                <span className="admin-feed-main">{u.username}</span>
+                <span className="admin-feed-time">{u.created_at ? new Date(u.created_at).toLocaleDateString('vi-VN') : ''}</span>
+              </div>
+            ))}
+          </div>
+          <div className="admin-feed-card">
+            <h3>Công thức mới nhất</h3>
+            {(recent?.recipes || []).map((r) => (
+              <div key={r.id} className="admin-feed-row">
+                <Link to={`/recipes/${r.id}`} className="admin-feed-main">{r.title}</Link>
+                <span className="admin-feed-time">{r.created_at ? new Date(r.created_at).toLocaleDateString('vi-VN') : ''}</span>
+              </div>
+            ))}
+          </div>
+          <div className="admin-feed-card">
+            <h3>Bình luận mới nhất</h3>
+            {(recent?.comments || []).map((c) => (
+              <div key={c.id} className="admin-feed-row" style={{ display: 'block' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                  <span className="admin-feed-main">{c.users?.username || 'Người dùng'}</span>
+                  <span className="admin-feed-time">{c.created_at ? new Date(c.created_at).toLocaleDateString('vi-VN') : ''}</span>
+                </div>
+                <div className="admin-feed-sub">
+                  trên «{c.recipes?.title || '—'}»: {String(c.content || '').slice(0, 40)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Cần chú ý + Quick actions */}
+        <div className="admin-note-grid">
+          <div className="admin-note-card">
+            <h3>Cần chú ý</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '14px' }}>
+              <div className="admin-note-row">
+                <span>Tài khoản đang bị khoá</span>
+                <strong style={{ color: stats.bannedUsers > 0 ? 'var(--color-danger)' : 'var(--color-success)', fontVariantNumeric: 'tabular-nums' }}>{stats.bannedUsers}</strong>
+              </div>
+              <div className="admin-note-row">
+                <span>Công thức chưa có ảnh</span>
+                <strong style={{ color: stats.recipesWithoutImage > 0 ? 'var(--color-primary)' : 'var(--color-success)', fontVariantNumeric: 'tabular-nums' }}>{stats.recipesWithoutImage}</strong>
+              </div>
+              <div className="admin-note-row">
+                <span>Bình luận cần rà soát</span>
+                <Link to="/admin/comments">{stats.comments} →</Link>
+              </div>
+            </div>
+          </div>
+          <div className="admin-actions-card">
+            <h3>Thao tác nhanh</h3>
+            <Link to="/admin/users" className="admin-action-link">
+              <i className="fa-solid fa-users" style={{ marginRight: '8px' }} aria-hidden="true"></i> Quản lý người dùng
+            </Link>
+            <Link to="/admin/recipes" className="admin-action-link">
+              <i className="fa-solid fa-utensils" style={{ marginRight: '8px' }} aria-hidden="true"></i> Quản lý công thức
+            </Link>
+            <Link to="/admin/comments" className="admin-action-link">
+              <i className="fa-solid fa-comments" style={{ marginRight: '8px' }} aria-hidden="true"></i> Duyệt bình luận
+            </Link>
           </div>
         </div>
 

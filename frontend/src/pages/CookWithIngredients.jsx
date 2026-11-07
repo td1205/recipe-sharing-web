@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
 import MagazineCard from '../components/MagazineCard';
 import SkeletonLoader from '../components/SkeletonLoader';
+import { getPantry, savePantry } from '../utils/pantry';
 import './Home.css';
 import './CookWithIngredients.css';
 
@@ -20,24 +21,42 @@ const CookWithIngredients = () => {
 
   const [draft, setDraft] = useState('');
   const [recipes, setRecipes] = useState([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const itemsKey = items.join(',');
+  const page = Math.max(1, Math.floor(Number(searchParams.get('page')) || 1));
+
+  useEffect(() => {
+    // Vào trang không kèm ?items= -> khôi phục "Hộp nguyên liệu" đã lưu lần trước
+    if (!searchParams.get('items')) {
+      const pantry = getPantry();
+      if (pantry.length > 0) {
+        setSearchParams({ items: pantry.join(',') }, { replace: true });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!itemsKey) {
       setRecipes([]);
       setError('');
+      setTotal(0);
+      setLoading(false);
       return undefined;
     }
     let cancelled = false;
     setLoading(true);
     setError('');
     axios
-      .get('/api/recommendations/by-ingredients', { params: { items: itemsKey, limit: 24 } })
+      .get('/api/recommendations/by-ingredients', { params: { items: itemsKey, limit: 24, offset: (page - 1) * 24 } })
       .then((res) => {
-        if (!cancelled) setRecipes(res.data.recipes || []);
+        if (!cancelled) {
+          setRecipes(res.data.recipes || []);
+          setTotal(res.data.total || 0);
+        }
       })
       .catch((err) => {
         if (!cancelled) {
@@ -51,13 +70,15 @@ const CookWithIngredients = () => {
     return () => {
       cancelled = true;
     };
-  }, [itemsKey]);
+  }, [itemsKey, page]);
 
   const setItems = (next) => {
     const params = new URLSearchParams(searchParams);
+    params.delete('page');
     if (next.length > 0) params.set('items', next.join(','));
     else params.delete('items');
     setSearchParams(params);
+    savePantry(next); // lưu "Hộp nguyên liệu" để trang chi tiết tích sẵn
   };
 
   const addFromDraft = (e) => {
@@ -135,15 +156,29 @@ const CookWithIngredients = () => {
             <p className="cwi-message">Chọn hoặc nhập ít nhất một nguyên liệu để bắt đầu.</p>
           )}
           {!loading && !error && items.length > 0 && recipes.length === 0 && (
-            <p className="cwi-message">Chưa tìm thấy món phù hợp. Hãy thử thêm nguyên liệu khác.</p>
+            <p className="cwi-message">
+              {total > 0 ? 'Trang hiện tại không có kết quả.' : 'Không có món nào chứa đủ tất cả nguyên liệu trên. Hãy thử bỏ bớt hoặc thay nguyên liệu khác.'}
+              {total > 0 && <button type="button" onClick={() => setSearchParams({ items: itemsKey })}>Về trang đầu</button>}
+            </p>
           )}
           {!loading && recipes.length > 0 && (
             <>
-              <h2 className="magazine-section-title cwi-results-title">{recipes.length} món phù hợp</h2>
+              <h2 className="magazine-section-title cwi-results-title">
+                {total.toLocaleString('vi-VN')} món chứa đủ nguyên liệu bạn nhập
+              </h2>
               <div className="home-search-grid">
                 {recipes.map((recipe) => (
-                  <MagazineCard key={recipe.id} recipe={recipe} />
+                  <div key={recipe.id}>
+                    <MagazineCard recipe={recipe} linkState={{ pantry: items }} />
+                    <p>Đã khớp: {(recipe.matched_ingredients || []).join(', ') || 'Gia vị đã nhập'}</p>
+                    <p>Còn thiếu nguyên liệu chính: {(recipe.missing_ingredients || []).join(', ') || 'Không có; kiểm tra thêm gia vị và định lượng trong công thức'}</p>
+                  </div>
                 ))}
+              </div>
+              <div className="cwi-pagination">
+                <button type="button" disabled={page <= 1} onClick={() => setSearchParams({ items: itemsKey, page: String(page - 1) })}>Trang trước</button>
+                <span>Trang {page} — hiển thị {recipes.length}/{total} món</span>
+                <button type="button" disabled={page * 24 >= total} onClick={() => setSearchParams({ items: itemsKey, page: String(page + 1) })}>Trang sau</button>
               </div>
             </>
           )}

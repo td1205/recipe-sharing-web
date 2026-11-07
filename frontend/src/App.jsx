@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
+import SkeletonLoader from './components/SkeletonLoader';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Home from './pages/Home';
@@ -22,15 +23,16 @@ import ForgotPassword from './pages/ForgotPassword';
 import OTP from './pages/OTP';
 import CookWithIngredients from './pages/CookWithIngredients';
 import About from './pages/About';
-import AdminDashboard from './pages/admin/Dashboard';
-import AdminCategories from './pages/admin/Categories';
-import AdminUsers from './pages/admin/Users';
-import AdminComments from './pages/admin/Comments';
+const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'));
+const AdminCategories = lazy(() => import('./pages/admin/Categories'));
+const AdminUsers = lazy(() => import('./pages/admin/Users'));
+const AdminComments = lazy(() => import('./pages/admin/Comments'));
+const AdminRecipes = lazy(() => import('./pages/admin/Recipes'));
 
 import { Toaster } from 'react-hot-toast';
 import ScrollToTop from './components/ScrollToTop';
 import ProtectedRoute from './components/ProtectedRoute';
-import AdminRoute from './components/AdminRoute';
+const AdminRoute = lazy(() => import('./components/AdminRoute'));
 
 function App() {
   return (
@@ -38,7 +40,7 @@ function App() {
       <Toaster position="top-right" />
       <Router>
         <ScrollToTop />
-        <Routes>
+        <Suspense fallback={<SkeletonLoader />}><Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -67,6 +69,7 @@ function App() {
           <Route path="/admin" element={<AdminRoute />}>
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="recipes" element={<AdminRecipes />} />
             <Route path="categories" element={<AdminCategories />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="comments" element={<AdminComments />} />
@@ -76,7 +79,7 @@ function App() {
 
           {/* Mọi đường dẫn không tồn tại -> trang 404 */}
           <Route path="*" element={<NotFound />} />
-        </Routes>
+        </Routes></Suspense>
       </Router>
     </AuthProvider>
   );

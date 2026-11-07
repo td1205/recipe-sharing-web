@@ -27,10 +27,14 @@ const {
 const { SETTINGS } = require('../services/recommender/hybrid');
 
 function parseArgs(argv) {
-  const args = { k: 10 };
+  const args = { k: 10, diversify: true, datasetLabel: 'unspecified' };
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === '--k') args.k = parseInt(argv[++i], 10);
+    if (argv[i] === '--output') args.output = argv[++i];
+    if (argv[i] === '--no-diversity') args.diversify = false;
+    if (argv[i] === '--dataset-label') args.datasetLabel = String(argv[++i] || 'unspecified').slice(0, 100);
   }
+  if (!Number.isInteger(args.k) || args.k < 1 || args.k > 100) throw new Error('K phải từ 1 đến 100');
   return args;
 }
 
@@ -42,13 +46,13 @@ async function main() {
   ]);
   console.log(`Dữ liệu: ${recipes.length} món, ${interactions.length} tương tác.`);
 
-  const full = evaluateAveraged({ recipes, interactions, k: args.k });
+  const full = evaluateAveraged({ recipes, interactions, k: args.k, diversify: args.diversify });
   if (full.userCount === 0) {
-    console.log('Chưa có người dùng nào có >= 5 món yêu thích. Hãy chạy scripts/simulate-users.js trước.');
+    console.log('Chưa có người dùng nào có >= 5 món yêu thích. Chỉ chuẩn bị dữ liệu trên database test khi được phép.');
     return;
   }
   console.log('Đang chạy kịch bản người dùng mới (1-4 món)...');
-  const byHistory = evaluateByHistorySize({ recipes, interactions, k: args.k });
+  const byHistory = evaluateByHistorySize({ recipes, interactions, k: args.k, diversify: args.diversify });
 
   const report = [
     '# Kết quả đánh giá hệ gợi ý',
@@ -61,7 +65,8 @@ async function main() {
     'Phương pháp: leave-one-out - với mỗi người dùng có >= 5 món yêu thích, giấu 1 món rồi kiểm tra',
     `món đó có nằm trong top-${args.k} gợi ý hay không. Mỗi con số là trung bình của ${full.runs} lần chạy.`,
     '',
-    '> Lưu ý: tương tác được sinh bởi `scripts/simulate-users.js` (dữ liệu MÔ PHỎNG có gu rõ ràng).',
+    `Nguồn dữ liệu do người chạy khai báo: ${args.datasetLabel}. Không tự suy dữ liệu thật hay mô phỏng.`,
+    `Protocol: seeded-random-leave-one-out; seeds 1–5; diversify=${args.diversify}; mode=${args.diversify ? 'production-postprocessing' : 'ablation-no-diversity'}.`,
     '',
     `## 1. Người dùng đã có lịch sử (${full.userCount} người)`,
     '',
@@ -76,7 +81,7 @@ async function main() {
   ].join('\n');
 
   console.log(`\n${report}`);
-  const output = path.join(__dirname, '../docs/ket-qua-danh-gia-goi-y.md');
+  const output = args.output ? path.resolve(args.output) : path.join(__dirname, '../docs/recommendation-runs', new Date().toISOString().replace(/[:.]/g, '-') + '.md');
   fs.mkdirSync(path.dirname(output), { recursive: true });
   fs.writeFileSync(output, report, 'utf8');
   console.log(`Đã ghi kết quả vào ${path.relative(process.cwd(), output)}`);

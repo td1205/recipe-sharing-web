@@ -1,0 +1,19 @@
+name: Safe source checks
+on: [push, pull_request]
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: mysql://fixture:fixture@127.0.0.1:3306/recipe_test_not_connected
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm ci --prefix frontend
+      - run: npm run test:safe
+      - run: node --test tests/rateLimitRoutes.test.js tests/geminiService.test.js
+      - run: npm run lint --prefix frontend
+      - run: npm run build --prefix frontend

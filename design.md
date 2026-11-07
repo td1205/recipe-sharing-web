@@ -30,6 +30,10 @@ Tuyệt đối không hardcode mã màu HEX vào component. Luôn sử dụng CS
 
 Hệ thống typography được thiết kế theo chuẩn tỷ lệ báo chí (Editorial/Magazine). Kích thước chữ (font-size) **bắt buộc** phải sử dụng đơn vị `rem` (với base root mặc định là `16px`) để đảm bảo khả năng mở rộng và co giãn hoàn hảo.
 
+### Quy ước hiện hành
+
+Trang dùng `home-typography`, gồm admin và modal, dùng `--font-home` cho cả heading và UI theo lựa chọn hiện tại. Quy tắc serif bên dưới chỉ áp dụng cho phần chưa chuyển sang typography chung; không ghi đè font admin riêng lẻ. Loading dùng SkeletonLoader và token nền sáng.
+
 ### Phông chữ (Font Families)
 - **Tiêu đề (Display/Headlines):** BẮT BUỘC sử dụng Serif cổ điển (*Playfair Display* hoặc *Georgia*). Tiêu đề phải cực lớn, độ dày mỏng (Light/Regular) để tạo dáng vẻ thanh lịch của trang báo.
 - **Văn bản thường (Body/UI):** Sử dụng Sans-serif hiện đại (*Outfit*, *Inter* hoặc *Helvetica*).

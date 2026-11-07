@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
+import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 
 
@@ -19,7 +20,7 @@ const NAV_MENUS = [
   {
     key: 'what-to-cook',
     label: 'Hôm nay nấu gì',
-    to: '/recipes',
+    to: '/meals',
     style: { minWidth: '460px', gap: '48px' },
     columns: [
       {
@@ -27,9 +28,8 @@ const NAV_MENUS = [
         links: [
           ['Phổ biến nhất (Top 50)', '/popular'],
           ['Nấu với nguyên liệu có sẵn', '/cook-with-ingredients'],
-          ['Nhanh gọn dưới 30 phút', recipesBy('duration', 'under_30')],
           ['Thanh đạm & Ăn chay', recipesBy('tag', 'món chay')],
-          ['Món canh ấm bụng', recipesBy('category', 'Món Canh')],
+          ['Tráng miệng & Bánh ngọt', recipesBy('category', 'Bánh & Tráng miệng')],
         ],
       },
       {
@@ -38,7 +38,6 @@ const NAV_MENUS = [
           ['Bữa sáng tiện lợi', recipesBy('meal_time', 'Sáng')],
           ['Bữa trưa công sở', recipesBy('meal_time', 'Trưa')],
           ['Bữa tối gia đình', recipesBy('meal_time', 'Tối')],
-          ['Tráng miệng & Bánh ngọt', recipesBy('category', 'Bánh & Tráng miệng')],
         ],
       },
     ],
@@ -50,7 +49,7 @@ const NAV_MENUS = [
     columns: [
       {
         title: 'THEO CÁCH CHẾ BIẾN',
-        links: ['Món Chiên', 'Món Xào', 'Món Kho', 'Món Hấp', 'Món Nướng', 'Món Luộc'].map((name) => [
+        links: ['Món Chiên', 'Món Xào', 'Món Kho', 'Món Hấp', 'Món Nướng'].map((name) => [
           name,
           recipesBy('category', name),
         ]),
@@ -79,8 +78,14 @@ const NAV_MENUS = [
   {
     key: 'ingredients',
     label: 'Nguyên liệu',
-    to: '/recipes',
+    to: '/cook-with-ingredients',
     columns: [
+      {
+        title: 'NẤU THEO NGUYÊN LIỆU CÓ SẴN',
+        links: [
+          ['Chọn nguyên liệu trong tủ lạnh', '/cook-with-ingredients'],
+        ],
+      },
       {
         title: 'THỊT',
         links: [
@@ -148,6 +153,65 @@ const Navbar = () => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const userMenuRef = useRef(null);
+  const searchRef = useRef(null);
+
+  // Typeahead gợi ý tìm kiếm: tải tiêu đề 1 lần, lọc thời gian thực theo từng ký tự
+  const [allTitles, setAllTitles] = useState(null); // null = chưa tải
+  const [titlesLoading, setTitlesLoading] = useState(false);
+  const [showSuggest, setShowSuggest] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(-1);
+
+  // Bỏ dấu + lowercase: gõ "banh" vẫn khớp "Bánh"
+  const normVi = (value) => String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .trim()
+    .toLowerCase();
+
+  const loadTitles = () => {
+    if (allTitles || titlesLoading) return;
+    setTitlesLoading(true);
+    axios.get('/api/recipes/titles')
+      .then((res) => setAllTitles(res.data.titles || []))
+      .catch(() => setAllTitles([]))
+      .finally(() => setTitlesLoading(false));
+  };
+
+  const suggestions = (() => {
+    const q = normVi(searchQuery);
+    if (!allTitles || q.length < 1) return [];
+    return allTitles.filter((t) => normVi(t.title).includes(q)).slice(0, 8);
+  })();
+
+  const closeSuggest = () => {
+    setShowSuggest(false);
+    setActiveIdx(-1);
+  };
+
+  const goSuggestion = (recipe) => {
+    closeSuggest();
+    setSearchQuery('');
+    navigate(`/recipes/${recipe.id}`);
+  };
+
+  const handleSuggestKeyDown = (e) => {
+    if (!showSuggest || suggestions.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIdx((i) => (i + 1) % suggestions.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIdx((i) => (i <= 0 ? suggestions.length - 1 : i - 1));
+    } else if (e.key === 'Escape') {
+      closeSuggest();
+    } else if (e.key === 'Enter' && activeIdx >= 0) {
+      e.preventDefault();
+      goSuggestion(suggestions[activeIdx]);
+    }
+  };
+
 
   // Gated actions ask for a sign-in instead of silently bouncing to /login.
   const requireLogin = (action) => {
@@ -162,6 +226,9 @@ const Navbar = () => {
     const handleClickOutside = (event) => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
         setShowUserMenu(false);
+      }
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowSuggest(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -178,6 +245,7 @@ const Navbar = () => {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
+      closeSuggest();
       navigate(`/recipes?search=${encodeURIComponent(searchQuery)}`);
       setSearchQuery('');
     }
@@ -213,16 +281,50 @@ const Navbar = () => {
             <span>Recipe Sharing</span>
           </Link>
 
-          <form className="nyt-search-form" role="search" onSubmit={handleSearchSubmit}>
+          <form
+            className="nyt-search-form"
+            role="search"
+            ref={searchRef}
+            onSubmit={handleSearchSubmit}
+          >
             <i className="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
             <input
               type="search"
               placeholder="Bạn muốn nấu gì hôm nay?"
               aria-label="Tìm công thức"
+              aria-expanded={showSuggest}
+              aria-controls="search-suggest-list"
+              aria-autocomplete="list"
+              role="combobox"
               maxLength={200}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleSuggestKeyDown}
+              onFocus={() => { loadTitles(); setShowSuggest(true); }}
             />
+            {showSuggest && (
+              <div className="nyt-suggest" id="search-suggest-list" role="listbox">
+                {titlesLoading && (
+                  <div className="nyt-suggest-empty">Đang tải gợi ý…</div>
+                )}
+                {!titlesLoading && searchQuery.trim().length >= 1 && suggestions.length === 0 && (
+                  <div className="nyt-suggest-empty">Không có món phù hợp</div>
+                )}
+                {suggestions.map((s, i) => (
+                  <button
+                    type="button"
+                    key={s.id}
+                    role="option"
+                    aria-selected={i === activeIdx}
+                    className={`nyt-suggest-item ${i === activeIdx ? 'active' : ''}`}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => goSuggestion(s)}
+                  >
+                    <span className="nyt-suggest-title">{s.title}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             <button
               type="button"
               className="nyt-scan-btn"

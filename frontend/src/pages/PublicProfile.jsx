@@ -4,9 +4,10 @@ import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
 import SkeletonLoader from '../components/SkeletonLoader';
 import Pagination from '../components/Pagination';
-import { RecipeImage } from '../components/MagazineCard';
+import MagazineCard from '../components/MagazineCard';
 import { AuthContext } from '../context/AuthContext';
 import NotFound from './NotFound';
+import './profile.css';
 import './NotFound.css';
 
 const DEFAULT_AVATAR = '/default-avatar.svg';
@@ -23,19 +24,25 @@ const PublicProfile = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    let active = true;
     setLoading(true);
     setError('');
     axios
       .get(`/api/users/${id}/profile`, { params: { page } })
       .then((res) => {
+        if (!active) return;
         setData(res.data);
         setNotFound(false);
       })
       .catch((err) => {
+        if (!active) return;
         if (err.response?.status === 404 || err.response?.status === 400) setNotFound(true);
         else setError('Không thể tải hồ sơ lúc này. Vui lòng thử lại.');
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
   }, [id, page]);
 
   // Xem hồ sơ của chính mình -> chuyển sang trang hồ sơ cá nhân (có nút sửa)
@@ -43,16 +50,16 @@ const PublicProfile = () => {
   if (notFound) return <NotFound message="Người dùng này không tồn tại hoặc đã bị khóa." />;
   if (loading && !data) {
     return (
-      <MainLayout hideSidebar>
+      <MainLayout hideSidebar className="home-typography">
         <SkeletonLoader />
       </MainLayout>
     );
   }
   if (error) {
     return (
-      <MainLayout hideSidebar>
-        <div className="home-status-state">
-          <p>{error}</p>
+      <MainLayout hideSidebar className="home-typography">
+        <div className="profile-shell">
+          <div className="profile-alert-error" role="alert">{error}</div>
         </div>
       </MainLayout>
     );
@@ -67,70 +74,61 @@ const PublicProfile = () => {
     if (nextPage > 1) next.set('page', String(nextPage));
     else next.delete('page');
     setSearchParams(next);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Tôn trọng prefers-reduced-motion
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
   };
 
   return (
-    <MainLayout hideSidebar>
-      <div className="steam-profile-container">
-        <div className="steam-profile-bg">
-          <div className="steam-profile-bg-gradient"></div>
-        </div>
-
-        <div className="steam-profile-content">
-          <div className="steam-profile-header">
-            <div className="steam-profile-avatar-wrapper">
-              <img src={author.avatar_url || DEFAULT_AVATAR} alt={`Ảnh đại diện của ${author.username}`} className="steam-profile-avatar-large" />
-            </div>
-            <div className="steam-profile-info">
-              <h1 className="steam-profile-name">{author.fullname || author.username}</h1>
-              <div className="steam-profile-realname">
-                <span>@{author.username}</span>
-              </div>
-              <div className="steam-profile-bio">{author.bio || 'Chưa có thông tin giới thiệu.'}</div>
-            </div>
-          </div>
-
-          <div className="steam-profile-body">
-            <div className="steam-profile-left">
-              <div className="steam-profile-box">
-                <div className="steam-profile-box-title">Thống kê</div>
-                <div className="steam-profile-box-content public-profile-stats">
-                  <div>
-                    <strong>{stats.recipeCount.toLocaleString('vi-VN')}</strong> công thức đã chia sẻ
-                  </div>
-                  <div>
-                    <strong>{stats.favoritesReceived.toLocaleString('vi-VN')}</strong> lượt yêu thích nhận được
-                  </div>
-                  {joined && <div>Tham gia từ {joined}</div>}
-                </div>
-              </div>
-            </div>
-
-            <div className="steam-profile-right">
-              <div className="steam-profile-box">
-                <div className="steam-profile-box-title">Công thức ({stats.recipeCount.toLocaleString('vi-VN')})</div>
-                <div className="steam-profile-box-content">
-                  {recipes.length === 0 ? (
-                    <p className="public-profile-empty">Người dùng này chưa chia sẻ công thức nào.</p>
-                  ) : (
-                    <div className="steam-profile-fav-list">
-                      {recipes.map((recipe) => (
-                        <Link to={`/recipes/${recipe.id}`} key={recipe.id} className="steam-profile-fav-item">
-                          <RecipeImage src={recipe.image_url} alt={recipe.title} />
-                          <div className="steam-profile-fav-title">{recipe.title}</div>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                  <div className="public-profile-pager">
-                    <Pagination currentPage={page} totalPages={totalPages} onPageChange={handlePageChange} />
-                  </div>
-                </div>
-              </div>
+    <MainLayout hideSidebar className="home-typography">
+      <div className="profile-shell">
+        {/* Hero hồ sơ công khai */}
+        <div className="profile-hero">
+          <img
+            src={author.avatar_url || DEFAULT_AVATAR}
+            alt={`Ảnh đại diện của ${author.fullname || author.username}`}
+            width={112}
+            height={112}
+            className="profile-avatar"
+            onError={(e) => {
+              if (!e.currentTarget.src.endsWith(DEFAULT_AVATAR)) e.currentTarget.src = DEFAULT_AVATAR;
+            }}
+          />
+          <div className="profile-info">
+            <h1 className="profile-name">{author.fullname || author.username}</h1>
+            <div className="profile-role">@{author.username}</div>
+            <p className={`profile-bio ${author.bio ? '' : 'profile-bio-empty'}`}>
+              {author.bio || 'Chưa có thông tin giới thiệu.'}
+            </p>
+            <div className="profile-stats">
+              <span><strong>{stats.recipeCount.toLocaleString('vi-VN')}</strong> công thức đã chia sẻ</span>
+              <span><strong>{stats.favoritesReceived.toLocaleString('vi-VN')}</strong> lượt yêu thích nhận được</span>
+              {joined && <span>Tham gia từ {joined}</span>}
             </div>
           </div>
         </div>
+
+        {/* Danh sách công thức */}
+        <section className="profile-section">
+          <h2 className="profile-section-title">Công thức ({stats.recipeCount.toLocaleString('vi-VN')})</h2>
+          {recipes.length === 0 ? (
+            <div className="profile-empty">
+              <div className="profile-empty-title">Chưa có công thức nào</div>
+              <p>Người dùng này chưa chia sẻ công thức nào.</p>
+            </div>
+          ) : (
+            <>
+              <div className="profile-grid">
+                {recipes.map((recipe) => (
+                  <MagazineCard key={recipe.id} recipe={recipe} />
+                ))}
+              </div>
+              <div className="public-profile-pager">
+                <Pagination currentPage={page} totalPages={totalPages} onPageChange={handlePageChange} />
+              </div>
+            </>
+          )}
+        </section>
       </div>
     </MainLayout>
   );

@@ -1,3 +1,5 @@
+const validation = require('../utils/apiValidation');
+const { fingerprint, RESET_GRANT_TTL_MS } = require('../utils/sessionAuth');
 const userModel = require('../repositories/userRepository');
 const bcrypt = require('bcrypt');
 const { sendMail, isMailConfigured, MailError } = require('../utils/mailHelper');
@@ -20,7 +22,12 @@ function getRegisterPage(req, res) {
 
 async function handleLogin(req, res) {
   try {
-    const { username, password } = req.body;
+    const { username, password } = req.body || {};
+    validation.text(username, 'Tài khoản', 100);
+    if (typeof password !== 'string' || password.length > 200) throw Object.assign(new Error('Mật khẩu không hợp lệ'), { status: 400 });
+    const rawRemember = req.body.remember;
+    if (rawRemember !== undefined && ![true, false, 'true', 'false', 'on'].includes(rawRemember)) throw Object.assign(new Error('remember không hợp lệ'), { status: 400 });
+    const remember = rawRemember === true || rawRemember === 'true' || rawRemember === 'on';
     const result = await authService.login(username, password);
 
     if (!result.success) {
@@ -38,22 +45,28 @@ async function handleLogin(req, res) {
         console.error('Lỗi tạo session mới:', regenErr);
         return res.status(500).json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại!' });
       }
+      req.session.authFingerprint = fingerprint(user.password);
       req.session.user = {
         id: user.id,
         username: user.username,
         email: user.email,
         role: user.role,
       };
+      // "Ghi nhớ đăng nhập": tick -> cookie 30 ngày; không tick -> 1 ngày
+      req.session.cookie.maxAge = remember
+        ? 1000 * 60 * 60 * 24 * 30
+        : 1000 * 60 * 60 * 24;
       req.session.save((err) => {
         if (err) {
-          console.error('Lỗi lưu session:', err);
+          console.error('Lỗi lưu session:', err.code || err.name);
           return res.status(500).json({ success: false, error: 'Lỗi hệ thống!' });
         }
         return res.json({ success: true, user: req.session.user });
       });
     });
   } catch (error) {
-    console.error('Lỗi handleLogin:', error);
+    if (error.status === 400 || /^P\d{4}$/.test(error.code || '')) return validation.apiError(res, error);
+    console.error('Lỗi handleLogin:', error.code || error.name);
     return res.status(500).json({
       success: false,
       error: 'Lỗi hệ thống, vui lòng thử lại!',
@@ -63,7 +76,11 @@ async function handleLogin(req, res) {
 
 async function handleRegister(req, res) {
   try {
-    const { username, email, password, confirm_password, fullname } = req.body;
+    const { password, confirm_password } = req.body || {};
+    const username = validation.text(req.body?.username, 'Tài khoản', 100);
+    if (!/^[\p{L}\p{N}_.-]+$/u.test(username)) throw Object.assign(new Error('Tài khoản chỉ gồm chữ, số, dấu gạch và dấu chấm'), { status: 400 });
+    const email = validation.email(req.body?.email);
+    const fullname = validation.text(req.body?.fullname, 'Họ tên', 255);
 
     if (password !== confirm_password) {
       return res.status(400).json({
@@ -90,7 +107,8 @@ async function handleRegister(req, res) {
     await userModel.createUser(username, hashedPassword, email, fullname);
     return res.json({ success: true, message: 'Đăng ký thành công' });
   } catch (error) {
-    console.error('Lỗi handleRegister:', error);
+    if (error.status === 400 || ['P2002', 'P2003', 'P2025', 'P2034'].includes(error.code)) return validation.apiError(res, error);
+    console.error('Lỗi handleRegister:', error.code || error.name);
     return res.status(500).json({
       success: false,
       error: 'Lỗi hệ thống, vui lòng thử lại!',
@@ -99,8 +117,11 @@ async function handleRegister(req, res) {
 }
 
 function logout(req, res) {
-  req.session.destroy();
-  return res.json({ success: true, message: 'Logged out' });
+  req.session.destroy((error) => {
+    if (error) return res.status(500).json({ success: false, error: 'Không thể đăng xuất, vui lòng thử lại' });
+    res.clearCookie('connect.sid');
+    return res.json({ success: true, message: 'Logged out' });
+  });
 }
 
 async function renderProfile(req, res) {
@@ -112,7 +133,8 @@ async function renderProfile(req, res) {
     const myRecipes = await userModel.getRecipesByUser(userId);
     res.json({ success: true, user, favouriteRecipes, myRecipes });
   } catch (error) {
-    console.error('Lỗi renderProfile:', error);
+    if (error.status === 400 || ['P2002', 'P2003', 'P2025', 'P2034'].includes(error.code)) return validation.apiError(res, error);
+    console.error('Lỗi renderProfile:', error.code || error.name);
     res.status(500).json({ success: false, error: 'Lỗi hệ thống!' });
   }
 }
@@ -123,7 +145,11 @@ function getForgotPasswordPage(req, res) {
 
 async function handleForgotPassword(req, res) {
   try {
-    const { email } = req.body;
+    const email = validation.email(req.body?.email);
+    delete req.session.resetGrantExpiresAt;
+    delete req.session.resetGrantFingerprint;
+    delete req.session.otp;
+    delete req.session.resetEmail;
     if (!email || !String(email).trim()) {
       return res.status(400).json({ success: false, error: 'Vui lòng nhập email!' });
     }
@@ -147,7 +173,7 @@ async function handleForgotPassword(req, res) {
     // để không ai dò được email nào đã đăng ký
     req.session.save((err) => {
       if (err) {
-        console.error('Lỗi lưu phiên:', err);
+        console.error('Lỗi lưu phiên:', err.code || err.name);
         return res.status(500).json({
           success: false,
           error: 'Lỗi khi lưu phiên!',
@@ -156,6 +182,7 @@ async function handleForgotPassword(req, res) {
       return res.json({ success: true, message: OTP_SENT_MESSAGE });
     });
   } catch (error) {
+    if (error.status === 400 || ['P2002', 'P2003', 'P2025', 'P2034'].includes(error.code)) return validation.apiError(res, error);
     if (error instanceof MailError) {
       // Lỗi hạ tầng email vẫn trả thông báo chung — nếu báo lỗi riêng,
       // kẻ dò sẽ biết email tồn tại (chỉ email tồn tại mới chạm tới bước gửi thư).
@@ -167,7 +194,7 @@ async function handleForgotPassword(req, res) {
         return res.json({ success: true, message: OTP_SENT_MESSAGE });
       });
     }
-    console.error('Lỗi handleForgotPassword:', error);
+    console.error('Lỗi handleForgotPassword:', error.code || error.name);
     return res.status(500).json({
       success: false,
       error: 'Lỗi hệ thống, vui lòng thử lại!',
@@ -186,7 +213,9 @@ function getEditProfilePage(req, res) {
 async function handleEditProfile(req, res) {
   try {
     if (!req.session.user) return res.status(401).json({ success: false, message: 'Unauthorized' });
-    const { fullname, email, bio } = req.body;
+    const fullname = validation.text(req.body?.fullname, 'Họ tên', 100);
+    const email = validation.email(req.body?.email);
+    const bio = validation.text(req.body?.bio, 'Giới thiệu', 5000, false);
     let avatar_url = req.session.user.avatar_url || null;
 
     if (req.file) {
@@ -208,7 +237,8 @@ async function handleEditProfile(req, res) {
     req.session.user.bio = bio;
     res.json({ success: true, user: req.session.user });
   } catch (error) {
-    console.error('Lỗi handleEditProfile:', error);
+    if (error.status === 400 || ['P2002', 'P2003', 'P2025', 'P2034'].includes(error.code)) return validation.apiError(res, error);
+    console.error('Lỗi handleEditProfile:', error.code || error.name);
     res.status(500).json({ success: false, error: 'Lỗi hệ thống!' });
   }
 }
@@ -221,7 +251,7 @@ async function handleChangePassword(req, res) {
   try {
     const email = req.session.resetEmail;
     if (!email) return res.status(400).json({ success: false, error: 'No reset email in session' });
-    const { password, confirm_password } = req.body;
+    const { password, confirm_password } = req.body || {};
     if (password !== confirm_password) {
       return res.status(400).json({
         success: false,
@@ -233,14 +263,19 @@ async function handleChangePassword(req, res) {
       return res.status(400).json({ success: false, error: passwordError });
     }
     const hashedPassword = await bcrypt.hash(password, 10);
-    await userModel.updatePasswordByEmail(email, hashedPassword);
-    req.session.destroy();
+    if (req.session.otp !== true || !(req.session.resetGrantExpiresAt > Date.now())) return res.status(403).json({ success: false, error: 'Quyền đổi mật khẩu đã hết hạn' });
+    const [current] = await userModel.getUserByEmail(email);
+    if (!current || fingerprint(current.password) !== req.session.resetGrantFingerprint) return res.status(403).json({ success: false, error: 'Quyền đổi mật khẩu không còn hợp lệ' });
+    const changed = await userModel.consumePasswordReset(email, current.password, hashedPassword);
+    if (!changed.count) return res.status(409).json({ success: false, error: 'Yêu cầu đổi mật khẩu đã được sử dụng' });
+    await new Promise((resolve, reject) => req.session.destroy((error) => error ? reject(error) : resolve()));
     return res.json({
       success: true,
       message: 'Đổi mật khẩu thành công! Vui lòng đăng nhập lại.',
     });
   } catch (error) {
-    console.error('Lỗi handleChangePassword:', error);
+    if (error.status === 400 || ['P2002', 'P2003', 'P2025', 'P2034'].includes(error.code)) return validation.apiError(res, error);
+    console.error('Lỗi handleChangePassword:', error.code || error.name);
     return res.status(500).json({
       success: false,
       error: 'Lỗi hệ thống, vui lòng thử lại!',
@@ -255,7 +290,7 @@ async function getOTPPage(req, res) {
 async function handleOTP(req, res) {
   try {
     const email = req.session.resetEmail;
-    const otp = String(req.body.otp || '').trim();
+    const otp = typeof req.body?.otp === 'string' ? req.body.otp.trim() : '';
 
     if (!req.session.otpExpiresAt || Date.now() > req.session.otpExpiresAt) {
       await userModel.updateOTP(email, null);
@@ -286,14 +321,20 @@ async function handleOTP(req, res) {
       });
     }
 
-    // OTP đúng: vô hiệu hóa mã để không dùng lại được
-    await userModel.updateOTP(email, null);
+    const [resetUser] = await userModel.getUserByEmail(email);
+    if (!resetUser) return res.status(400).json({ success: false, error: 'Yêu cầu không hợp lệ' });
+    const consumed = await userModel.consumeOTP(email, otp);
+    if (!consumed.count) return res.status(400).json({ success: false, error: 'OTP đã hết hạn hoặc được sử dụng' });
     req.session.otp = true;
+    req.session.resetGrantExpiresAt = Date.now() + RESET_GRANT_TTL_MS;
+    req.session.resetGrantFingerprint = fingerprint(resetUser.password);
     delete req.session.otpExpiresAt;
     delete req.session.otpAttempts;
+    await new Promise((resolve, reject) => req.session.save((error) => error ? reject(error) : resolve()));
     return res.json({ success: true, message: 'OTP correct' });
   } catch (error) {
-    console.error('Lỗi handleOTP:', error);
+    if (error.status === 400 || ['P2002', 'P2003', 'P2025', 'P2034'].includes(error.code)) return validation.apiError(res, error);
+    console.error('Lỗi handleOTP:', error.code || error.name);
     return res.status(500).json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại!' });
   }
 }

@@ -18,4 +18,28 @@ Hello AI, when you are working on this project (Recipe Sharing Web), you MUST ad
 - **Responsiveness**: Verify that changes don't break the responsive layout across Mobile, Tablet, and Desktop breakpoints.
 - **Visual Checks**: Do not claim that you have visually verified the UI unless you have actually run the app and checked the render output.
 - **Forms & Modals**: Create forms inside of pop-up Modals for Admin Create/Edit actions to save space. (Exception: Complex user-facing forms like `RecipeCreate` and `RecipeEdit` should remain full-page routes due to their length and complexity).
-- **Loading States & Skeleton Screens**: ALWAYS use `<SkeletonLoader />` or proper Dark Mode compatible loading components for fetching states (e.g. `if (loading)`). NEVER use plain text like "Đang tải..." floating on an unstyled/transparent div that could cause the browser to flash a default white background. The loading state must strictly adhere to the Steam UI Dark Mode aesthetic (`#1b2838`, `#2a323f`) to protect user eyes and ensure a premium, seamless experience.
+- **Loading States & Skeleton Screens**: Use `<SkeletonLoader />` with the current editorial light theme and CSS tokens. Do not introduce Steam/dark backgrounds or unstyled loading text. Preserve the shared homepage/admin typography (`--font-home`) already selected by the project owner.
+
+# Project AI Instructions
+
+## Skills
+
+When working on this project, automatically select
+relevant installed skills:
+
+- Security audit → security-audit
+- React performance → vercel-react-best-practices
+- React architecture → vercel-composition-patterns
+- UI/UX and accessibility → web-design-guidelines
+- Browser and functional testing → playwright-cli
+
+## Rules
+
+1. Automatically select relevant skills based on the task.
+2. Load and follow the selected skill instructions.
+3. Do not use unrelated skills.
+4. For audits, report PASS, FAIL, NOT VERIFIED.
+5. Provide file paths, line numbers, and evidence.
+6. Do not modify code unless explicitly requested.
+7. Do not change database data or run migrations without approval.
+8. Distinguish source-code inspection from executed tests.

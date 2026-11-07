@@ -14,7 +14,11 @@
     "data:meal-times": "node scripts/assign-meal-times.js",
     "recommend:evaluate": "node scripts/evaluate-recommender.js",
     "db:ratings-unique": "node scripts/migrate-ratings-unique.js",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "start": "node app.js",
+    "test:safe": "node --test tests/recipeValidation.test.js tests/rateLimit.test.js tests/recommenderFeedback.test.js tests/recommenderStrategy.test.js tests/recommenderLifecycle.test.js tests/adminInvariant.test.js tests/finalFixes.test.js tests/remainingWork.test.js",
+    "test:database": "node --test tests/databaseFlows.test.js",
+    "recommend:evaluate:offline": "node scripts/evaluate-recommender-offline.js"
   },
   "repository": {
     "type": "git",
@@ -53,5 +57,8 @@
     "prettier": "^3.9.6",
     "prettier-plugin-ejs": "^1.0.3",
     "prisma": "^5.22.0"
+  },
+  "engines": {
+    "node": ">=22.12.0"
   }
 }

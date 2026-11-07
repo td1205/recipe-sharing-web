@@ -25,6 +25,8 @@ const { buildUserItemScores, buildRecipeStats } = require('./interactions');
 const { ingredientKey, isPantryStaple, ingredientMatches, toNfcLower } = require('./text');
 
 const SETTINGS = {
+  cfShrinkage: 5, // Giá trị khởi đầu, cần đo lại trên dữ liệu thực.
+  negativeContentPenalty: 0.35, // Giảm mềm, không cấm cả danh mục.
   minItemsForCF: 3, // từ 3 món đã tương tác trở lên thì dùng thêm CF
   // Trọng số hybrid ở trang chủ: đã thử 0.5/0.5, 0.3/0.7, 0.2/0.8 bằng
   // scripts/evaluate-recommender.js. CF cho kết quả tốt hơn khi đủ dữ liệu nên
@@ -51,7 +53,7 @@ function buildModels({ recipes, interactions, anonymousViews = new Map() }) {
   );
   return {
     content: new ContentModel(recipes),
-    cf: new CFModel(userItemScores),
+    cf: new CFModel(userItemScores, { shrinkage: SETTINGS.cfShrinkage }),
     popularity,
     popularRanking: [...popularity.keys()].sort((a, b) => popularity.get(b) - popularity.get(a)),
     recipeById: new Map(recipes.map((recipe) => [recipe.id, recipe])),
@@ -152,6 +154,10 @@ function recommendForUser(models, userItems = new Map(), options = {}) {
   const cfScores = strategy === 'content' ? new Map() : models.cf.scoreForUser(userItems);
   const maxContent = maxValue(contentScores);
   const maxCf = maxValue(cfScores, (value) => value.score);
+  const negativeItems = new Map(
+    [...userItems].filter(([, score]) => score < 0).map(([id, score]) => [id, -score]),
+  );
+  const negativeScores = models.content.scoreAll(models.content.buildProfile(negativeItems));
 
   const weights =
     strategy === 'content'
@@ -166,7 +172,9 @@ function recommendForUser(models, userItems = new Map(), options = {}) {
     const contentPart = maxContent > 0 ? (contentScores.get(recipeId) || 0) / maxContent : 0;
     const cfEntry = cfScores.get(recipeId);
     const cfPart = maxCf > 0 && cfEntry ? cfEntry.score / maxCf : 0;
-    const score = weights.content * contentPart + weights.cf * cfPart;
+    const negativeSimilarity = Math.min(1, negativeScores.get(recipeId) || 0);
+    const score = (weights.content * contentPart + weights.cf * cfPart) *
+      (1 - SETTINGS.negativeContentPenalty * negativeSimilarity);
     if (score > 0) {
       candidates.set(recipeId, {
         recipeId,
@@ -263,6 +271,7 @@ function similarRecipes(models, recipeId, options = {}) {
 // ---------------------------------------------------------------------------
 function recipesByIngredients(models, ingredientNames, options = {}) {
   const limit = options.limit || 20;
+  const requireAll = Boolean(options.requireAll);
   const queries = [
     ...new Set(
       (ingredientNames || [])
@@ -270,15 +279,17 @@ function recipesByIngredients(models, ingredientNames, options = {}) {
         .filter(Boolean),
     ),
   ];
-  if (queries.length === 0) return [];
+  if (queries.length === 0) return { items: [], total: 0 };
 
   const results = [];
   models.ingredientKeys.forEach((keys, recipeId) => {
     const needed = keys.filter((key) => !isPantryStaple(key));
     if (needed.length === 0) return;
     const matched = needed.filter((key) => queries.some((query) => ingredientMatches(key, query)));
-    if (matched.length === 0) return;
-    const usedQueries = queries.filter((query) => needed.some((key) => ingredientMatches(key, query)));
+    if (matched.length === 0 && !queries.some((query) => keys.some((key) => ingredientMatches(key, query)))) return;
+    const usedQueries = queries.filter((query) => keys.some((key) => ingredientMatches(key, query)));
+    // requireAll: chỉ nhận món chứa ĐỦ mọi nguyên liệu người dùng nhập
+    if (requireAll && usedQueries.length !== queries.length) return;
     const coverage = matched.length / needed.length;
     const usage = usedQueries.length / queries.length;
     results.push({
@@ -288,7 +299,7 @@ function recipesByIngredients(models, ingredientNames, options = {}) {
       usage,
       matchedCount: matched.length,
       neededCount: needed.length,
-      matched,
+      matched: keys.filter((key) => queries.some((query) => ingredientMatches(key, query))),
       missing: needed.filter((key) => !matched.includes(key)).slice(0, 5),
       strategy: 'ingredients',
     });
@@ -299,13 +310,14 @@ function recipesByIngredients(models, ingredientNames, options = {}) {
       b.score - a.score ||
       (models.popularity.get(b.recipeId) || 0) - (models.popularity.get(a.recipeId) || 0),
   );
-  return results.slice(0, limit).map((item) => ({
+  // Trả total THẬT (trước khi cắt limit) để frontend hiển thị đúng số lượng
+  return { items: results.slice(options.offset || 0, (options.offset || 0) + limit).map((item) => ({
     ...item,
     reason:
       item.missing.length === 0
         ? `Bạn có đủ ${item.neededCount} nguyên liệu chính`
         : `Có ${item.matchedCount}/${item.neededCount} nguyên liệu chính, còn thiếu: ${item.missing.join(', ')}`,
-  }));
+  })), total: results.length };
 }
 
 // Món phổ biến, có thể lọc theo bữa / ăn chay / thời gian nấu (tab ở trang chủ)

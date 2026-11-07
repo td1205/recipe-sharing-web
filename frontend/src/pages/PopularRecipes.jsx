@@ -32,7 +32,7 @@ const formatCount = (value) => Number(value || 0).toLocaleString('vi-VN');
 
 const PopularRecipes = () => {
   const navigate = useNavigate();
-  const { user } = useContext(AuthContext);
+  const { user, favoriteIds: savedRecipeIds, setFavorite } = useContext(AuthContext);
   const [recipes, setRecipes] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -49,18 +49,6 @@ const PopularRecipes = () => {
   const itemsPerPage = 16;
 
   // Bookmarks
-  const [isCollectionSaved, setIsCollectionSaved] = useState(false);
-  const [savedRecipeIds, setSavedRecipeIds] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('savedPopularRecipeIds') || '[]');
-    } catch {
-      return [];
-    }
-  });
-
-  // Newsletter email
-  const [newsletterEmail, setNewsletterEmail] = useState('');
-
   const fetchPopularData = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -152,33 +140,19 @@ const PopularRecipes = () => {
 
   // Handle bookmarking individual recipe. The card button already flips to a
   // filled bookmark, so no corner toast is needed.
-  const toggleSaveRecipe = (e, recipeId) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    requireLogin(() => {
-      const updated = savedRecipeIds.includes(recipeId)
-        ? savedRecipeIds.filter(id => id !== recipeId)
-        : [...savedRecipeIds, recipeId];
-
-      setSavedRecipeIds(updated);
-      localStorage.setItem('savedPopularRecipeIds', JSON.stringify(updated));
+  const toggleSaveRecipe = async (e, recipeId) => {
+    e.preventDefault(); e.stopPropagation();
+    requireLogin(async () => {
+      try { await setFavorite(recipeId, !savedRecipeIds.includes(recipeId)); }
+      catch (error) { toast.error(error.response?.data?.message || error.message || 'Không thể lưu công thức'); }
     });
   };
-
-  // Handle save collection. The header button already flips to the saved state.
-  const handleToggleCollection = () => {
-    requireLogin(() => setIsCollectionSaved((prev) => !prev));
-  };
-
-  // Handle share
-  const handleShare = () => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(window.location.href);
-      toast.success('Đã sao chép liên kết vào bộ nhớ tạm!', { icon: '🔗' });
-    } else {
-      toast.success('Đã sao chép liên kết!');
-    }
+  const handleShare = async () => {
+    try {
+      if (!navigator.clipboard) throw new Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success('Đã sao chép liên kết');
+    } catch { toast.error('Không thể sao chép. Vui lòng sao chép địa chỉ từ trình duyệt.'); }
   };
 
   // Handle search inside banner
@@ -187,17 +161,6 @@ const PopularRecipes = () => {
     if (searchKeyword.trim()) {
       navigate(`/?search=${encodeURIComponent(searchKeyword.trim())}`);
     }
-  };
-
-  // Handle newsletter signup
-  const handleNewsletterSubmit = (e) => {
-    e.preventDefault();
-    if (!newsletterEmail || !newsletterEmail.includes('@')) {
-      toast.error('Vui lòng nhập địa chỉ email hợp lệ!');
-      return;
-    }
-    toast.success('Cảm ơn bạn! Đã đăng ký nhận bản tin ẩm thực thành công.', { icon: '✉️' });
-    setNewsletterEmail('');
   };
 
   // Filter recipes based on category and time horizon
@@ -290,14 +253,6 @@ const PopularRecipes = () => {
               </div>
 
               <div className="nyt-hero-actions">
-                <button
-                  type="button"
-                  className={`nyt-action-circle-btn ${isCollectionSaved ? 'saved' : ''}`}
-                  title={isCollectionSaved ? 'Đã lưu bộ sưu tập' : 'Lưu bộ sưu tập'}
-                  onClick={handleToggleCollection}
-                >
-                  <i className={isCollectionSaved ? 'fa-solid fa-bookmark' : 'fa-regular fa-bookmark'}></i>
-                </button>
                 <button
                   type="button"
                   className="nyt-action-circle-btn"
@@ -584,55 +539,7 @@ const PopularRecipes = () => {
         {/* ========================================================
             6. NEWSLETTER SUBSCRIPTION BLOCK
            ======================================================== */}
-        <section className="nyt-newsletter-block">
-          <div className="nyt-newsletter-left">
-            <h3>Đăng ký nhận bản tin ẩm thực</h3>
-            <p>
-              Gửi địa chỉ email của bạn để nhận thông báo khi có công thức mới được đăng.
-            </p>
-            <form onSubmit={handleNewsletterSubmit} className="nyt-newsletter-form">
-              <input
-                type="email"
-                className="nyt-newsletter-input"
-                placeholder="Nhập địa chỉ email của bạn..."
-                value={newsletterEmail}
-                onChange={(e) => setNewsletterEmail(e.target.value)}
-              />
-              <button type="submit" className="nyt-newsletter-btn">
-                Đăng ký ngay
-              </button>
-            </form>
-          </div>
 
-          <div className="nyt-newsletter-right">
-            <span className="nyt-social-label">Theo dõi chúng tôi</span>
-            <div className="nyt-social-icons">
-              <a href="#" className="nyt-social-icon-btn" onClick={(e) => { e.preventDefault(); toast('Kênh Facebook'); }}>
-                <i className="fa-brands fa-facebook-f"></i>
-              </a>
-              <a href="#" className="nyt-social-icon-btn" onClick={(e) => { e.preventDefault(); toast('Kênh Instagram'); }}>
-                <i className="fa-brands fa-instagram"></i>
-              </a>
-              <a href="#" className="nyt-social-icon-btn" onClick={(e) => { e.preventDefault(); toast('Kênh Pinterest'); }}>
-                <i className="fa-brands fa-pinterest-p"></i>
-              </a>
-              <a href="#" className="nyt-social-icon-btn" onClick={(e) => { e.preventDefault(); toast('Kênh YouTube'); }}>
-                <i className="fa-brands fa-youtube"></i>
-              </a>
-            </div>
-
-            <div className="nyt-app-badges">
-              <a href="#" className="nyt-app-badge-btn" onClick={(e) => { e.preventDefault(); toast('Tải ứng dụng trên App Store'); }}>
-                <i className="fa-brands fa-apple" style={{ fontSize: '16px' }}></i>
-                <span>App Store</span>
-              </a>
-              <a href="#" className="nyt-app-badge-btn" onClick={(e) => { e.preventDefault(); toast('Tải ứng dụng trên Google Play'); }}>
-                <i className="fa-brands fa-google-play" style={{ fontSize: '14px' }}></i>
-                <span>Google Play</span>
-              </a>
-            </div>
-          </div>
-        </section>
 
       </div>
 

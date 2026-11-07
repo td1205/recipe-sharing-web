@@ -1,3 +1,4 @@
+const validation = require('../utils/apiValidation');
 const prisma = require('../config/prisma');
 const { PUBLIC_USER_SELECT } = require('../utils/userSelect');
 const { getRecipeCardsByIds } = require('../repositories/recommendationRepository');
@@ -8,10 +9,11 @@ const PAGE_SIZE = 16;
 // Chỉ trả các trường an toàn (không email, không role, không password/otp).
 async function getPublicProfile(req, res) {
   try {
-    const userId = parseInt(req.params.id, 10);
+    const userId = validation.id(req.params.id);
     if (!Number.isInteger(userId) || userId <= 0) {
       return res.status(400).json({ success: false, message: 'Mã người dùng không hợp lệ' });
     }
+    const page = validation.integer(req.query.page, 'page', 1, 1, 1000000);
     const user = await prisma.users.findUnique({
       where: { id: userId },
       select: { ...PUBLIC_USER_SELECT, bio: true, created_at: true, is_banned: true },
@@ -20,7 +22,7 @@ async function getPublicProfile(req, res) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
     }
 
-    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+
     const [recipeCount, favoritesReceived, recipeRows] = await Promise.all([
       prisma.recipes.count({ where: { user_id: userId } }),
       prisma.favorites.count({ where: { recipes: { user_id: userId } } }),
@@ -44,8 +46,8 @@ async function getPublicProfile(req, res) {
       totalPages: Math.max(1, Math.ceil(recipeCount / PAGE_SIZE)),
     });
   } catch (err) {
-    console.error('Lỗi lấy hồ sơ công khai:', err);
-    return res.status(500).json({ success: false, message: 'Lỗi hệ thống' });
+    console.error('Lỗi lấy hồ sơ công khai:', err.code || err.name);
+    return validation.apiError(res, err);
   }
 }
 

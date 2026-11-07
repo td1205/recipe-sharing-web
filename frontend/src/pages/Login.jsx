@@ -22,7 +22,7 @@ const Login = () => {
     setError('');
 
     try {
-      const res = await login(username, password);
+      const res = await login(username, password, remember);
       if (res.success) {
         const previousLocation = location.state?.from;
         const destination = previousLocation
@@ -108,7 +108,7 @@ const Login = () => {
                 checked={remember}
                 onChange={(e) => setRemember(e.target.checked)}
               />
-              Ghi nhớ đăng nhập trên thiết bị này
+              Ghi nhớ đăng nhập
             </label>
 
             <button type="submit" className="auth-submit" disabled={loading}>

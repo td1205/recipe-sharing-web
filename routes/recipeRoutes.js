@@ -18,6 +18,8 @@ router.get('/users/:id/profile', userController.getPublicProfile);
 router.get('/recommendations/explain', recommendationController.getExplanation);
 
 router.get('/recipes', recipeController.getAllRecipes);
+router.get('/recipes/suggest', recipeController.getSearchSuggestions);
+router.get('/recipes/titles', recipeController.getRecipeTitles);
 router.get('/recipes/create', recipeController.getCreatePage);
 router.get('/recipes/popular', recipeController.getPopularRecipes);
 router.get('/recipes/edit/:id', recipeController.getEditPage);
@@ -27,6 +29,4 @@ router.post('/recipes/edit/:id', recipeWriteLimiter, recipeController.handleUpda
 router.post('/recipes/delete/:id', recipeWriteLimiter, recipeController.handleDeleteRecipe);
 router.delete('/recipes/:id', recipeWriteLimiter, recipeController.handleDeleteRecipe);
 router.post('/recipes/:id/tags', interactionLimiter, interactionController.addTag);
-router.post('/recipes/:id/comments', interactionController.addComment);
-router.post('/recipes/:id/rate', interactionController.addRating);
 module.exports = router;

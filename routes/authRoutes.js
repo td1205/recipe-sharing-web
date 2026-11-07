@@ -1,6 +1,6 @@
 const authController = require('../controllers/authController');
 const authMiddleware = require('../middlewares/authMiddleware');
-const { loginLimiter, otpSendLimiter, registerLimiter } = require('../middlewares/rateLimit');
+const { loginLimiter, loginIpLimiter, otpSendLimiter, registerLimiter } = require('../middlewares/rateLimit');
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
@@ -85,10 +85,11 @@ function uploadAvatar(req, res, next) {
   });
 }
 router.get('/login', authController.getLoginPage);
-router.post('/login', loginLimiter, authController.handleLogin);
+// Count every attempt by IP; keep the account limiter last so success resets only it.
+router.post('/login', loginIpLimiter, loginLimiter, authController.handleLogin);
 router.get('/register', authController.getRegisterPage);
 router.post('/register', registerLimiter, authController.handleRegister);
-router.get('/logout', authController.logout); // GET giữ lại cho tương thích cũ
+router.get('/logout', (_req, res) => res.status(405).set('Allow', 'POST').json({ success: false, error: 'Vui lòng sử dụng POST để đăng xuất' }));
 router.post('/logout', authController.logout); // POST: dùng ở frontend, tránh CSRF qua GET
 router.get(
   '/profile',

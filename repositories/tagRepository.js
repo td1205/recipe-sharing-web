@@ -29,6 +29,25 @@ async function removeVote(userId, recipeId, tagId) {
 }
 
 module.exports = {
+  async toggleVote(userId, recipeId, name) {
+    const user_id = Number(userId), recipe_id = Number(recipeId);
+    return prisma.$transaction(async (tx) => {
+      const recipes = await tx.$queryRaw`SELECT id FROM recipes WHERE id = ${recipe_id} FOR UPDATE`;
+      if (!recipes.length) throw Object.assign(new Error('Không tìm thấy công thức'), { code: 'P2025' });
+      const existingTag = await tx.tags.findUnique({ where: { name } });
+      const where = { user_id, recipe_id };
+      if (existingTag) {
+        const removed = await tx.user_tag_votes.deleteMany({ where: { ...where, tag_id: existingTag.id } });
+        if (removed.count) return { isAdded: false };
+      }
+      if (await tx.user_tag_votes.count({ where }) >= 5) {
+        throw Object.assign(new Error('Bạn chỉ được gắn tối đa 5 tag cho món ăn này!'), { status: 400 });
+      }
+      const tag = await tx.tags.upsert({ where: { name }, create: { name, type: 'community' }, update: {} });
+      await tx.user_tag_votes.create({ data: { ...where, tag_id: tag.id } });
+      return { isAdded: true, tag: { id: tag.id, name: tag.name } };
+    }, { isolationLevel: 'ReadCommitted' });
+  },
   getTagByName,
   createTag,
   getUserVoteCountForRecipe,

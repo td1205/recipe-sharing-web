@@ -43,6 +43,11 @@ async function getModels({ forceRebuild = false } = {}) {
       .finally(() => {
         state.building = null;
       });
+    // Observe background failures even when this request returns the old model.
+    // Keep the original promise rejected so cold/forced callers still receive errors.
+    state.building.catch(() => {
+      console.error('[recommender] Dựng mô hình thất bại; giữ bản cũ nếu có và cho phép thử lại.');
+    });
   }
   if (state.models && !forceRebuild) return state.models;
   return state.building;
@@ -80,18 +85,21 @@ async function similarRecipes(recipeId, limit = 16) {
   return toRecipeCards(hybrid.similarRecipes(models, recipeId, { limit }));
 }
 
-// "Nấu gì với nguyên liệu có sẵn?"
-async function recipesByIngredients(ingredientNames, limit = 20) {
+// "Nấu gì với nguyên liệu có sẵn?" — chỉ nhận món chứa ĐỦ mọi nguyên liệu nhập (requireAll)
+async function recipesByIngredients(ingredientNames, limit = 20, offset = 0) {
   const models = await getModels();
-  const results = hybrid.recipesByIngredients(models, ingredientNames, { limit });
-  const cards = await toRecipeCards(results);
-  const byId = new Map(results.map((item) => [item.recipeId, item]));
-  return cards.map((card) => ({
-    ...card,
-    matched_ingredients: byId.get(card.id)?.matched,
-    missing_ingredients: byId.get(card.id)?.missing,
-    ingredient_coverage: byId.get(card.id)?.coverage,
-  }));
+  const { items, total } = hybrid.recipesByIngredients(models, ingredientNames, { limit, offset, requireAll: true });
+  const cards = await toRecipeCards(items);
+  const byId = new Map(items.map((item) => [item.recipeId, item]));
+  return {
+    total,
+    cards: cards.map((card) => ({
+      ...card,
+      matched_ingredients: byId.get(card.id)?.matched,
+      missing_ingredients: byId.get(card.id)?.missing,
+      ingredient_coverage: byId.get(card.id)?.coverage,
+    })),
+  };
 }
 
 // Món phổ biến (dùng mô hình đã tính sẵn, không phải tải lại toàn bộ dữ liệu)

@@ -86,8 +86,10 @@ export function RecipeImage({ src, alt, className = '', timeoutMs = 8000, ...res
 }
 
 // Editorial card used by the homepage sliders and the recipe detail page.
-const MagazineCard = ({ recipe, compact = false }) => (
-  <Link to={`/recipes/${recipe.id}`} className={`mag-card ${compact ? 'mag-card-compact' : ''}`}>
+// linkState (tuỳ chọn): dữ liệu gắn vào Link khi điều hướng sang trang chi tiết
+// (vd: pantry từ trang Nấu với nguyên liệu có sẵn để tích sẵn nguyên liệu khớp).
+const MagazineCard = ({ recipe, compact = false, linkState }) => (
+  <Link to={`/recipes/${recipe.id}`} state={linkState} className={`mag-card ${compact ? 'mag-card-compact' : ''}`}>
     <div className="mag-card-img-wrapper">
       <RecipeImage src={recipe.image_url} alt={recipe.title} className="mag-card-img" />
     </div>

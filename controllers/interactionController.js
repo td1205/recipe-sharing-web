@@ -1,3 +1,4 @@
+const validation = require('../utils/apiValidation');
 const commentModel = require('../repositories/commentRepository');
 const ratingModel = require('../repositories/ratingRepository');
 const recipeModel = require('../repositories/recipeRepository');
@@ -11,9 +12,9 @@ async function addComment(req, res) {
     if (!req.session.user) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
-    const recipeId = req.params.id;
+    const recipeId = validation.id(req.params.id);
     const userId = req.session.user.id;
-    const content = String(req.body.content || '').trim();
+    const content = validation.text(req.body?.content, 'Bình luận', 2000);
     if (content === '') {
       return res.status(400).json({ success: false, message: 'Empty comment' });
     }
@@ -24,8 +25,8 @@ async function addComment(req, res) {
     await commentModel.createComment(userId, recipeId, content);
     res.json({ success: true, message: 'Comment added' });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Server Error' });
+    console.error('Yêu cầu thất bại:', err.code || err.name);
+    return validation.apiError(res, err, 'Server Error');
   }
 }
 
@@ -34,9 +35,10 @@ async function addRating(req, res) {
     if (!req.session.user) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
-    const recipeId = req.params.id;
+    const recipeId = validation.id(req.params.id);
     const userId = req.session.user.id;
-    const starCount = Number(req.body.star_count);
+    const rawStars = req.body?.star_count;
+    const starCount = typeof rawStars === 'number' || (typeof rawStars === 'string' && /^[1-5]$/.test(rawStars)) ? Number(rawStars) : NaN;
     if (!Number.isInteger(starCount) || starCount < 1 || starCount > 5) {
       return res
         .status(400)
@@ -49,8 +51,8 @@ async function addRating(req, res) {
     
     res.json({ success: true, message: 'Rating added/updated', newRating, newCount });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Server Error' });
+    console.error('Yêu cầu thất bại:', err.code || err.name);
+    return validation.apiError(res, err, 'Server Error');
   }
 }
 
@@ -61,7 +63,7 @@ async function recordRecipeView(req, res) {
     }
 
     const result = await recipeViewModel.recordQualifiedView(
-      req.params.id,
+      validation.id(req.params.id),
       req.session.user?.id || null,
       req.sessionID
     );
@@ -72,8 +74,8 @@ async function recordRecipeView(req, res) {
 
     res.json({ success: true, ...result });
   } catch (err) {
-    console.error('Lỗi khi ghi nhận lượt xem công thức:', err);
-    res.status(500).json({ success: false, message: 'Server Error' });
+    console.error('Lỗi khi ghi nhận lượt xem công thức:', err.code || err.name);
+    return validation.apiError(res, err, 'Server Error');
   }
 }
 
@@ -82,18 +84,17 @@ async function toggleFavorite(req, res) {
     if (!req.session.user) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
-    const recipeId = req.params.id;
+    const recipeId = validation.id(req.params.id);
     const userId = req.session.user.id;
-    const isFav = await favoriteModel.isFavorite(userId, recipeId);
-    if (isFav) {
-      await favoriteModel.removeFavorite(userId, recipeId);
-    } else {
-      await favoriteModel.addFavorite(userId, recipeId);
+    const desired = req.body?.isFav;
+    if (desired !== undefined && typeof desired !== 'boolean') {
+      return res.status(400).json({ success: false, message: 'isFav phải là boolean' });
     }
-    res.json({ success: true, message: 'Favorite toggled', isFav: !isFav });
+    const isFav = await favoriteModel.setFavorite(userId, recipeId, desired);
+    res.json({ success: true, message: 'Favorite updated', isFav });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Server Error' });
+    console.error('Yêu cầu thất bại:', err.code || err.name);
+    return validation.apiError(res, err, 'Server Error');
   }
 }
 
@@ -102,45 +103,21 @@ async function addTag(req, res) {
     if (!req.session.user) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
-    const recipeId = req.params.id;
+    const recipeId = validation.id(req.params.id);
     const userId = req.session.user.id;
-    const { tagName } = req.body;
+    const { tagName } = req.body || {};
 
-    if (!tagName || tagName.trim() === '') {
+    if (typeof tagName !== 'string' || !tagName.trim() || tagName.trim().length > 50) {
       return res.status(400).json({ success: false, message: 'Empty tag name' });
     }
 
     const cleanTagName = tagName.trim().toLowerCase();
 
-    // Check how many tags this user has voted on this recipe
-    const voteCount = await tagModel.getUserVoteCountForRecipe(userId, recipeId);
-    
-    // Find or create tag
-    let tag = await tagModel.getTagByName(cleanTagName);
-    if (!tag) {
-      // Must enforce 5 tag limit before creating new tags
-      if (voteCount >= 5) {
-        return res.status(400).json({ success: false, message: 'Bạn chỉ được gắn tối đa 5 tag cho món ăn này!' });
-      }
-      tag = await tagModel.createTag(cleanTagName);
-    }
-
-    // Check if user already voted for this tag
-    const hasVoted = await tagModel.hasUserVotedForTag(userId, recipeId, tag.id);
-    if (hasVoted) {
-      // Unvote (Toggle behavior similar to Steam)
-      await tagModel.removeVote(userId, recipeId, tag.id);
-      return res.json({ success: true, message: 'Đã hủy vote cho tag này', isAdded: false });
-    } else {
-      if (voteCount >= 5) {
-        return res.status(400).json({ success: false, message: 'Bạn chỉ được gắn tối đa 5 tag cho món ăn này!' });
-      }
-      await tagModel.addVote(userId, recipeId, tag.id);
-      return res.json({ success: true, message: 'Đã gắn tag thành công', isAdded: true, tag: { id: tag.id, name: tag.name } });
-    }
+    const result = await tagModel.toggleVote(userId, recipeId, cleanTagName);
+    return res.json({ success: true, message: result.isAdded ? 'Đã gắn tag thành công' : 'Đã hủy vote cho tag này', ...result });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Lỗi server' });
+    console.error('Yêu cầu thất bại:', err.code || err.name);
+    return validation.apiError(res, err, 'Lỗi server');
   }
 }
 
@@ -149,7 +126,7 @@ async function showRecipeDetail(req, res) {
   // Wait, in my previous view of interactionController.js, there WAS a showRecipeDetail, but it's redundant.
   // I will just keep it here as it was.
   try {
-    const recipeId = req.params.id;
+    const recipeId = validation.id(req.params.id);
     const recipe = await recipeModel.getRecipeById(recipeId);
     if (!recipe) {
       return res.status(404).json({ success: false, message: 'Khong tim thay' });
@@ -175,8 +152,8 @@ async function showRecipeDetail(req, res) {
       user: req.session.user,
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Server Error' });
+    console.error('Yêu cầu thất bại:', err.code || err.name);
+    return validation.apiError(res, err, 'Server Error');
   }
 }
 
@@ -185,18 +162,18 @@ async function adminComments(req, res) {
     const comments = await interactionModel.getAllComments();
     res.json({ success: true, comments });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Server Error' });
+    console.error('Yêu cầu thất bại:', err.code || err.name);
+    return validation.apiError(res, err, 'Server Error');
   }
 }
 
 async function deleteComment(req, res) {
   try {
-    await interactionModel.deleteComment(req.params.id);
+    await interactionModel.deleteComment(validation.id(req.params.id));
     res.json({ success: true, message: 'Comment deleted' });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Server Error' });
+    console.error('Yêu cầu thất bại:', err.code || err.name);
+    return validation.apiError(res, err, 'Server Error');
   }
 }
 

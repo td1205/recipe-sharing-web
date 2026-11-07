@@ -1,7 +1,8 @@
+import { apiErrorMessage } from '../utils/apiError';
 import toast from 'react-hot-toast';
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import axios from 'axios';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
 import SkeletonLoader from '../components/SkeletonLoader';
 import RecipeSlider from '../components/RecipeSlider';
@@ -11,6 +12,7 @@ import { AuthContext } from '../context/AuthContext';
 import './Home.css';
 import { scaleAmount } from '../utils/amount';
 import { RecipeImage } from '../components/MagazineCard';
+import { matchesPantry } from '../utils/pantry';
 
 // How many suggestions to show in the slider.
 const SUGGESTION_LIMIT = 16;
@@ -22,10 +24,14 @@ const getThumbnailUrl = (url, type) => {
 
 const RecipeDetail = () => {
   const { id } = useParams();
+const location = useLocation();
+// Pantry CHỈ nhận khi bấm trực tiếp card từ trang "Nấu với nguyên liệu có sẵn"
+// (truyền qua navigation state). Nguồn khác (home, tìm kiếm, URL trực tiếp) -> không tích sẵn.
+const navPantry = Array.isArray(location.state?.pantry) ? location.state.pantry : [];
   const navigate = useNavigate();
-  const { user } = useContext(AuthContext);
+  const { user, favoriteIds, setFavorite } = useContext(AuthContext);
 
-  const [isFav, setIsFav] = useState(false);
+  const isFav = favoriteIds.includes(Number(id));
   const [recipe, setRecipe] = useState(null);
   const [ingredients, setIngredients] = useState([]);
   const [steps, setSteps] = useState([]);
@@ -71,7 +77,20 @@ const RecipeDetail = () => {
       });
       if (res.data.success) {
         setRecipe(res.data.recipe);
-        setIngredients(res.data.ingredients || []);
+        const fetchedIngredients = res.data.ingredients || [];
+        setIngredients(fetchedIngredients);
+        // Tích sẵn (✓) các nguyên liệu khớp pantry truyền theo navigation state
+        // (chỉ khi bấm card từ trang Nấu với nguyên liệu có sẵn). Rời trang / vào từ
+        // nguồn khác -> không tích sẵn nào (checkedIngs rỗng).
+        if (navPantry.length > 0) {
+          const seeds = {};
+          fetchedIngredients.forEach((ing, idx) => {
+            if (matchesPantry(ing.name, navPantry)) seeds[idx] = true;
+          });
+          setCheckedIngs(seeds);
+        } else {
+          setCheckedIngs({});
+        }
         setSteps(res.data.steps || []);
         setTags(res.data.tags || []);
         const fetchedMedia = res.data.media && res.data.media.length > 0 ? res.data.media : [{ media_url: res.data.recipe.image_url, media_type: 'image' }];
@@ -90,7 +109,7 @@ const RecipeDetail = () => {
         }
 
         setRelatedRecipes(res.data.relatedRecipes || []);
-        setIsFav(res.data.isFav || false);
+
         setCurrentServings(res.data.recipe.servings || 1);
 
         // Save to recently viewed
@@ -177,15 +196,15 @@ const RecipeDetail = () => {
 
   const handleToggleFavorite = async () => {
     try {
-      const res = await axios.post(`/api/recipes/${id}/favorite`);
+      const res = { data: { success: true, isFav: await setFavorite(Number(id), !isFav) } };
       if (res.data.success) {
         // The button label and icon already flip between "Lưu" / "Đã lưu",
         // so a corner toast would only repeat what is already on screen.
-        setIsFav(res.data.isFav);
+
       }
     } catch (e) {
       // No inline feedback for a failed request, so keep the toast here.
-      toast.error('Lỗi khi cập nhật yêu thích');
+      toast.error(apiErrorMessage(e, 'Lỗi khi cập nhật yêu thích'));
     }
   };
 
@@ -203,11 +222,11 @@ const RecipeDetail = () => {
             id: res.data.commentId || Date.now(),
             content: newComment,
             created_at: new Date(),
-            user: { username: user.username }
+            user: { username: user.username, fullname: user.fullname, avatar_url: user.avatar_url || null }
           }, ...comments]);
         }
       } catch (err) {
-        toast.error('Lỗi khi gửi bình luận');
+        toast.error(apiErrorMessage(err, 'Lỗi khi gửi bình luận'));
       } finally {
         setIsSubmittingComment(false);
       }
@@ -225,7 +244,7 @@ const RecipeDetail = () => {
           if (res.data.newCount !== undefined) setRatingCount(res.data.newCount);
         }
       } catch (err) {
-        toast.error('Lỗi khi gửi đánh giá');
+        toast.error(apiErrorMessage(err, 'Lỗi khi gửi đánh giá'));
       }
     });
   };
@@ -341,9 +360,21 @@ const RecipeDetail = () => {
               <h1 className="nyt-title">{recipe.title}</h1>
               
               <div className="nyt-byline">
-                <p>Công thức bởi <strong><Link to={`/profile/${recipe.user_id}`} style={{color: 'inherit', textDecoration: 'none'}}>{recipe.author_name || 'Đầu bếp ẩn danh'}</Link></strong></p>
-                {recipe.original_author && <p>Phỏng theo <strong>{recipe.original_author}</strong></p>}
-                <p className="nyt-date">Đăng ngày {new Date(recipe.created_at).toLocaleDateString('vi-VN', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                <img
+                  src={recipe.users?.avatar_url || '/default-avatar.svg'}
+                  alt={`Ảnh đại diện của ${recipe.author_name || 'Đầu bếp ẩn danh'}`}
+                  width={40}
+                  height={40}
+                  className="nyt-author-avatar"
+                  onError={(e) => {
+                    if (!e.currentTarget.src.endsWith('/default-avatar.svg')) e.currentTarget.src = '/default-avatar.svg';
+                  }}
+                />
+                <div className="nyt-byline-text">
+                  <p>Công thức bởi <strong><Link to={`/profile/${recipe.user_id}`} style={{color: 'inherit', textDecoration: 'none'}}>{recipe.author_name || 'Đầu bếp ẩn danh'}</Link></strong></p>
+                  {recipe.original_author && <p>Phỏng theo <strong>{recipe.original_author}</strong></p>}
+                  <p className="nyt-date">Đăng ngày {new Date(recipe.created_at).toLocaleDateString('vi-VN', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                </div>
               </div>
 
               <div className="nyt-stats-row">
@@ -368,6 +399,21 @@ const RecipeDetail = () => {
                   <span className="nyt-stat-label">Lượt xem</span>
                   <span className="nyt-stat-val">{viewCount.toLocaleString('vi-VN')} đã xem</span>
                 </div>
+                {Number(recipe.calories) > 0 && (
+                  <div className="nyt-stat">
+                    <span className="nyt-stat-label">Năng lượng</span>
+                    <span className="nyt-stat-val">
+                      ≈ {Math.round(Number(recipe.calories) * ratio).toLocaleString('vi-VN')} kcal
+                      {currentServings > 0 ? ` / ${currentServings} người phần` : ''}
+                    </span>
+                  </div>
+                )}
+                {recipe.difficulty && (
+                  <div className="nyt-stat">
+                    <span className="nyt-stat-label">Độ khó</span>
+                    <span className="nyt-stat-val">{recipe.difficulty}</span>
+                  </div>
+                )}
               </div>
 
               <div className="nyt-toolbar-divider"></div>
@@ -568,11 +614,23 @@ const RecipeDetail = () => {
                 <div className="nyt-comments-list">
                   {comments.length > 0 ? comments.slice(0, commentLimit).map((cmt, idx) => (
                     <div key={idx} className="nyt-comment-item">
-                      <div className="nyt-comment-meta">
-                        <span className="nyt-comment-author">{cmt.user?.username || 'Người dùng'}</span>
-                        <span className="nyt-comment-date">{new Date(cmt.created_at).toLocaleDateString('vi-VN')}</span>
+                      <img
+                        src={cmt.user?.avatar_url || '/default-avatar.svg'}
+                        alt={`Ảnh đại diện của ${cmt.user?.username || 'Người dùng'}`}
+                        width={36}
+                        height={36}
+                        className="nyt-comment-avatar"
+                        onError={(e) => {
+                          if (!e.currentTarget.src.endsWith('/default-avatar.svg')) e.currentTarget.src = '/default-avatar.svg';
+                        }}
+                      />
+                      <div className="nyt-comment-body">
+                        <div className="nyt-comment-meta">
+                          <span className="nyt-comment-author">{cmt.user?.username || 'Người dùng'}</span>
+                          <span className="nyt-comment-date">{new Date(cmt.created_at).toLocaleDateString('vi-VN')}</span>
+                        </div>
+                        <p className="nyt-comment-text">{cmt.content}</p>
                       </div>
-                      <p className="nyt-comment-text">{cmt.content}</p>
                     </div>
                   )) : (
                     <p style={{fontFamily: 'var(--font-sans)', color: '#666'}}>Chưa có bình luận nào. Hãy là người đầu tiên!</p>
