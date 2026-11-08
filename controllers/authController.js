@@ -1,5 +1,5 @@
 const validation = require('../utils/apiValidation');
-const { fingerprint, RESET_GRANT_TTL_MS } = require('../utils/sessionAuth');
+const { fingerprint, RESET_GRANT_TTL_MS, normaliseRemember } = require('../utils/sessionAuth');
 const userModel = require('../repositories/userRepository');
 const tokenService = require('../services/tokenService');
 const bcrypt = require('bcrypt');
@@ -27,7 +27,7 @@ function parseCredentials(body) {
   const { username, password } = body || {};
   validation.text(username, 'Tài khoản', 100);
   if (typeof password !== 'string' || password.length > 200) throw Object.assign(new Error('Mật khẩu không hợp lệ'), { status: 400 });
-  return { username, password, remember: body.remember };
+  return { username, password, remember: normaliseRemember(body.remember) };
 }
 
 async function handleLogin(req, res) {

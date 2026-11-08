@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { fingerprint } = require('../utils/sessionAuth');
+const { fingerprint, normaliseRemember } = require('../utils/sessionAuth');
 const { getSessionStore } = require('../config/sessionStore');
 
 // Token Bearer cho client không dùng cookie (Flutter).
@@ -15,14 +15,6 @@ const TTL_DEFAULT_MS = 1000 * 60 * 60 * 24; // không ghi nhớ: 1 ngày
 
 function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
-}
-
-function normaliseRemember(rawRemember) {
-  if (rawRemember === undefined) return false;
-  if (![true, false, 'true', 'false', 'on'].includes(rawRemember)) {
-    throw Object.assign(new Error('remember không hợp lệ'), { status: 400 });
-  }
-  return rawRemember === true || rawRemember === 'true' || rawRemember === 'on';
 }
 
 // Phát hành token mới cho một user đã xác thực (kết quả authService.login).

@@ -15,5 +15,8 @@ jobs:
       - run: npm ci --prefix frontend
       - run: npm run test:safe
       - run: node --test tests/rateLimitRoutes.test.js tests/geminiService.test.js
+      - run: node --test tests/tokenAuth.test.js tests/googleDocs.test.js
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm audit --prefix frontend --audit-level=high
       - run: npm run lint --prefix frontend
       - run: npm run build --prefix frontend

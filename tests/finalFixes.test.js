@@ -22,6 +22,26 @@ function load(file, dependencies) {
   });
   return module.exports;
 }
+
+test('web login normalizes remember values and rejects invalid flags before authentication', async () => {
+  let calls=0;
+  const controller=load('controllers/authController.js',{
+    '../utils/apiValidation':validation,'../utils/sessionAuth':require('../utils/sessionAuth'),
+    '../repositories/userRepository':{},'../services/tokenService':{},bcrypt:{},'../utils/mailHelper':{},
+    '../services/authService':{login:async()=>{calls++;return {success:true,user:{id:1,password:'fixture-hash',role:'user'}};}},
+    '../utils/passwordPolicy':{},
+  });
+  for(const remember of [undefined,false,'false',true,'true','on']){
+    const session={cookie:{},regenerate(done){done();},save(done){done();}};
+    let status=200,body;
+    await controller.handleLogin({body:{username:'fixture',password:'fixture',remember},session},{status(n){status=n;return this;},json(value){body=value;}});
+    assert.equal(status,200);assert.equal(body.success,true);
+    assert.equal(session.cookie.maxAge,[true,'true','on'].includes(remember)?30*86400000:86400000);
+  }
+  const before=calls;let status;
+  await controller.handleLogin({body:{username:'fixture',password:'fixture',remember:'invalid'}},{status(n){status=n;return this;},json(){}});
+  assert.equal(status,400);assert.equal(calls,before);
+});
 test('validation rejects malformed values and maps expected database errors', () => {
   for (const id of ['1x', '-1', '0', '1.5', [], null]) assert.throws(() => validation.id(id));
   for (const value of [{}, [], null, 'bad']) assert.throws(() => validation.email(value));
