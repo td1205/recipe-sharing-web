@@ -29,12 +29,14 @@ async function renderDashboard(req, res) {
         adminModel.getExtraStats(),
       ]);
     const totalRatings = await prisma.ratings.count();
+    const pendingReports = await prisma.content_reports.count({ where: { status: 'Pending' } });
     const stats = {
       users: totalUsers,
       recipes: totalRecipes,
       categories: totalCategories,
       comments: totalComments,
       ratings: totalRatings,
+      pendingReports,
       totalViews: extra.totalViews,
       totalFavorites: extra.totalFavorites,
       bannedUsers: extra.bannedUsers,

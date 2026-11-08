@@ -76,9 +76,13 @@ async function mutateUser(id, actorId, data) {
           );
         }
       }
-      return data === null
-        ? tx.users.delete({ where: { id: userId } })
-        : tx.users.update({ where: { id: userId }, data });
+      const result = data === null
+        ? await tx.users.delete({ where: { id: userId } })
+        : await tx.users.update({ where: { id: userId }, data });
+      const action = data === null ? 'user.delete' : 'is_banned' in data
+        ? (data.is_banned ? 'user.ban' : 'user.unban') : data.role !== target.role ? 'user.role' : 'user.edit';
+      await tx.admin_audit_logs.create({ data: { admin_id: adminId, action, target_type: 'user', target_id: userId } });
+      return result;
     }, { isolationLevel: 'ReadCommitted' });
   } catch (error) {
     // Deadlock/write conflict rolls back; never retry the write outside the guard.

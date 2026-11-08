@@ -8,6 +8,7 @@ import SkeletonLoader from '../components/SkeletonLoader';
 import RecipeSlider from '../components/RecipeSlider';
 import LoginRequiredModal from '../components/LoginRequiredModal';
 import ConfirmDialog from '../components/ConfirmDialog';
+import ReportButton from '../components/ReportButton';
 import { AuthContext } from '../context/AuthContext';
 import './Home.css';
 import { scaleAmount } from '../utils/amount';
@@ -219,7 +220,7 @@ const navPantry = Array.isArray(location.state?.pantry) ? location.state.pantry 
           toast.success('Đã gửi bình luận');
           setNewComment('');
           setComments([{
-            id: res.data.commentId || Date.now(),
+            id: res.data.commentId,
             content: newComment,
             created_at: new Date(),
             user: { username: user.username, fullname: user.fullname, avatar_url: user.avatar_url || null }
@@ -358,6 +359,7 @@ const navPantry = Array.isArray(location.state?.pantry) ? location.state.pantry 
             {/* LEFT COLUMN */}
             <div className="nyt-col-left">
               <h1 className="nyt-title">{recipe.title}</h1>
+              <ReportButton key={`recipe-${recipe.id}`} targetType="recipe" targetId={recipe.id} />
               
               <div className="nyt-byline">
                 <img
@@ -630,6 +632,7 @@ const navPantry = Array.isArray(location.state?.pantry) ? location.state.pantry 
                           <span className="nyt-comment-date">{new Date(cmt.created_at).toLocaleDateString('vi-VN')}</span>
                         </div>
                         <p className="nyt-comment-text">{cmt.content}</p>
+                        <ReportButton key={`comment-${cmt.id}`} targetType="comment" targetId={cmt.id} />
                       </div>
                     </div>
                   )) : (

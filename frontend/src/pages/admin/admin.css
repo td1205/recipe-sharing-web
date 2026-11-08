@@ -63,6 +63,38 @@
 }
 
 /* ---- KPI cards ---- */
+.admin-pagination { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-3); margin-top: var(--space-3); }
+.admin-text-wrap { min-width: 12rem; max-width: 28rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.admin-model-value { font-size: var(--home-text-section); font-weight: 700; margin-top: var(--space-2); overflow-wrap: anywhere; }
+.admin-settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: var(--space-3); margin-block: var(--space-4); }
+.admin-settings > div { padding: var(--space-3); border: 1px solid var(--color-border); background: var(--color-bg-card); }
+.admin-settings dt { overflow-wrap: anywhere; color: var(--color-text-muted); }
+.admin-settings dd { margin: 0; font-weight: 700; }
+.admin-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.admin-table-box:focus-visible { outline: 2px solid var(--color-text-main); outline-offset: var(--space-1); }
+.admin-sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.admin-sort-button:hover {
+  text-decoration: underline;
+  text-underline-offset: var(--space-1);
+}
+
+.admin-sort-button:focus-visible {
+  outline: 2px solid var(--color-text-main);
+  outline-offset: var(--space-1);
+}
+
 .admin-kpi-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -596,6 +628,7 @@
 .admin-layout .admin-content {
   flex: 1 1 auto;
   min-width: 0;
+  width: 100%;
   padding: 0;
   background: transparent;
   border: 0;
@@ -605,6 +638,42 @@
 .admin-page-heading,
 .admin-page-actions {
   min-width: 0;
+  max-width: 100%;
+}
+
+.admin-toolbar-filters {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.admin-toolbar-filters > :is(input, select),
+.admin-toolbar > :is(input, select) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.admin-layout .steam-footer-container {
+  width: min(100%, 75rem);
+  min-width: 0;
+  padding-inline: var(--space-4);
+}
+
+@media (max-width: 48rem) {
+  .admin-layout .steam-footer-container {
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .admin-layout .steam-footer-right {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+
+  .admin-layout .steam-footer-column {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
 }
 
 @media (max-width: 56rem) {

@@ -419,7 +419,11 @@ async function handleDeleteRecipe(req, res) {
     ) {
       return res.status(403).json({ success: false, message: 'Forbidden' });
     }
-    await recipeModel.deleteRecipe(recipeId);
+    if (req.session.user.role === 'admin') {
+      await require('../repositories/moderationRepository').deleteContent('recipe', recipeId, req.session.user.id);
+    } else {
+      await recipeModel.deleteRecipe(recipeId);
+    }
     res.json({ success: true, message: 'Recipe deleted' });
   } catch (err) {
     console.error('Yêu cầu thất bại:', err.code || err.name);

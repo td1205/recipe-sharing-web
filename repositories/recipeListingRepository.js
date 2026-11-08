@@ -35,6 +35,12 @@ function buildListing(query) {
   const order = {
     newest: Prisma.sql`r.created_at DESC, r.id DESC`, oldest: Prisma.sql`r.created_at ASC, r.id ASC`,
     title: Prisma.sql`r.title ASC, r.id ASC`, title_asc: Prisma.sql`r.title ASC, r.id ASC`,
+    title_desc: Prisma.sql`r.title DESC, r.id DESC`,
+    id_asc: Prisma.sql`r.id ASC`, id_desc: Prisma.sql`r.id DESC`,
+    rating_asc: Prisma.sql`COALESCE(a.avg_rating,0) ASC, COALESCE(a.total_ratings,0) ASC, r.id ASC`,
+    ratings_asc: Prisma.sql`COALESCE(a.total_ratings,0) ASC, r.id ASC`,
+    views_asc: Prisma.sql`COALESCE(v.view_count,0) ASC, r.id ASC`,
+    views_desc: Prisma.sql`COALESCE(v.view_count,0) DESC, r.id DESC`,
     rating: Prisma.sql`COALESCE(a.avg_rating,0) DESC, COALESCE(a.total_ratings,0) DESC, r.id DESC`,
     rating_desc: Prisma.sql`COALESCE(a.avg_rating,0) DESC, COALESCE(a.total_ratings,0) DESC, r.id DESC`,
     time_asc: Prisma.sql`CASE WHEN ${duration} > 0 THEN ${duration} ELSE 2147483647 END ASC, r.id ASC`,

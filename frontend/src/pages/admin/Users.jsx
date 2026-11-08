@@ -9,16 +9,20 @@ import { validatePassword } from '../../utils/passwordPolicy';
 import toast from 'react-hot-toast';
 import './admin.css';
 import AdminPageHeader from '../../components/AdminPageHeader';
+import { AdminSortSelect, AdminSortHeader } from '../../components/AdminSort';
+import { sortAdminRows, userSortOptions } from '../../utils/adminSorting';
+import useAdminListState from '../../hooks/useAdminListState';
 
 const AdminUsers = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [sortBy, setSortBy] = useState('newest');
+  const [{ search: searchTerm, role: roleFilter, status: statusFilter, sort: sortBy }, updateList] = useAdminListState(
+    { search: '', role: '', status: '', sort: 'newest' },
+    { role: ['', 'user', 'admin'], status: ['', 'active', 'banned'], sort: userSortOptions.map(option => option.value) },
+  );
+  const setSortBy = sort => updateList({ sort });
   const [editingPasswordUser, setEditingPasswordUser] = useState(null);
   const [newPassword, setNewPassword] = useState('');
   const [passwordBusy, setPasswordBusy] = useState(false);
@@ -116,19 +120,13 @@ const AdminUsers = () => {
   if (loading) return <AdminLayout title="Quản lý Người dùng"><SkeletonLoader /></AdminLayout>;
   if (error) return <AdminLayout title="Quản lý Người dùng"><div className="error-msg">{error}</div></AdminLayout>;
 
-  const filteredUsers = users.filter((u) => {
+  const filteredUsers = sortAdminRows(users.filter((u) => {
     const q = searchTerm.toLowerCase();
     const matchSearch = u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
     const matchRole = !roleFilter || (u.role || 'user') === roleFilter;
     const matchStatus = !statusFilter || (statusFilter === 'banned' ? Boolean(u.is_banned) : !u.is_banned);
     return matchSearch && matchRole && matchStatus;
-  }).sort((a, b) => {
-    if (sortBy === 'oldest') return new Date(a.created_at) - new Date(b.created_at);
-    if (sortBy === 'name') return String(a.username || '').localeCompare(String(b.username || ''), 'vi');
-    if (sortBy === 'mostRecipes') return (b._count?.recipes || 0) - (a._count?.recipes || 0);
-    if (sortBy === 'mostComments') return (b._count?.comments || 0) - (a._count?.comments || 0);
-    return new Date(b.created_at) - new Date(a.created_at); // newest
-  });
+  }), sortBy, userSortOptions);
 
   return (
     <AdminLayout title="Quản lý Người dùng">
@@ -146,25 +144,19 @@ const AdminUsers = () => {
               aria-label="Tìm kiếm người dùng"
               maxLength={200}
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => updateList({ search: e.target.value }, { replace: true })}
             />
-            <select className="admin-select" aria-label="Lọc vai trò" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
+            <select className="admin-select" aria-label="Lọc vai trò" value={roleFilter} onChange={(e) => updateList({ role: e.target.value })}>
               <option value="">Tất cả vai trò</option>
               <option value="user">User</option>
               <option value="admin">Admin</option>
             </select>
-            <select className="admin-select" aria-label="Lọc trạng thái" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <select className="admin-select" aria-label="Lọc trạng thái" value={statusFilter} onChange={(e) => updateList({ status: e.target.value })}>
               <option value="">Tất cả trạng thái</option>
               <option value="active">Hoạt động</option>
               <option value="banned">Bị khóa</option>
             </select>
-            <select className="admin-select" aria-label="Sắp xếp người dùng" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-              <option value="newest">Mới nhất trước</option>
-              <option value="oldest">Cũ nhất trước</option>
-              <option value="name">Tên A–Z</option>
-              <option value="mostRecipes">Nhiều công thức nhất</option>
-              <option value="mostComments">Nhiều bình luận nhất</option>
-            </select>
+            <AdminSortSelect label="Sắp xếp người dùng" value={sortBy} onChange={setSortBy} options={userSortOptions} />
             </div>
           )}
         />
@@ -178,9 +170,10 @@ const AdminUsers = () => {
             <table className="admin-card-table">
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th>Người dùng</th>
-                  <th style={{ textAlign: 'center' }}>Hoạt động</th>
+                  <AdminSortHeader value={sortBy} onChange={setSortBy} ascending="id_asc" descending="id_desc">ID</AdminSortHeader>
+                  <AdminSortHeader value={sortBy} onChange={setSortBy} ascending="name" descending="name_desc">Người dùng</AdminSortHeader>
+                  <AdminSortHeader value={sortBy} onChange={setSortBy} ascending="leastRecipes" descending="mostRecipes">Số công thức</AdminSortHeader>
+                  <AdminSortHeader value={sortBy} onChange={setSortBy} ascending="leastComments" descending="mostComments">Số bình luận</AdminSortHeader>
                   <th>Vai trò</th>
                   <th style={{ textAlign: 'center' }}>Trạng thái</th>
                   <th style={{ textAlign: 'right' }}>Hành động</th>
@@ -188,7 +181,7 @@ const AdminUsers = () => {
               </thead>
               <tbody>
                 {filteredUsers.length === 0 ? (
-                  <tr><td colSpan="6" className="admin-empty-cell">Không tìm thấy người dùng nào.</td></tr>
+                  <tr><td colSpan="7" className="admin-empty-cell">Không tìm thấy người dùng nào.</td></tr>
                 ) : (
                   filteredUsers.map(u => (
                     <tr key={u.id}>
@@ -202,12 +195,8 @@ const AdminUsers = () => {
                           </div>
                         </div>
                       </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: '14px' }}>
-                          <span title="Số công thức" className="admin-cell-sub"><i className="fa-solid fa-utensils" aria-hidden="true"></i> {u._count?.recipes || 0}</span>
-                          <span title="Số bình luận" className="admin-cell-sub"><i className="fa-solid fa-comments" aria-hidden="true"></i> {u._count?.comments || 0}</span>
-                        </div>
-                      </td>
+                      <td className="num">{u._count?.recipes || 0}</td>
+                      <td className="num">{u._count?.comments || 0}</td>
                       <td>
                         <select
                           value={u.role || 'user'}

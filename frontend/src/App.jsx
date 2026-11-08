@@ -28,6 +28,9 @@ const AdminCategories = lazy(() => import('./pages/admin/Categories'));
 const AdminUsers = lazy(() => import('./pages/admin/Users'));
 const AdminComments = lazy(() => import('./pages/admin/Comments'));
 const AdminRecipes = lazy(() => import('./pages/admin/Recipes'));
+const AdminReports = lazy(() => import('./pages/admin/Reports'));
+const AdminAuditLogs = lazy(() => import('./pages/admin/AuditLogs'));
+const AdminRecommender = lazy(() => import('./pages/admin/Recommender'));
 
 import { Toaster } from 'react-hot-toast';
 import ScrollToTop from './components/ScrollToTop';
@@ -73,6 +76,9 @@ function App() {
             <Route path="categories" element={<AdminCategories />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="comments" element={<AdminComments />} />
+            <Route path="reports" element={<AdminReports />} />
+            <Route path="audit-logs" element={<AdminAuditLogs />} />
+            <Route path="recommender" element={<AdminRecommender />} />
 
             <Route path="*" element={<NotFound />} />
           </Route>

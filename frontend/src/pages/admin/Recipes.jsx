@@ -5,6 +5,9 @@ import { Link } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import SkeletonLoader from '../../components/SkeletonLoader';
 import './admin.css';
+import { AdminSortSelect, AdminSortHeader } from '../../components/AdminSort';
+import { recipeSortOptions } from '../../utils/adminSorting';
+import useAdminListState from '../../hooks/useAdminListState';
 
 const PAGE_SIZE = 20;
 
@@ -17,10 +20,11 @@ const AdminRecipes = () => {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
-  const [sortBy, setSortBy] = useState('newest');
-  const [page, setPage] = useState(1);
+  const [{ search: searchTerm, category: categoryFilter, sort: sortBy, page }, updateList] = useAdminListState(
+    { search: '', category: '', sort: 'newest', page: 1 }, { sort: recipeSortOptions.map(option => option.value) },
+  );
+  const setSortBy = sort => updateList({ sort });
+  const setPage = page => updateList({ page });
   const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
@@ -33,7 +37,7 @@ const AdminRecipes = () => {
         if (!active) return;
         setRecipes(res.data.recipes || []);
         setCategories(res.data.categories || []);
-        setTotal(res.data.total || (res.data.recipes || []).length);
+        setTotal(res.data.total ?? (res.data.recipes || []).length);
       } catch (err) {
         if (active) setError(err.response?.status === 403
           ? 'Phiên đăng nhập không còn quyền truy cập trang quản trị.'
@@ -51,8 +55,6 @@ const AdminRecipes = () => {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const pageItems = filtered;
-
-  const resetPage = () => setPage(1);
 
   const handleDelete = async (recipe) => {
     if (!window.confirm(`Xoá vĩnh viễn công thức "${recipe.title}"? Toàn bộ bình luận, đánh giá và ảnh liên quan sẽ bị xoá.`)) return;
@@ -84,7 +86,7 @@ const AdminRecipes = () => {
             <select
               className="admin-select"
               value={categoryFilter}
-              onChange={(e) => { setCategoryFilter(e.target.value); resetPage(); }}
+              onChange={(e) => updateList({ category: e.target.value })}
               aria-label="Lọc theo danh mục"
             >
               <option value="">Tất cả danh mục</option>
@@ -92,18 +94,7 @@ const AdminRecipes = () => {
                 <option key={c.id} value={String(c.id)}>{c.name}</option>
               ))}
             </select>
-            <select
-              className="admin-select"
-              value={sortBy}
-              onChange={(e) => { setSortBy(e.target.value); resetPage(); }}
-              aria-label="Sắp xếp"
-            >
-              <option value="newest">Mới nhất trước</option>
-              <option value="oldest">Cũ nhất trước</option>
-              <option value="rating">Đánh giá cao nhất</option>
-              <option value="popular">Nhiều lượt chấm nhất</option>
-              <option value="title">Tên A–Z</option>
-            </select>
+            <AdminSortSelect label="Sắp xếp công thức" value={sortBy} onChange={setSortBy} options={recipeSortOptions} />
           </div>
           <input
             type="search"
@@ -112,7 +103,7 @@ const AdminRecipes = () => {
             aria-label="Tìm công thức"
             maxLength={200}
             value={searchTerm}
-            onChange={(e) => { setSearchTerm(e.target.value); resetPage(); }}
+            onChange={(e) => updateList({ search: e.target.value }, { replace: true })}
           />
         </div>
 
@@ -121,23 +112,28 @@ const AdminRecipes = () => {
         ) : (
           <>
             <p className="admin-page-sub" style={{ marginBottom: '12px' }}>
-              Hiển thị {pageItems.length} / {filtered.length.toLocaleString('vi-VN')} món (tổng {total.toLocaleString('vi-VN')})
+              Hiển thị {pageItems.length} / {total.toLocaleString('vi-VN')} công thức
             </p>
             <div className="admin-table-box">
               <table className="admin-card-table">
                 <thead>
                   <tr>
-                    <th style={{ width: '44%' }}>Món</th>
+                    <AdminSortHeader value={sortBy} onChange={setSortBy} ascending="id_asc" descending="id_desc">ID</AdminSortHeader>
+                    <AdminSortHeader value={sortBy} onChange={setSortBy} ascending="title" descending="title_desc">Món</AdminSortHeader>
                     <th>Danh mục</th>
-                    <th style={{ textAlign: 'center' }}>★</th>
+                    <AdminSortHeader value={sortBy} onChange={setSortBy} ascending="rating_asc" descending="rating">Điểm</AdminSortHeader>
+                    <AdminSortHeader value={sortBy} onChange={setSortBy} ascending="ratings_asc" descending="popular">Lượt đánh giá</AdminSortHeader>
+                    <AdminSortHeader value={sortBy} onChange={setSortBy} ascending="views_asc" descending="views_desc">Lượt xem</AdminSortHeader>
+                    <AdminSortHeader value={sortBy} onChange={setSortBy} ascending="oldest" descending="newest">Ngày đăng</AdminSortHeader>
                     <th style={{ textAlign: 'right' }}>Hành động</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pageItems.length === 0 ? (
-                    <tr><td colSpan="4" className="admin-empty-cell">Không có công thức phù hợp bộ lọc.</td></tr>
+                    <tr><td colSpan="8" className="admin-empty-cell">Không có công thức phù hợp bộ lọc.</td></tr>
                   ) : pageItems.map((r) => (
                     <tr key={r.id}>
+                      <td className="admin-cell-sub">#{r.id}</td>
                       <td>
                         <Link to={`/recipes/${r.id}`} className="admin-cell-title">{r.title}</Link>
                         <div className="admin-cell-sub">bởi {r.author_name || 'Ẩn danh'}</div>
@@ -145,8 +141,10 @@ const AdminRecipes = () => {
                       <td>{r.category_name || '—'}</td>
                       <td style={{ textAlign: 'center' }} className="num">
                         {r.avg_rating ? Number(r.avg_rating).toFixed(1) : '—'}
-                        <span className="admin-cell-sub"> ({r.total_ratings || 0})</span>
                       </td>
+                      <td className="num">{r.total_ratings || 0}</td>
+                      <td className="num">{r.view_count || 0}</td>
+                      <td className="admin-cell-sub">{r.created_at ? new Date(r.created_at).toLocaleDateString('vi-VN') : '—'}</td>
                       <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                         <Link to={`/recipes/edit/${r.id}`} className="admin-action-link" style={{ display: 'inline-block', padding: '5px 10px', fontSize: '13px' }}>
                           <i className="fa-solid fa-pen" aria-hidden="true"></i> Sửa

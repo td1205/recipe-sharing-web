@@ -42,7 +42,9 @@ function listingQuery(query = {}) {
     q.min_rating = Number(query.min_rating);
   }
   q.sort ||= 'newest';
-  if (!['newest', 'oldest', 'popular', 'rating', 'rating_desc', 'time_asc', 'title', 'title_asc'].includes(q.sort)
+  const sorts = ['newest', 'oldest', 'popular', 'rating', 'rating_desc', 'time_asc', 'title', 'title_asc'];
+  if (q.view === 'admin') sorts.push('id_asc', 'id_desc', 'title_desc', 'rating_asc', 'ratings_asc', 'views_asc', 'views_desc');
+  if (!sorts.includes(q.sort)
     || (q.duration && !['under_30', '30_60', 'over_60'].includes(q.duration))
     || (q.view && q.view !== 'admin')) throw Object.assign(new Error('Bộ lọc không hợp lệ'), { status: 400 });
   return q;

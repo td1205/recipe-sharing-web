@@ -5,19 +5,24 @@ import axios from 'axios';
 import AdminLayout from '../../components/AdminLayout';
 import SkeletonLoader from '../../components/SkeletonLoader';
 import toast from 'react-hot-toast';
+import { AdminSortSelect, AdminSortHeader } from '../../components/AdminSort';
+import { sortAdminRows, categorySortOptions } from '../../utils/adminSorting';
+import useAdminListState from '../../hooks/useAdminListState';
 
 const AdminCategories = () => {
   const [categories, setCategories] = useState([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [{ search: searchTerm, sort: sortBy }, updateList] = useAdminListState(
+    { search: '', sort: 'name' }, { sort: categorySortOptions.map(option => option.value) },
+  );
+  const setSortBy = sort => updateList({ sort });
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentId, setCurrentId] = useState(null);
   
-  const [sortBy, setSortBy] = useState('name');
   const [formData, setFormData] = useState({ name: '', description: '' });
 
   const fetchCategories = async () => {
@@ -99,10 +104,7 @@ const AdminCategories = () => {
     setFormData({ name: '', description: '' });
   };
 
-  const sortedCategories = [...categories].sort((a, b) => {
-    if (sortBy === 'count') return (b._count?.recipes || 0) - (a._count?.recipes || 0);
-    return a.name.localeCompare(b.name, 'vi'); // 'name' mặc định A-Z
-  });
+  const sortedCategories = sortAdminRows(categories, sortBy, categorySortOptions);
 
   const filteredCategories = sortedCategories.filter(c =>
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -121,22 +123,14 @@ const AdminCategories = () => {
             <p className="admin-page-sub">Thêm, sửa, xoá danh mục món ăn</p>
           </div>
           <div className="admin-toolbar-filters">
-            <select
-              className="admin-select"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              aria-label="Sắp xếp danh mục"
-            >
-              <option value="name">Tên A–Z</option>
-              <option value="count">Số món nhiều nhất</option>
-            </select>
+            <AdminSortSelect label="Sắp xếp danh mục" value={sortBy} onChange={setSortBy} options={categorySortOptions} />
             <input
               type="search"
               placeholder="Tìm kiếm danh mục..."
               aria-label="Tìm danh mục"
               maxLength={200}
               value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
+              onChange={e => updateList({ search: e.target.value }, { replace: true })}
               className="admin-search"
             />
             <button type="button" className="admin-action-link" onClick={openCreateModal} style={{ display: 'inline-block' }}>
@@ -188,10 +182,10 @@ const AdminCategories = () => {
 
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Tên</th>
+            <AdminSortHeader value={sortBy} onChange={setSortBy} ascending="id_asc" descending="id_desc">ID</AdminSortHeader>
+            <AdminSortHeader value={sortBy} onChange={setSortBy} ascending="name" descending="name_desc">Tên</AdminSortHeader>
             <th>Mô tả</th>
-            <th>Số món</th>
+            <AdminSortHeader value={sortBy} onChange={setSortBy} ascending="count_asc" descending="count">Số món</AdminSortHeader>
             <th>Hành động</th>
           </tr>
         </thead>

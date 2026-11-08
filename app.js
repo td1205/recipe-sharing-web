@@ -103,6 +103,7 @@ app.use('/api', interactionRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/admin', adminCommentRoutes);
+app.use('/api', require('./routes/moderationRoutes'));
 
 
 app.use((req, res, next) => {

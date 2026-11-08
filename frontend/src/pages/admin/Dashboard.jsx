@@ -197,6 +197,7 @@ const AdminDashboard = () => {
           <StatCard title="Tổng công thức" value={stats.recipes} />
           <StatCard title="Danh mục món ăn" value={stats.categories} />
           <StatCard title="Bình luận" value={stats.comments} />
+          <StatCard title="Báo cáo chờ xử lý" value={stats.pendingReports ?? 0} />
         </div>
 
         {/* Khu vực Biểu đồ */}
@@ -289,6 +290,9 @@ const AdminDashboard = () => {
           </div>
           <div className="admin-actions-card">
             <h3>Thao tác nhanh</h3>
+            <Link className="admin-action-link" to="/admin/reports">Xử lý báo cáo vi phạm</Link>
+            <Link className="admin-action-link" to="/admin/audit-logs">Xem nhật ký quản trị</Link>
+            <Link className="admin-action-link" to="/admin/recommender">Trạng thái hệ thống gợi ý</Link>
             <Link to="/admin/users" className="admin-action-link">
               <i className="fa-solid fa-users" style={{ marginRight: '8px' }} aria-hidden="true"></i> Quản lý người dùng
             </Link>

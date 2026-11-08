@@ -5,13 +5,18 @@ import SkeletonLoader from '../../components/SkeletonLoader';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import './admin.css';
+import { AdminSortSelect, AdminSortHeader } from '../../components/AdminSort';
+import { sortAdminRows, commentSortOptions } from '../../utils/adminSorting';
+import useAdminListState from '../../hooks/useAdminListState';
 
 const AdminComments = () => {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('newest');
+  const [{ search: searchTerm, sort: sortBy }, updateList] = useAdminListState(
+    { search: '', sort: 'newest' }, { sort: commentSortOptions.map(option => option.value) },
+  );
+  const setSortBy = sort => updateList({ sort });
 
   const fetchComments = async () => {
     try {
@@ -40,10 +45,7 @@ const AdminComments = () => {
         String(c.recipes?.title || '').toLowerCase().includes(q)
       );
     });
-    const sorted = [...list];
-    if (sortBy === 'oldest') sorted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-    else sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); // newest
-    return sorted;
+    return sortAdminRows(list, sortBy, commentSortOptions);
   }, [comments, searchTerm, sortBy]);
 
   const handleDelete = async (id) => {
@@ -72,15 +74,7 @@ const AdminComments = () => {
 
         <div className="admin-toolbar">
           <div className="admin-toolbar-filters">
-            <select
-              className="admin-select"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              aria-label="Sắp xếp bình luận"
-            >
-              <option value="newest">Mới nhất trước</option>
-              <option value="oldest">Cũ nhất trước</option>
-            </select>
+            <AdminSortSelect label="Sắp xếp bình luận" value={sortBy} onChange={setSortBy} options={commentSortOptions} />
           </div>
           <input
             type="search"
@@ -89,7 +83,7 @@ const AdminComments = () => {
             aria-label="Tìm bình luận"
             maxLength={200}
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => updateList({ search: e.target.value }, { replace: true })}
           />
         </div>
 
@@ -101,11 +95,11 @@ const AdminComments = () => {
           <table className="admin-card-table">
             <thead>
               <tr>
-                <th style={{ width: '6%' }}>ID</th>
-                <th style={{ width: '14%' }}>Người dùng</th>
-                <th style={{ width: '20%' }}>Công thức</th>
+                <AdminSortHeader value={sortBy} onChange={setSortBy} ascending="id_asc" descending="id_desc">ID</AdminSortHeader>
+                <AdminSortHeader value={sortBy} onChange={setSortBy} ascending="user_asc" descending="user_desc">Người dùng</AdminSortHeader>
+                <AdminSortHeader value={sortBy} onChange={setSortBy} ascending="recipe_asc" descending="recipe_desc">Công thức</AdminSortHeader>
                 <th>Nội dung</th>
-                <th style={{ width: '12%' }}>Ngày</th>
+                <AdminSortHeader value={sortBy} onChange={setSortBy} ascending="oldest" descending="newest">Ngày</AdminSortHeader>
                 <th style={{ width: '90px', textAlign: 'right' }}>Hành động</th>
               </tr>
             </thead>

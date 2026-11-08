@@ -15,6 +15,8 @@ const hybrid = require('./hybrid');
 const REBUILD_INTERVAL_MS = 10 * 60 * 1000;
 
 const state = { models: null, builtAt: 0, building: null };
+let lastFailedAt = null;
+let sourceCounts = null;
 
 async function buildFromDatabase() {
   const startedAt = Date.now();
@@ -23,6 +25,7 @@ async function buildFromDatabase() {
     repository.loadInteractions(),
   ]);
   const models = hybrid.buildModels({ recipes, interactions, anonymousViews });
+  sourceCounts = { recipes: recipes.length, interactions: interactions.length, usersWithHistory: models.cf.userCount };
   console.log(
     `[recommender] Đã dựng mô hình: ${recipes.length} món, ${interactions.length} tương tác, ` +
       `${models.cf.userCount} người dùng (${Date.now() - startedAt}ms)`,
@@ -38,6 +41,7 @@ async function getModels({ forceRebuild = false } = {}) {
       .then((models) => {
         state.models = models;
         state.builtAt = Date.now();
+        lastFailedAt = null;
         return models;
       })
       .finally(() => {
@@ -46,6 +50,7 @@ async function getModels({ forceRebuild = false } = {}) {
     // Observe background failures even when this request returns the old model.
     // Keep the original promise rejected so cold/forced callers still receive errors.
     state.building.catch(() => {
+      lastFailedAt = new Date().toISOString();
       console.error('[recommender] Dựng mô hình thất bại; giữ bản cũ nếu có và cho phép thử lại.');
     });
   }
@@ -126,6 +131,14 @@ async function explainForUser(userId) {
 }
 
 module.exports = {
+  // Read-only: inspecting admin status never starts a database load/rebuild.
+  getStatus: () => ({
+    status: state.building ? 'building' : !state.models ? 'not_built' : Date.now() - state.builtAt > REBUILD_INTERVAL_MS ? 'stale' : 'ready',
+    builtAt: state.builtAt ? new Date(state.builtAt).toISOString() : null,
+    lastFailedAt, rebuildIntervalMs: REBUILD_INTERVAL_MS,
+    counts: sourceCounts ? { ...sourceCounts } : null,
+    algorithms: ['Popularity', 'CBF', 'Item-CF', 'Hybrid'], settings: { ...hybrid.SETTINGS },
+  }),
   getModels,
   recommendForUser,
   similarRecipes,
