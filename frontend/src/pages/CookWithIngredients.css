@@ -1,0 +1,208 @@
+/* Trang "Nấu gì với nguyên liệu có sẵn?" */
+.cwi-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-4) var(--space-6, 4rem);
+}
+
+.cwi-header {
+  max-width: 48rem;
+  margin-bottom: var(--space-5);
+}
+
+.cwi-title {
+  margin: 0 0 var(--space-3);
+  text-transform: none;
+}
+
+.cwi-lead {
+  margin: 0;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+.cwi-form {
+  max-width: 48rem;
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.cwi-label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-weight: 700;
+}
+
+.cwi-input-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.cwi-input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  font: inherit;
+  color: var(--color-text-main);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  outline: none;
+}
+
+.cwi-input:focus {
+  border-color: var(--color-primary);
+}
+
+.cwi-btn {
+  padding: 10px 20px;
+  font: inherit;
+  font-weight: 700;
+  color: #fff;
+  background: var(--color-primary);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.cwi-btn:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.cwi-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cwi-chips,
+.cwi-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.cwi-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px 4px 12px;
+  background: var(--color-primary-light);
+  border-radius: 999px;
+}
+
+.cwi-chip button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.cwi-chip button:hover,
+.cwi-chip button:focus-visible {
+  color: var(--color-danger);
+  background: var(--color-bg-hover);
+}
+
+.cwi-clear {
+  padding: 4px 8px;
+  font: inherit;
+  font-size: var(--text-small);
+  color: var(--color-text-muted);
+  text-decoration: underline;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.cwi-suggest-label {
+  font-size: var(--text-small);
+  color: var(--color-text-muted);
+}
+
+.cwi-suggest-btn {
+  padding: 4px 12px;
+  font: inherit;
+  font-size: var(--text-small);
+  color: var(--color-text-main);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.cwi-suggest-btn:hover {
+  border-color: var(--color-border-strong);
+}
+
+.cwi-suggest-btn.is-active {
+  color: #fff;
+  background: var(--color-text-main);
+  border-color: var(--color-text-main);
+}
+
+.cwi-results-title {
+  margin-bottom: var(--space-4);
+}
+
+.cwi-message {
+  margin: 0;
+  padding: var(--space-4) 0;
+  color: var(--color-text-muted);
+}
+
+.cwi-message-error {
+  color: var(--color-danger);
+}
+
+@media (max-width: 600px) {
+  .cwi-input-row {
+    flex-direction: column;
+  }
+}
+
+/* Nhom ket qua: du nguyen lieu / gan dung */
+.cwi-group-title {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text-main);
+  margin: 24px 0 14px;
+}
+.cwi-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cwi-badge {
+  align-self: flex-start;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  color: var(--color-text-muted);
+}
+.cwi-badge-full {
+  color: var(--color-success);
+  border-color: var(--color-success);
+  background: rgba(21, 128, 61, 0.08);
+}
+.cwi-badge-near {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.cwi-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-3); margin-top: var(--space-4); }

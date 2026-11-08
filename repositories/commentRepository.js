@@ -1,14 +1,16 @@
 const prisma = require('../config/prisma');
+const { PUBLIC_USER_SELECT } = require('../utils/userSelect');
 
 async function getCommentsByRecipeId(recipeId) {
   const comments = await prisma.comments.findMany({
     where: { recipe_id: parseInt(recipeId) },
-    include: { users: true },
+    include: { users: { select: PUBLIC_USER_SELECT } },
     orderBy: { created_at: 'desc' },
   });
 
   return comments.map((c) => ({
     ...c,
+    user: c.users, // RecipeDetail dùng cùng cấu trúc tác giả khi tải lại và khi vừa gửi.
     username: c.users?.username, // Đảm bảo EJS đọc được như cũ
   }));
 }

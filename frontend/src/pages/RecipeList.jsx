@@ -1,0 +1,355 @@
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import axios from 'axios';
+import MainLayout from '../components/MainLayout';
+import SkeletonLoader from '../components/SkeletonLoader';
+import { RecipeImage } from '../components/MagazineCard';
+import LoginRequiredModal from '../components/LoginRequiredModal';
+import Pagination from '../components/Pagination';
+import { AuthContext } from '../context/AuthContext';
+import toast from 'react-hot-toast';
+import './Home.css';
+import './recipeList.css';
+
+const ITEMS_PER_PAGE = 16;
+const getTotalTime = recipe => (Number(recipe.prep_time) || 0) + (Number(recipe.cook_time) || 0);
+
+const SECTION_CATEGORIES = new Set(['công thức', 'tất cả', 'tất cả công thức']);
+
+const normalizeText = (value) => String(value || '').trim().toLocaleLowerCase('vi-VN');
+
+
+const RecipeList = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawCategory = searchParams.get('category') || '';
+  const category = SECTION_CATEGORIES.has(normalizeText(rawCategory)) ? '' : rawCategory;
+  const mealTime = searchParams.get('meal_time') || '';
+  const duration = searchParams.get('duration') || '';
+  const legacyMaxCookTime = searchParams.get('max_cook_time') || '';
+  const minRating = searchParams.get('min_rating') || '';
+  const keyword = searchParams.get('search') || '';
+  // Lọc theo tag của món, vd ?tag=thịt gà (link "Nguyên liệu" trên menu)
+  const tag = searchParams.get('tag') || '';
+  const sortBy = searchParams.get('sort') || 'newest';
+  const requestedPage = Math.max(1, Number(searchParams.get('page')) || 1);
+
+  const [total, setTotal] = useState(0);
+  const requestKey = searchParams.toString();
+  const [recipes, setRecipes] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [mealTimes, setMealTimes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const { user, favoriteIds: savedIds, setFavorite } = React.useContext(AuthContext);
+
+  useEffect(() => {
+    let active = true;
+
+    const fetchRecipes = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await axios.get('/api/recipes', { params: { ...Object.fromEntries(new URLSearchParams(requestKey)), page: requestedPage, limit: ITEMS_PER_PAGE } });
+        if (!active) return;
+
+        setRecipes(response.data.recipes || []);
+        setTotal(response.data.total || 0);
+        setCategories(response.data.categories || []);
+        setMealTimes(response.data.mealTimes || []);
+      } catch (requestError) {
+        console.error('Lỗi khi tải tất cả công thức:', requestError);
+        if (active) setError('Không tải được danh sách công thức. Vui lòng thử lại.');
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    fetchRecipes();
+    return () => { active = false; };
+    // Server giờ lọc theo các tham số này — URL đổi thì tải lại danh sách đã lọc
+  }, [requestKey, requestedPage]);
+
+  const updateParam = useCallback((name, value) => {
+    const next = new URLSearchParams(searchParams);
+    if (value) next.set(name, value);
+    else next.delete(name);
+
+    if (name === 'duration') next.delete('max_cook_time');
+    next.delete('page');
+    setSearchParams(next);
+  }, [searchParams, setSearchParams]);
+
+  const clearFilters = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    ['category', 'meal_time', 'duration', 'max_cook_time', 'min_rating', 'search', 'tag', 'page'].forEach(key => next.delete(key));
+    setSearchParams(next);
+  }, [searchParams, setSearchParams]);
+
+  const toggleSave = useCallback(async (event, recipeId) => {
+    event.preventDefault(); event.stopPropagation();
+    if (!user) return setIsLoginModalOpen(true);
+    try { await setFavorite(recipeId, !savedIds.includes(recipeId)); }
+    catch (error) { toast.error(error.response?.data?.message || error.message || 'Không thể lưu công thức'); }
+  }, [user, savedIds, setFavorite]);
+
+  const categoryOptions = useMemo(() => {
+    if (categories.length > 0) return categories;
+    return Array.from(new Set(recipes.map(recipe => recipe.category_name).filter(Boolean)))
+      .sort((a, b) => a.localeCompare(b, 'vi'))
+      .map(name => ({ name }));
+  }, [categories, recipes]);
+
+  const mealTimeOptions = useMemo(() => {
+    if (mealTimes.length > 0) return mealTimes;
+    return Array.from(new Set(recipes.map(recipe => recipe.meal_time_name).filter(Boolean)))
+      .sort((a, b) => a.localeCompare(b, 'vi'))
+      .map(name => ({ name }));
+  }, [mealTimes, recipes]);
+
+  const selectedCategoryName = useMemo(() => {
+    if (!category) return '';
+    return categoryOptions.find(option =>
+      String(option.id) === category || normalizeText(option.name) === normalizeText(category)
+    )?.name || category;
+  }, [category, categoryOptions]);
+
+  const selectedMealTimeName = useMemo(() => {
+    if (!mealTime) return '';
+    return mealTimeOptions.find(option =>
+      String(option.id) === mealTime || normalizeText(option.name) === normalizeText(mealTime)
+    )?.name || mealTime;
+  }, [mealTime, mealTimeOptions]);
+
+  const filteredRecipes = recipes;
+
+  const activeFilters = useMemo(() => {
+    const filters = [];
+    if (category) filters.push({ key: 'category', label: selectedCategoryName });
+    if (mealTime) filters.push({ key: 'meal_time', label: `Bữa ${selectedMealTimeName.toLowerCase()}` });
+    if (duration === 'under_30') filters.push({ key: 'duration', label: 'Dưới 30 phút' });
+    if (duration === '30_60') filters.push({ key: 'duration', label: '30–60 phút' });
+    if (duration === 'over_60') filters.push({ key: 'duration', label: 'Trên 60 phút' });
+    if (!duration && legacyMaxCookTime) filters.push({ key: 'max_cook_time', label: `Dưới ${legacyMaxCookTime} phút` });
+    if (minRating) filters.push({ key: 'min_rating', label: `Từ ${minRating} sao` });
+    if (keyword) filters.push({ key: 'search', label: `“${keyword}”` });
+    if (tag) filters.push({ key: 'tag', label: `#${tag}` });
+    return filters;
+  }, [category, duration, keyword, legacyMaxCookTime, mealTime, minRating, selectedCategoryName, selectedMealTimeName, tag]);
+
+  const totalPages = Math.max(1, Math.ceil(total / ITEMS_PER_PAGE));
+  const safeCurrentPage = Math.min(requestedPage, totalPages);
+  const paginatedRecipes = filteredRecipes;
+
+  const handlePageChange = (page) => {
+    const next = new URLSearchParams(searchParams);
+    if (page > 1) next.set('page', String(page));
+    else next.delete('page');
+    setSearchParams(next);
+    document.querySelector('.nyt-list-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const formatRating = (recipe) => {
+    const average = Number(recipe.avg_rating) || 0;
+    const count = Number(recipe.total_ratings) || 0;
+    return count > 0 ? `${average.toFixed(1)} (${count})` : 'Chưa đánh giá';
+  };
+
+  if (loading) {
+    return <MainLayout hideSidebar className="home-typography"><SkeletonLoader /></MainLayout>;
+  }
+
+  return (
+    <MainLayout hideSidebar className="home-typography">
+      <div className="nyt-popular-page nyt-list-page">
+        <header className="nyt-list-header">
+          <p className="nyt-list-eyebrow">
+            <span className="nyt-list-eyebrow-dot" aria-hidden="true"></span>
+            Thư viện công thức
+          </p>
+          <h1 className="nyt-list-title">
+            {keyword
+              ? `Kết quả cho “${keyword}”`
+              : selectedCategoryName || (tag ? (/^món /i.test(tag) ? tag : `Món ${tag}`) : '') || (mealTime ? `Bữa ${selectedMealTimeName.toLowerCase()}` : '') || 'Tất cả công thức'}
+          </h1>
+          <p className="nyt-list-result-count" aria-live="polite">
+            {total.toLocaleString('vi-VN')} món ăn
+          </p>
+        </header>
+
+        <section className="nyt-list-tools" aria-label="Lọc và sắp xếp công thức">
+          <button
+            type="button"
+            className="nyt-mobile-filter-trigger"
+            onClick={() => setIsFilterPanelOpen(true)}
+            aria-expanded={isFilterPanelOpen}
+          >
+            <i className="fa-solid fa-sliders" aria-hidden="true"></i>
+            Bộ lọc{activeFilters.length > 0 ? ` (${activeFilters.length})` : ''}
+          </button>
+
+          {isFilterPanelOpen && (
+            <button
+              type="button"
+              className="nyt-filter-overlay"
+              aria-label="Đóng bộ lọc"
+              onClick={() => setIsFilterPanelOpen(false)}
+            ></button>
+          )}
+
+          <div className={`nyt-filter-panel ${isFilterPanelOpen ? 'is-open' : ''}`}>
+            <div className="nyt-filter-panel-heading">
+              <strong>Bộ lọc</strong>
+              <button type="button" onClick={() => setIsFilterPanelOpen(false)} aria-label="Đóng bộ lọc">
+                <i className="fa-solid fa-xmark" aria-hidden="true"></i>
+              </button>
+            </div>
+
+            <label className="nyt-filter-field">
+              <span>Danh mục</span>
+              <select value={selectedCategoryName} onChange={event => updateParam('category', event.target.value)}>
+                <option value="">Tất cả danh mục</option>
+                {categoryOptions.map(option => (
+                  <option key={option.id || option.name} value={option.name}>{option.name}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="nyt-filter-field">
+              <span>Bữa ăn</span>
+              <select value={selectedMealTimeName} onChange={event => updateParam('meal_time', event.target.value)}>
+                <option value="">Tất cả bữa ăn</option>
+                {mealTimeOptions.map(option => (
+                  <option key={option.id || option.name} value={option.name}>{option.name}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="nyt-filter-field">
+              <span>Thời gian</span>
+              <select value={duration} onChange={event => updateParam('duration', event.target.value)}>
+                <option value="">Mọi thời lượng</option>
+                <option value="under_30">Dưới 30 phút</option>
+                <option value="30_60">30–60 phút</option>
+                <option value="over_60">Trên 60 phút</option>
+              </select>
+            </label>
+
+            <label className="nyt-filter-field">
+              <span>Đánh giá</span>
+              <select value={minRating} onChange={event => updateParam('min_rating', event.target.value)}>
+                <option value="">Tất cả đánh giá</option>
+                <option value="4">Từ 4 sao</option>
+                <option value="3">Từ 3 sao</option>
+              </select>
+            </label>
+
+            <button type="button" className="nyt-filter-apply" onClick={() => setIsFilterPanelOpen(false)}>
+              Xem {total.toLocaleString('vi-VN')} món
+            </button>
+          </div>
+
+          <label className="nyt-sort-field">
+            <span>Sắp xếp</span>
+            <select value={sortBy} onChange={event => updateParam('sort', event.target.value)}>
+              <option value="newest">Mới nhất</option>
+              <option value="popular">Phổ biến nhất</option>
+              <option value="rating_desc">Đánh giá cao nhất</option>
+              <option value="time_asc">Nấu nhanh nhất</option>
+              <option value="title_asc">Tên món A–Z</option>
+            </select>
+          </label>
+        </section>
+
+        {activeFilters.length > 0 && (
+          <div className="nyt-active-filters" aria-label="Bộ lọc đang áp dụng">
+            <span className="nyt-active-filters-label">Đang lọc:</span>
+            {activeFilters.map(filter => (
+              <button key={filter.key} type="button" onClick={() => updateParam(filter.key, '')}>
+                {filter.label}
+                <i className="fa-solid fa-xmark" aria-hidden="true"></i>
+              </button>
+            ))}
+            <button type="button" className="nyt-clear-filters" onClick={clearFilters}>Xóa tất cả</button>
+          </div>
+        )}
+
+        {error ? (
+          <div className="auth-shell">
+            <div className="auth-alert auth-alert-error" role="alert">{error}</div>
+          </div>
+        ) : filteredRecipes.length === 0 ? (
+          <div className="nyt-list-empty">
+            <i className="fa-solid fa-utensils" aria-hidden="true"></i>
+            <h2>Không tìm thấy món ăn phù hợp</h2>
+            <p>Hãy thay đổi hoặc xóa bớt bộ lọc để xem thêm công thức.</p>
+            <button type="button" className="nyt-list-empty-link" onClick={clearFilters}>Xóa bộ lọc</button>
+          </div>
+        ) : (
+          <>
+            <div className="nyt-popular-grid-4">
+              {paginatedRecipes.map(recipe => {
+                const isSaved = savedIds.includes(recipe.id);
+
+                return (
+                  <article key={recipe.id} className="nyt-popular-card">
+                    <div className="nyt-popular-card-img-wrap">
+                      <Link to={`/recipes/${recipe.id}`} className="nyt-card-image-link">
+                        <RecipeImage src={recipe.image_url} alt={recipe.title} />
+                      </Link>
+
+                      <button
+                        type="button"
+                        className={`nyt-card-bookmark-btn ${isSaved ? 'active' : ''}`}
+                        title={isSaved ? 'Bỏ lưu công thức' : 'Lưu công thức'}
+                        aria-label={isSaved ? 'Bỏ lưu công thức' : 'Lưu công thức'}
+                        onClick={event => toggleSave(event, recipe.id)}
+                      >
+                        <i className={isSaved ? 'fa-solid fa-bookmark' : 'fa-regular fa-bookmark'} aria-hidden="true"></i>
+                      </button>
+                    </div>
+
+                    <div className="nyt-card-info">
+                      <Link to={`/recipes/${recipe.id}`} className="nyt-card-title-link">
+                        <h2 className="nyt-card-title">{recipe.title}</h2>
+                      </Link>
+                      <div className="nyt-card-author">Bởi {recipe.author_name || 'Ẩn danh'}</div>
+                      <div className="nyt-card-time">
+                        <i className="fa-regular fa-clock" aria-hidden="true"></i>
+                        {getTotalTime(recipe) > 0 ? `${getTotalTime(recipe)} phút` : 'Chưa có thời gian'}
+                      </div>
+                      <div className="nyt-card-rating">
+                        <i className="fa-solid fa-star active" aria-hidden="true"></i>
+                        <span>{formatRating(recipe)}</span>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            {totalPages > 1 && (
+              <nav className="nyt-pagination-section" aria-label="Phân trang">
+                <div className="nyt-pagination-count">
+                  {(safeCurrentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(safeCurrentPage * ITEMS_PER_PAGE, total)} trong số {total} món
+                </div>
+                <Pagination
+                  currentPage={safeCurrentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                />
+              </nav>
+            )}
+          </>
+        )}
+
+        <LoginRequiredModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
+      </div>
+    </MainLayout>
+  );
+};
+
+export default RecipeList;

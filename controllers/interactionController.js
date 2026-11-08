@@ -1,70 +1,135 @@
+const validation = require('../utils/apiValidation');
 const commentModel = require('../repositories/commentRepository');
 const ratingModel = require('../repositories/ratingRepository');
 const recipeModel = require('../repositories/recipeRepository');
 const favoriteModel = require('../repositories/favoriteRepository');
 const interactionModel = require('../repositories/interactionRepository');
+const tagModel = require('../repositories/tagRepository');
+const recipeViewModel = require('../repositories/recipeViewRepository');
+
 async function addComment(req, res) {
   try {
     if (!req.session.user) {
-      return res.redirect('/login');
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
-    const recipeId = req.params.id;
+    const recipeId = validation.id(req.params.id);
     const userId = req.session.user.id;
-    const { content } = req.body;
-    if (!content || content.trim() === '') {
-      return res.redirect(`/recipes/${recipeId}`);
+    const content = validation.text(req.body?.content, 'Bình luận', 2000);
+    if (content === '') {
+      return res.status(400).json({ success: false, message: 'Empty comment' });
+    }
+    // Giới hạn độ dài để tránh payload khổng lồ / spam
+    if (content.length > 2000) {
+      return res.status(400).json({ success: false, message: 'Bình luận tối đa 2000 ký tự!' });
     }
     await commentModel.createComment(userId, recipeId, content);
-    res.redirect(`/recipes/${recipeId}`);
+    res.json({ success: true, message: 'Comment added' });
   } catch (err) {
-    console.error(err);
-    res.status(500).send('Server Error');
+    console.error('Yêu cầu thất bại:', err.code || err.name);
+    return validation.apiError(res, err, 'Server Error');
   }
 }
+
 async function addRating(req, res) {
   try {
     if (!req.session.user) {
-      return res.redirect('/login');
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
-    const recipeId = req.params.id;
+    const recipeId = validation.id(req.params.id);
     const userId = req.session.user.id;
-    const { star_count } = req.body;
-    await ratingModel.createOrUpdateRating(
-      userId,
-      recipeId,
-      parseInt(star_count),
-    );
-    res.redirect(`/recipes/${recipeId}`);
+    const rawStars = req.body?.star_count;
+    const starCount = typeof rawStars === 'number' || (typeof rawStars === 'string' && /^[1-5]$/.test(rawStars)) ? Number(rawStars) : NaN;
+    if (!Number.isInteger(starCount) || starCount < 1 || starCount > 5) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Số sao phải là số nguyên từ 1 đến 5' });
+    }
+    await ratingModel.createOrUpdateRating(userId, recipeId, starCount);
+    const newRatingObj = await ratingModel.getAverageRating(recipeId);
+    const newRating = newRatingObj.averageRating;
+    const newCount = newRatingObj.totalRatings;
+    
+    res.json({ success: true, message: 'Rating added/updated', newRating, newCount });
   } catch (err) {
-    console.error(err);
-    res.status(500).send('Server Error');
+    console.error('Yêu cầu thất bại:', err.code || err.name);
+    return validation.apiError(res, err, 'Server Error');
   }
 }
+
+async function recordRecipeView(req, res) {
+  try {
+    if (!req.session.user) {
+      req.session.recipeViewTracking = true;
+    }
+
+    const result = await recipeViewModel.recordQualifiedView(
+      validation.id(req.params.id),
+      req.session.user?.id || null,
+      req.sessionID
+    );
+
+    if (result.notFound) {
+      return res.status(404).json({ success: false, message: 'Recipe not found' });
+    }
+
+    res.json({ success: true, ...result });
+  } catch (err) {
+    console.error('Lỗi khi ghi nhận lượt xem công thức:', err.code || err.name);
+    return validation.apiError(res, err, 'Server Error');
+  }
+}
+
 async function toggleFavorite(req, res) {
   try {
     if (!req.session.user) {
-      return res.redirect('/login');
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
-    const recipeId = req.params.id;
+    const recipeId = validation.id(req.params.id);
     const userId = req.session.user.id;
-    const isFav = await favoriteModel.isFavorite(userId, recipeId);
-    if (isFav) {
-      await favoriteModel.removeFavorite(userId, recipeId);
-    } else {
-      await favoriteModel.addFavorite(userId, recipeId);
+    const desired = req.body?.isFav;
+    if (desired !== undefined && typeof desired !== 'boolean') {
+      return res.status(400).json({ success: false, message: 'isFav phải là boolean' });
     }
-    res.redirect(`/recipes/${recipeId}`);
+    const isFav = await favoriteModel.setFavorite(userId, recipeId, desired);
+    res.json({ success: true, message: 'Favorite updated', isFav });
   } catch (err) {
-    console.error(err);
-    res.status(500).send('Server Error');
+    console.error('Yêu cầu thất bại:', err.code || err.name);
+    return validation.apiError(res, err, 'Server Error');
   }
 }
-async function showRecipeDetail(req, res) {
+
+async function addTag(req, res) {
   try {
-    const recipeId = req.params.id;
+    if (!req.session.user) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+    const recipeId = validation.id(req.params.id);
+    const userId = req.session.user.id;
+    const { tagName } = req.body || {};
+
+    if (typeof tagName !== 'string' || !tagName.trim() || tagName.trim().length > 50) {
+      return res.status(400).json({ success: false, message: 'Empty tag name' });
+    }
+
+    const cleanTagName = tagName.trim().toLowerCase();
+
+    const result = await tagModel.toggleVote(userId, recipeId, cleanTagName);
+    return res.json({ success: true, message: result.isAdded ? 'Đã gắn tag thành công' : 'Đã hủy vote cho tag này', ...result });
+  } catch (err) {
+    console.error('Yêu cầu thất bại:', err.code || err.name);
+    return validation.apiError(res, err, 'Lỗi server');
+  }
+}
+
+async function showRecipeDetail(req, res) {
+  // Existing showRecipeDetail handled by recipeController in original code. 
+  // Wait, in my previous view of interactionController.js, there WAS a showRecipeDetail, but it's redundant.
+  // I will just keep it here as it was.
+  try {
+    const recipeId = validation.id(req.params.id);
     const recipe = await recipeModel.getRecipeById(recipeId);
     if (!recipe) {
-      return res.status(404).send('Không tìm thấy món ăn');
+      return res.status(404).json({ success: false, message: 'Khong tim thay' });
     }
     const comments = await commentModel.getCommentsByRecipeId(recipeId);
     const rating = await ratingModel.getAverageRating(recipeId);
@@ -73,11 +138,12 @@ async function showRecipeDetail(req, res) {
     if (req.session.user) {
       userRating = await ratingModel.getUserRating(
         req.session.user.id,
-        recipeId,
+        recipeId
       );
       isFav = await favoriteModel.isFavorite(req.session.user.id, recipeId);
     }
-    res.render('recipes/detail', {
+    res.json({
+      success: true,
       recipe,
       comments,
       rating,
@@ -86,33 +152,38 @@ async function showRecipeDetail(req, res) {
       user: req.session.user,
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).send('Server Error');
+    console.error('Yêu cầu thất bại:', err.code || err.name);
+    return validation.apiError(res, err, 'Server Error');
   }
 }
+
 async function adminComments(req, res) {
   try {
     const comments = await interactionModel.getAllComments();
-    res.render('admin/comments', { comments });
+    res.json({ success: true, comments });
   } catch (err) {
-    console.error(err);
-    res.status(500).send('Server Error');
+    console.error('Yêu cầu thất bại:', err.code || err.name);
+    return validation.apiError(res, err, 'Server Error');
   }
 }
+
 async function deleteComment(req, res) {
   try {
-    await interactionModel.deleteComment(req.params.id);
-    res.redirect('/admin/comments');
+    await interactionModel.deleteComment(validation.id(req.params.id));
+    res.json({ success: true, message: 'Comment deleted' });
   } catch (err) {
-    console.error(err);
-    res.status(500).send('Server Error');
+    console.error('Yêu cầu thất bại:', err.code || err.name);
+    return validation.apiError(res, err, 'Server Error');
   }
 }
+
 module.exports = {
   addComment,
   addRating,
+  recordRecipeView,
   toggleFavorite,
+  addTag,
   showRecipeDetail,
   adminComments,
-  deleteComment,
+  deleteComment
 };

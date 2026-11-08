@@ -17,6 +17,16 @@ router.post(
   authMiddleware.isAdmin,
   adminController.handleDeleteUser,
 );
+router.post(
+  '/users/ban/:id',
+  authMiddleware.isAdmin,
+  adminController.handleBanUser,
+);
+router.post(
+  '/users/password/:id',
+  authMiddleware.isAdmin,
+  adminController.handleAdminChangePassword,
+);
 router.get(
   '/users/edit/:id',
   authMiddleware.isAdmin,

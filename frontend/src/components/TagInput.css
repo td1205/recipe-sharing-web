@@ -1,0 +1,72 @@
+/* Ô nhập tag trong form đăng/sửa công thức – cùng kiểu với .recipe-form-control */
+.tag-input-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 8px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  box-sizing: border-box;
+  transition: border-color 0.2s ease;
+}
+
+.tag-input-box:focus-within {
+  border-color: var(--color-primary);
+}
+
+.tag-input-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px 3px 10px;
+  font-size: var(--text-small);
+  color: var(--color-text-main);
+  background: var(--color-primary-light);
+  border-radius: 999px;
+}
+
+.tag-input-chip button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.tag-input-chip button:hover,
+.tag-input-chip button:focus-visible {
+  color: var(--color-danger);
+  background: var(--color-bg-hover);
+}
+
+.tag-input-field {
+  flex: 1;
+  min-width: 140px;
+  padding: 4px;
+  font: inherit;
+  font-size: var(--text-body);
+  color: var(--color-text-main);
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+.tag-input-field::placeholder {
+  color: var(--color-text-muted);
+}
+
+.tag-input-hint {
+  margin: 6px 0 0;
+  font-size: var(--text-small);
+  color: var(--color-text-muted);
+}

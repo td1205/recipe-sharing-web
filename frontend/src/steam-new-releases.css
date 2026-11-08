@@ -1,0 +1,202 @@
+/* =========================================
+   STEAM NEW RELEASES PAGE
+   ========================================= */
+.steam-new-releases-page {
+  background: var(--color-bg-body);
+  color: var(--color-text-main);
+  min-height: 100vh;
+  padding: 0 0 40px 0; /* Removed top padding to rely on breadcrumbs */
+}
+
+.steam-new-releases-page .steam-container {
+  width: 1200px;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.steam-breadcrumbs {
+  font-size: 12px;
+  color: #56707f;
+  margin-bottom: 20px;
+  padding: 20px 0px 0px; /* Exact padding from Steam */
+}
+
+.steam-breadcrumbs a {
+  color: #56707f;
+  text-decoration: none;
+}
+.steam-breadcrumbs span {
+  color: var(--color-text-main);
+}
+
+.steam-page-title {
+  font-size: 28px;
+  color: var(--color-text-main);
+  font-weight: 400;
+  margin-bottom: 30px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Top Banner Grid */
+.steam-featured-grid {
+  display: grid;
+  grid-template-columns: 590px 590px; /* Exact banner width from Steam */
+  gap: 20px;
+  margin-bottom: 40px;
+}
+
+.steam-featured-card {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: 2px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+  transition: transform 0.2s;
+  height: 276px; /* Exact banner height from Steam */
+}
+
+.steam-featured-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+
+.steam-featured-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.steam-featured-tag {
+  color: #66c0f4;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.steam-featured-price {
+  color: var(--color-text-main);
+  font-size: 14px;
+}
+
+/* Tabs */
+.steam-tabs-container {
+  display: flex;
+  margin-bottom: 0;
+  background: rgba(0,0,0,0.2);
+  border-radius: 2px 2px 0 0;
+}
+
+.steam-tab {
+  padding: 12px 20px;
+  color: #4f94bc;
+  font-size: 13px;
+  cursor: pointer;
+  background: transparent;
+  transition: background 0.2s, color 0.2s;
+}
+
+.steam-tab.active {
+  background: #2a475e;
+  color: var(--color-text-main);
+}
+/* List View */
+.steam-list-view {
+  display: flex;
+  flex-direction: column;
+  background: rgba(0,0,0,0.2);
+  margin-bottom: 40px;
+}
+
+.steam-list-item {
+  display: flex;
+  height: 80px;
+  background: rgba(0,0,0,0.2);
+  margin-bottom: 4px;
+  text-decoration: none;
+  transition: background 0.2s;
+  position: relative;
+}
+
+.steam-list-item:nth-child(even) {
+  background: rgba(0,0,0,0.3);
+}
+
+.steam-list-img-container {
+  width: 142px;
+  height: 80px;
+  flex-shrink: 0;
+}
+
+.steam-list-img-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.steam-list-content {
+  flex: 1;
+  padding: 10px 15px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.steam-list-title {
+  color: var(--color-text-main);
+  font-size: 15px;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.steam-list-icons {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+
+.steam-list-tags {
+  display: flex;
+  gap: 5px;
+}
+
+.steam-tag {
+  background: rgba(255,255,255,0.1);
+  color: var(--color-text-muted);
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+
+.steam-list-price {
+  width: 200px;
+  padding: 10px 15px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.steam-review-status {
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+.steam-review-status.positive {
+  color: #66c0f4;
+}
+
+.steam-author-name {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}

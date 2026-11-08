@@ -1,9 +1,10 @@
 const prisma = require('../config/prisma');
+const { PUBLIC_USER_SELECT } = require('../utils/userSelect');
 
 async function getAllComments() {
   const comments = await prisma.comments.findMany({
     include: {
-      users: true,
+      users: { select: PUBLIC_USER_SELECT },
       recipes: true,
     },
     orderBy: { created_at: 'desc' },

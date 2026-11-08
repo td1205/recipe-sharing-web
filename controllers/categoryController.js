@@ -1,55 +1,70 @@
+const validation = require('../utils/apiValidation');
 const categoryModel = require('../repositories/categoryRepository');
 exports.showCategories = async (req, res) => {
   try {
-    const categories = await categoryModel.getAll();
-    res.render('admin/categories', {
-      categories,
-    });
+    // Kèm số món thuộc danh mục để cảnh báo trước khi xoá dây chuyền
+    const categories = await categoryModel.getAllWithRecipeCount();
+    res.json({ success: true, categories });
   } catch (err) {
-    console.error(err);
-    res.send('Lỗi khi lấy danh mục');
+    console.error('Yêu cầu thất bại:', err.code || err.name);
+    return validation.apiError(res, err, 'Lỗi khi lấy danh mục');
+  }
+};
+
+exports.getNavData = async (req, res) => {
+  try {
+    const [categories, courseTypes, mealTimes] = await Promise.all([
+      categoryModel.getAll(),
+      categoryModel.getAllCourseTypes(),
+      categoryModel.getAllMealTimes()
+    ]);
+    res.json({ success: true, categories, courseTypes, mealTimes });
+  } catch (err) {
+    console.error('Yêu cầu thất bại:', err.code || err.name);
+    return validation.apiError(res, err, 'Lỗi lấy dữ liệu nav');
   }
 };
 exports.showCreate = (req, res) => {
-  res.render('admin/category-form');
+  res.json({ success: true, message: 'Category form' });
 };
 exports.createCategory = async (req, res) => {
   try {
-    const { name, description } = req.body;
+    const name = validation.text(req.body?.name, 'Tên danh mục', 100);
+    const description = validation.text(req.body?.description, 'Mô tả', 10000, false);
     await categoryModel.create(name, description);
-    res.redirect('/admin/categories');
+    res.json({ success: true, message: 'Category created' });
   } catch (err) {
-    console.error(err);
-    res.send('Lỗi khi thêm danh mục');
+    console.error('Yêu cầu thất bại:', err.code || err.name);
+    return validation.apiError(res, err, 'Lỗi khi thêm danh mục');
   }
 };
 exports.showEdit = async (req, res) => {
   try {
-    const category = await categoryModel.getById(req.params.id);
-    res.render('admin/category-edit', {
-      category,
-    });
+    const category = await categoryModel.getById(validation.id(req.params.id));
+    if (!category) return res.status(404).json({ success: false, error: 'Không tìm thấy danh mục' });
+    res.json({ success: true, category });
   } catch (err) {
-    console.error(err);
-    res.send('Lỗi');
+    console.error('Yêu cầu thất bại:', err.code || err.name);
+    return validation.apiError(res, err, 'Lỗi');
   }
 };
 exports.updateCategory = async (req, res) => {
   try {
-    const { name, description } = req.body;
-    await categoryModel.update(req.params.id, name, description);
-    res.redirect('/admin/categories');
+    const name = validation.text(req.body?.name, 'Tên danh mục', 100);
+    const description = validation.text(req.body?.description, 'Mô tả', 10000, false);
+    await categoryModel.update(validation.id(req.params.id), name, description);
+    res.json({ success: true, message: 'Category updated' });
   } catch (err) {
-    console.error(err);
-    res.send('Lỗi cập nhật danh mục');
+    console.error('Yêu cầu thất bại:', err.code || err.name);
+    return validation.apiError(res, err, 'Lỗi cập nhật danh mục');
   }
 };
 exports.deleteCategory = async (req, res) => {
   try {
-    await categoryModel.remove(req.params.id);
-    res.redirect('/admin/categories');
+    await categoryModel.remove(validation.id(req.params.id));
+    res.json({ success: true, message: 'Category deleted' });
   } catch (err) {
-    console.error(err);
-    res.send('Lỗi xóa danh mục');
+    console.error('Yêu cầu thất bại:', err.code || err.name);
+    return validation.apiError(res, err, 'Lỗi xóa danh mục');
   }
 };

@@ -1,0 +1,234 @@
+/* Shared styling for Login / Register.
+   Follows the same editorial language as the homepage: paper background,
+   white panel, thin rule, orange accent, square corners, restrained shadow. */
+
+/* Named `auth-shell` so it does not collide with the legacy `.auth-page`
+   rule still used by the ForgotPassword / OTP / ChangePassword screens. */
+.auth-shell {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding: var(--space-5) var(--space-4);
+  background: var(--color-bg-body);
+}
+
+.auth-panel {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 27rem;
+  padding: var(--space-5);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  /* Minimal lift only — the design spec bans heavy drop shadows. */
+  box-shadow: 0 2px 8px rgba(17, 17, 17, 0.06);
+}
+
+.auth-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  font-size: var(--home-text-meta);
+  font-weight: 700;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.auth-eyebrow-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  display: inline-block;
+}
+
+.auth-title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-h1);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  color: var(--color-text-main);
+  /* Keep sentence case; the global heading rule forces uppercase. */
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.auth-deck {
+  margin: 0 0 var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-body);
+  line-height: var(--lh-body);
+  color: var(--color-text-muted);
+}
+
+.auth-alert {
+  margin-bottom: var(--space-4);
+  padding: 12px var(--space-3);
+  font-size: var(--text-small);
+  line-height: var(--lh-body);
+  border: 1px solid;
+  border-radius: var(--radius-sm);
+}
+
+.auth-alert-error {
+  background: color-mix(in srgb, var(--color-danger) 8%, var(--color-bg-card));
+  color: var(--color-danger);
+  border-color: color-mix(in srgb, var(--color-danger) 32%, var(--color-bg-card));
+}
+
+.auth-alert-success {
+  background: color-mix(in srgb, var(--color-success) 8%, var(--color-bg-card));
+  color: var(--color-success);
+  border-color: color-mix(in srgb, var(--color-success) 32%, var(--color-bg-card));
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+}
+
+.auth-field label {
+  margin: 0;
+  font-size: var(--text-small);
+  font-weight: 600;
+  color: var(--color-text-main);
+  text-transform: none;
+}
+
+.auth-field input {
+  width: 100%;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: var(--text-body);
+  color: var(--color-text-main);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.auth-field input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.auth-field input:focus {
+  border-color: var(--color-primary);
+}
+
+.auth-hint {
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.auth-password {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.auth-password input {
+  /* Leave room for the reveal button. */
+  padding-right: 44px;
+}
+
+.auth-password-toggle {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--text-small);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.auth-password-toggle:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.auth-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  font-size: var(--text-small);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.auth-check input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.auth-submit {
+  width: 100%;
+  padding: 12px 20px;
+  margin-top: var(--space-2);
+  font-size: var(--text-body);
+  color: var(--color-bg-card);
+  background: var(--color-primary);
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.auth-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.auth-submit:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.auth-links {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--text-small);
+  line-height: 1.9;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.auth-links a {
+  color: var(--color-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-links a:hover {
+  text-decoration: underline;
+}
+
+.auth-footnote {
+  margin-top: var(--space-4);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+@media (max-width: 576px) {
+  .auth-shell {
+    padding: var(--space-4) var(--space-3) var(--space-5);
+  }
+
+  .auth-panel {
+    padding: var(--space-4);
+  }
+}
