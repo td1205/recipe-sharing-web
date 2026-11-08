@@ -2,6 +2,12 @@ node_modules/
 .env
 uploads/
 
+# Local Google Docs OAuth credentials, tokens, plans and document backups
+/.local/
+/credentials.json
+/token.json
+/client_secret*.json
+
 # Python environments and test caches
 .venv/
 __pycache__/

@@ -37,6 +37,12 @@ async function sandbox(t) {
   }, express);
   expressFixture.static = () => next;
   const cache = new Map();
+  // Synthetic MySQLStore standing in for config/sessionStore (no database available here).
+  const FixtureStore = class extends session.MemoryStore {
+    async query(sql) { assert.equal(sql, 'SELECT session_id FROM sessions LIMIT 0'); return [[], []]; }
+  };
+  const sessionStoreFixture = new FixtureStore();
+  const sessionStoreFixtureModule = { getSessionStore: () => sessionStoreFixture, closeSessionStore: async () => {} };
   function load(relative) {
     if (cache.has(relative)) return cache.get(relative);
     const filename = path.join(root, relative);
@@ -55,6 +61,10 @@ async function sandbox(t) {
         async query(sql) { assert.equal(sql, 'SELECT session_id FROM sessions LIMIT 0'); return [[], []]; }
       },
       './config/prisma': { $queryRaw: async () => [{ healthy: 1 }], $disconnect: async () => {} },
+      './config/sessionStore': sessionStoreFixtureModule,
+      '../config/sessionStore': sessionStoreFixtureModule,
+      'crypto': require('node:crypto'),
+      '../utils/sessionAuth': require('../utils/sessionAuth'),
       '../middlewares/rateLimit': relative === 'middlewares/rateLimit.js' ? null : undefined,
       '../middlewares/authMiddleware': { isAuthenticated: next, isOTP: next, isEmail: next },
       './middlewares/sessionUserMiddleware': { refreshSessionUser: (req, _res, done) => {
@@ -66,6 +76,8 @@ async function sandbox(t) {
     };
     const fixtureRequire = (id) => {
       if (id === '../middlewares/rateLimit') return load('middlewares/rateLimit.js');
+      if (id === './middlewares/tokenAuth') return load('middlewares/tokenAuth.js');
+      if (id === '../services/tokenService') return load('services/tokenService.js');
       if (id.startsWith('../controllers/')) return controller;
       if (id.startsWith('./routes/')) {
         const route = id.slice(2);

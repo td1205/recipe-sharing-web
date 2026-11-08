@@ -84,6 +84,9 @@ function uploadAvatar(req, res, next) {
     return res.status(400).json({ success: false, error: message });
   });
 }
+router.post('/auth/token', loginIpLimiter, loginLimiter, authController.issueToken);
+router.get('/auth/me', authMiddleware.isAuthenticated, authController.me);
+
 router.get('/login', authController.getLoginPage);
 // Count every attempt by IP; keep the account limiter last so success resets only it.
 router.post('/login', loginIpLimiter, loginLimiter, authController.handleLogin);

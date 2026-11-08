@@ -46,8 +46,16 @@ async function update(id, name, description) {
 }
 
 async function remove(id) {
+  const categoryId = parseInt(id, 10);
+  // Bảo vệ dữ liệu: không xóa danh mục còn món (FK RESTRICT ở recipes.category_id).
+  const recipeCount = await prisma.recipes.count({ where: { category_id: categoryId } });
+  if (recipeCount > 0) {
+    const err = new Error(`Danh mục đang có ${recipeCount} món ăn. Hãy chuyển hoặc xóa các món này trước khi xóa danh mục`);
+    err.status = 400;
+    throw err;
+  }
   return await prisma.categories.delete({
-    where: { id: parseInt(id) },
+    where: { id: categoryId },
   });
 }
 

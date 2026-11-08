@@ -151,6 +151,7 @@ test('reset password consumes previous password version and destroys the reset s
     '../utils/apiValidation': validation, '../utils/sessionAuth': require('../utils/sessionAuth'),
     '../repositories/userRepository': repo, bcrypt: { hash: async () => 'new-fixture-hash' },
     '../utils/mailHelper': {}, '../services/authService': {}, '../utils/passwordPolicy': { validatePassword: () => null },
+    '../services/tokenService': { issueToken: async () => { throw new Error('Token issuance forbidden in this fixture'); } },
   });
   const request = () => ({ body: { password: 'synthetic', confirm_password: 'synthetic' }, session: {
     resetEmail: 'fixture@example.invalid', otp: true, resetGrantExpiresAt: Date.now() + 10000,

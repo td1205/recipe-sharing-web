@@ -65,6 +65,17 @@ async function mutateUser(id, actorId, data) {
       if (remaining < 1) {
         throw new AdminUserMutationError(400, 'Phải giữ ít nhất một Admin đang hoạt động trong hệ thống');
       }
+      // Bảo vệ dữ liệu: không xóa user còn công thức (FK RESTRICT ở recipes.user_id).
+      // Admin phải xóa hoặc chuyển công thức trước, tránh mất dữ liệu dây chuyền.
+      if (data === null) {
+        const recipeCount = await tx.recipes.count({ where: { user_id: userId } });
+        if (recipeCount > 0) {
+          throw new AdminUserMutationError(
+            400,
+            `Không thể xóa người dùng còn ${recipeCount} công thức. Hãy xóa hoặc chuyển các công thức này trước`,
+          );
+        }
+      }
       return data === null
         ? tx.users.delete({ where: { id: userId } })
         : tx.users.update({ where: { id: userId }, data });

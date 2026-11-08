@@ -54,6 +54,15 @@ test('isolated MySQL HTTP journeys and rollback', { skip: process.env.RUN_DATABA
       };
       return jar;
     }
+    // Client dùng Bearer token (luồng Flutter) — không cookie.
+    const bearer = async (route, token, method = 'GET', body) => {
+      const response = await fetch(base + route, {
+        method,
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+      return { status: response.status, data: await response.json() };
+    };
     const admin = client(), second = client(), user = client(), guest = client();
     assert.equal((await guest.request('/admin/users')).status, 401);
     for (const [jar, fixture] of [[admin, fixtures[0]], [second, fixtures[1]], [user, fixtures[2]]]) {
@@ -74,6 +83,35 @@ test('isolated MySQL HTTP journeys and rollback', { skip: process.env.RUN_DATABA
     assert.equal((await user.request(`/recipes/${id}/comments`, { content: 'Fixture comment' })).status, 200);
     assert.equal((await user.request('/profile')).data.favouriteRecipes.length, 1);
     assert.equal((await guest.request('/recipes?page=1&limit=1&search=fixture')).data.total, 1);
+
+    // ---- Token Bearer (luồng Flutter) trên cùng dữ liệu ----
+    const issued = await bearer('/auth/token', null, 'POST', { username: fixtures[2].username, password });
+    assert.equal(issued.status, 200);
+    const userToken = issued.data.token;
+    assert.match(userToken, /^[a-f0-9]{64}$/);
+    assert.equal(issued.data.user.id, fixtures[2].id);
+    // Sai mật khẩu -> 401, thông báo chống enumeration giống đăng nhập web.
+    const badLogin = await bearer('/auth/token', null, 'POST', { username: fixtures[2].username, password: 'Wrong!Pass' });
+    assert.equal(badLogin.status, 401);
+    assert.equal(badLogin.data.error, 'Tài khoản hoặc mật khẩu không chính xác!');
+    // Dùng token: đọc hồ sơ + tài khoản, ghi tương tác (rating upsert cùng user).
+    assert.equal((await bearer('/profile', userToken)).status, 200);
+    const account = await bearer('/auth/me', userToken);
+    assert.equal(account.data.user.id, fixtures[2].id);
+    assert.equal(account.data.tokenAuth, true);
+    const ratedByToken = await bearer(`/recipes/${id}/rate`, userToken, 'POST', { star_count: 3 });
+    assert.equal(ratedByToken.status, 200);
+    assert.equal(await prisma.ratings.count({ where: { recipe_id: id } }), 1, 'token rating upserts same user rating');
+    // (Các assert bằng token admin được đặt SAU khối invariants admin bên dưới,
+    //  vì invariants có thể ban admin tùy kết quả concurrent, làm token phát hành sớm bị thu hồi.)
+    // Token sai/thiếu định dạng -> 401.
+    assert.equal((await bearer('/profile', null)).status, 401);
+    assert.equal((await bearer('/profile', 'z'.repeat(64))).status, 401);
+    assert.equal((await bearer('/profile', userToken.replace(/[a-f]/, 'x'))).status, 401);
+    // Logout bằng token: thu hồi token trong store, dùng lại -> 401.
+    assert.equal((await bearer('/logout', userToken, 'POST', {})).status, 200);
+    assert.equal((await bearer('/profile', userToken)).status, 401, 'revoked token rejected after logout');
+
     await require('../services/recommender').getModels({ forceRebuild: true });
     const pantry = await guest.request('/recommendations/by-ingredients?items=trứng,tỏi');
     assert.equal(pantry.status, 200);
@@ -102,6 +140,27 @@ test('isolated MySQL HTTP journeys and rollback', { skip: process.env.RUN_DATABA
     assert.equal((await user.request(`/recipes/${id}`, undefined, 'DELETE')).status, 200);
     assert.equal((await user.request('/logout', {})).status, 200);
     assert.equal((await user.request('/profile')).status, 401);
+    // Ban tài khoản qua admin token -> phiên token của tài khoản bị khóa bị thu hồi ngay.
+    // Đảm bảo chắc chắn có một admin đang hoạt động (khối invariants phía trên
+    // có thể ban admin tùy concurrent), bằng cách reset trực tiếp trong DB test.
+    await prisma.users.update({ where: { id: fixtures[0].id }, data: { role: 'admin', is_banned: false } });
+    const freshToken = (await bearer('/auth/token', null, 'POST', { username: fixtures[2].username, password })).data.token;
+    assert.equal((await bearer('/auth/me', freshToken)).status, 200);
+    const adminIssued = await bearer('/auth/token', null, 'POST', { username: fixtures[0].username, password });
+    assert.equal(adminIssued.status, 200);
+    const adminToken = adminIssued.data.token;
+    assert.equal((await bearer('/admin/users', adminToken)).status, 200);
+    assert.equal((await bearer('/admin/users', freshToken)).status, 403);
+    assert.equal((await bearer(`/admin/users/ban/${fixtures[2].id}`, adminToken, 'POST', { is_banned: true })).status, 200);
+    assert.equal((await bearer('/auth/me', freshToken)).status, 403, 'banned account token rejected (403 + banned flag)');
+    const bannedLogin = await bearer('/auth/token', null, 'POST', { username: fixtures[2].username, password });
+    assert.equal(bannedLogin.status, 401);
+    assert.equal(bannedLogin.data.error, 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.');
+    assert.equal((await bearer(`/admin/users/ban/${fixtures[2].id}`, adminToken, 'POST', { is_banned: false })).status, 200);
+    // Bỏ khóa: đăng nhập bằng token lại bình thường.
+    const reissued = await bearer('/auth/token', null, 'POST', { username: fixtures[2].username, password, remember: true });
+    assert.equal(reissued.status, 200);
+    assert.equal((await bearer('/auth/me', reissued.data.token)).status, 200);
   } finally {
     if (server) {
       for (const jar of jars) { try { await jar.request('/logout', {}); } catch {} }
@@ -110,6 +169,7 @@ test('isolated MySQL HTTP journeys and rollback', { skip: process.env.RUN_DATABA
     }
     // Delete only IDs created above, in the verified test database, never existing data.
     try {
+      await probe.query('DELETE FROM sessions');
       if (fixtures.length) await prisma.users.deleteMany({ where: { id: { in: fixtures.map(user => user.id) } } });
       if (category) await prisma.categories.delete({ where: { id: category.id } });
     } finally {

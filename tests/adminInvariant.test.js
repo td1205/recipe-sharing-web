@@ -36,6 +36,9 @@ function fixture(initial, conflict = false) {
               users = users.filter((user) => user.id !== where.id);
             },
           },
+          recipes: {
+            async count() { return 0; }, // fixture không có công thức -> delete user vẫn được phép
+          },
         };
         return callback(tx);
       });

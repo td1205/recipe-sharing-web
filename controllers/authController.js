@@ -1,6 +1,7 @@
 const validation = require('../utils/apiValidation');
 const { fingerprint, RESET_GRANT_TTL_MS } = require('../utils/sessionAuth');
 const userModel = require('../repositories/userRepository');
+const tokenService = require('../services/tokenService');
 const bcrypt = require('bcrypt');
 const { sendMail, isMailConfigured, MailError } = require('../utils/mailHelper');
 const authService = require('../services/authService');
@@ -20,14 +21,18 @@ function getRegisterPage(req, res) {
   res.json({ success: true, message: 'Register page endpoint' });
 }
 
+// Đọc + kiểm tra dữ liệu đăng nhập dùng chung cho session (web) và Bearer token (Flutter).
+// Trả { username, password, remember } phát lỗi 400 nếu sai kiểu.
+function parseCredentials(body) {
+  const { username, password } = body || {};
+  validation.text(username, 'Tài khoản', 100);
+  if (typeof password !== 'string' || password.length > 200) throw Object.assign(new Error('Mật khẩu không hợp lệ'), { status: 400 });
+  return { username, password, remember: body.remember };
+}
+
 async function handleLogin(req, res) {
   try {
-    const { username, password } = req.body || {};
-    validation.text(username, 'Tài khoản', 100);
-    if (typeof password !== 'string' || password.length > 200) throw Object.assign(new Error('Mật khẩu không hợp lệ'), { status: 400 });
-    const rawRemember = req.body.remember;
-    if (rawRemember !== undefined && ![true, false, 'true', 'false', 'on'].includes(rawRemember)) throw Object.assign(new Error('remember không hợp lệ'), { status: 400 });
-    const remember = rawRemember === true || rawRemember === 'true' || rawRemember === 'on';
+    const { username, password, remember } = parseCredentials(req.body);
     const result = await authService.login(username, password);
 
     if (!result.success) {
@@ -122,6 +127,45 @@ function logout(req, res) {
     res.clearCookie('connect.sid');
     return res.json({ success: true, message: 'Logged out' });
   });
+}
+
+// POST /api/auth/token — phát hành Bearer token cho ứng dụng Flutter.
+// Xác thực đúng một luồng như đăng nhập web (authService.login + rate limit yêu cầu cùng nhau),
+// nhưng trả token dài hạn thay vì cookie. Token đóng cũng dùng bảng `sessions` nên
+// bị khóa tài khoản / đổi mật khẩu sẽ tự hủy phiên như web.
+async function issueToken(req, res) {
+  try {
+    const { username, password, remember } = parseCredentials(req.body);
+    const result = await authService.login(username, password);
+    if (!result.success) {
+      return res.status(401).json({ success: false, error: result.error });
+    }
+    // Đăng nhập đúng -> xoá bộ đếm số lần sai (parity với handleLogin).
+    if (req.rateLimit) req.rateLimit.reset();
+    const tokenData = await tokenService.issueToken(result.user, remember);
+    return res.json({ success: true, ...tokenData });
+  } catch (error) {
+    if (error.status === 400 || /^P\d{4}$/.test(error.code || '')) return validation.apiError(res, error);
+    console.error('Lỗi issueToken:', error.code || error.name);
+    return res.status(500).json({ success: false, error: 'Lỗi hệ thống, vui lòng thử lại!' });
+  }
+}
+
+// GET /api/auth/me — thông tin tài khoản hiện tại (session hoặc Bearer token hợp lệ).
+// Trả SAFE_USER_SELECT (có email/role cho chính chủ) nhưng không bao giờ bao gồm password/otp.
+async function me(req, res) {
+  try {
+    if (!req.session.user) return res.status(401).json({ success: false, error: 'Vui lòng đăng nhập để tiếp tục!' });
+    const [user] = await userModel.getUserById(req.session.user.id);
+    if (!user || user.is_banned) {
+      return res.status(401).json({ success: false, error: 'Vui lòng đăng nhập để tiếp tục!' });
+    }
+    return res.json({ success: true, user, tokenAuth: req.isTokenAuth === true });
+  } catch (error) {
+    if (error.status === 400 || ['P2002', 'P2003', 'P2025', 'P2034'].includes(error.code)) return validation.apiError(res, error);
+    console.error('Lỗi me:', error.code || error.name);
+    return res.status(500).json({ success: false, error: 'Lỗi hệ thống!' });
+  }
 }
 
 async function renderProfile(req, res) {
@@ -348,6 +392,8 @@ module.exports = {
   getRegisterPage,
   handleLogin,
   handleRegister,
+  issueToken,
+  me,
   logout,
   renderProfile,
   getForgotPasswordPage,

@@ -78,7 +78,7 @@ const AdminUsers = () => {
   const handleDelete = (user) => {
     setConfirmState({
       title: 'Xoá vĩnh viễn tài khoản',
-      message: `NGUY HIỂM: Xoá vĩnh viễn tài khoản ${user.username}? Toàn bộ công thức của họ cũng sẽ bị xoá.`,
+      message: `Xoá vĩnh viễn tài khoản ${user.username}? Tài khoản còn công thức sẽ KHÔNG xóa được — hãy xóa/chuyển công thức trước.`,
       confirmLabel: 'Xoá vĩnh viễn',
       danger: true,
       onConfirm: async () => {

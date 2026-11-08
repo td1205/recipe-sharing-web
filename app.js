@@ -5,7 +5,6 @@ const express = require('express');
 const path = require('path');
 const helmet = require('helmet');
 const session = require('express-session');
-const MySQLStore = require('express-mysql-session')(session);
 const authRoutes = require('./routes/authRoutes.js');
 const adminRoutes = require('./routes/adminRoutes.js');
 const recipeRoutes = require('./routes/recipeRoutes.js');
@@ -15,6 +14,7 @@ const adminCommentRoutes = require('./routes/admin.js');
 const aiRoutes = require('./routes/aiRoutes.js');
 
 const { refreshSessionUser } = require('./middlewares/sessionUserMiddleware');
+const tokenAuth = require('./middlewares/tokenAuth');
 const app = express();
 // Không tiết lộ framework/phiên bản qua response header
 app.disable('x-powered-by');
@@ -51,16 +51,12 @@ app.use((_req, res, next) => {
   };
   next();
 });
-const sessionStore = new MySQLStore({
-  createDatabaseTable: false,
-  password: process.env.DB_PASSWORD,
-  user: process.env.DB_USER,
-  database: process.env.DB_NAME,
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-});
+const sessionStore = require('./config/sessionStore').getSessionStore();
 let draining = false;
-app.locals.closeResources = () => Promise.all([sessionStore.close(), require('./config/prisma').$disconnect()]);
+app.locals.closeResources = () => Promise.all([
+  require('./config/sessionStore').closeSessionStore(),
+  require('./config/prisma').$disconnect(),
+]);
 app.get('/readyz', require('./config/operations').readiness({
   probeDatabase: () => require('./config/prisma').$queryRaw`SELECT 1`,
   probeSessions: () => sessionStore.query('SELECT session_id FROM sessions LIMIT 0'),
@@ -86,6 +82,9 @@ app.use((req, res, next) => {
   next();
 });
 // Kiểm tra tài khoản bị khóa / đổi quyền ở mỗi request API
+// Xác thực token Bearer (Flutter) TRƯỚC khi đồng bộ session: token hợp lệ sẽ
+// được hydrate thành req.session, kế thừa ngay luồng chặn khóa/đổi quyền bên dưới.
+app.use('/api', tokenAuth);
 app.use('/api', refreshSessionUser);
 app.use('/api', (req, res, next) => {
   // Same-origin browser writes; requests without Origin (non-browser clients) remain compatible.
