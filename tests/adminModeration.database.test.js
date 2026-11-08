@@ -131,7 +131,33 @@ test(
             .status,
           200,
         );
-      let reportId;
+    await t.test('admin lists paginate/order globally and normalize search without wildcard expansion', async () => {
+      const sortedUsers = [...fixtures].sort((a,b)=>b.id-a.id);
+      const users = await admin('/admin/users?page=2&limit=2&sort=id_desc');
+      assert.equal(users.status,200);assert.equal(users.data.total,4);
+      assert.deepEqual(users.data.items.map(row=>row.id),sortedUsers.slice(2).map(row=>row.id));
+      assert.ok(users.data.items.every(row=>!('password' in row)&&!('otp' in row)));
+      const recipeSort=await admin('/admin/users?page=1&limit=1&sort=mostRecipes');
+      assert.equal(recipeSort.data.items[0].id,fixtures[2].id);
+      assert.equal((await admin('/admin/users?page=1&search=%20%20')).data.total,4);
+      assert.equal((await admin('/admin/users?page=1&search=%25')).data.total,0);
+      assert.equal((await admin('/admin/users?page=1&role=root')).status,400);
+      assert.equal((await admin('/admin/users?page=1&sort=__proto__')).status,400);
+      assert.equal((await admin('/admin/users')).data.users.length,4);
+      const accent=await prisma.categories.create({data:{name:'Bếp 2'}});
+      await prisma.categories.create({data:{name:'Bếp 10'}});
+      const categories=await admin('/admin/categories?page=1&limit=1&sort=count');
+      assert.equal(categories.status,200);assert.equal(categories.data.total,3);assert.equal(categories.data.items[0].id,category.id);
+      const search=await admin('/admin/categories?page=1&search='+encodeURIComponent('  Bếp 2  '));
+      assert.equal(search.status,200);assert.equal(search.data.items[0].id,accent.id);
+      assert.equal((await admin('/admin/categories?page=1&search=%25')).data.total,0);
+      const missingDate=await prisma.comments.create({data:{recipe_id:recipes[1].id,user_id:fixtures[2].id,content:'Date fixture',created_at:null}});
+      const commentPage=await admin('/admin/comments?page=3&limit=1&sort=oldest');
+      assert.equal(commentPage.status,200);assert.equal(commentPage.data.items[0].id,missingDate.id);
+      assert.equal((await admin('/admin/comments?page=1&search='+encodeURIComponent('QA bình luận'))).data.total,2);
+      assert.equal((await admin('/admin/comments?page=1&search=%25')).data.total,0);
+    });
+    let reportId;
       const report = (request, type, id) =>
         request('/reports', {
           target_type: type,
@@ -495,20 +521,17 @@ test(
               .status,
             200,
           );
+          const beforeModel = require('../services/recommender').getStatus();
           const status = await admin('/admin/recommender');
           assert.equal(status.status, 200);
-          assert.equal(status.data.model.status, 'not_built');
-          assert.equal(status.data.model.counts, null);
+          assert.deepEqual(status.data.model, beforeModel);
           assert.deepEqual(status.data.model.algorithms, [
             'Popularity',
             'CBF',
             'Item-CF',
             'Hybrid',
           ]);
-          assert.equal(
-            require('../services/recommender').getStatus().status,
-            'not_built',
-          );
+          assert.deepEqual(require('../services/recommender').getStatus(), beforeModel);
         },
       );
       await t.test(
@@ -585,7 +608,7 @@ test(
           assert.ok(browserReport);
           await adminPage.goto('/admin/reports');
           await adminPage
-            .getByLabel('Tìm báo cáo')
+            .getByLabel('Tìm kiếm báo cáo')
             .fill(String(browserReport.id));
           const row = adminPage
             .getByRole('row')
@@ -628,7 +651,24 @@ test(
               .getByRole('cell', { name: 'Xử lý báo cáo', exact: true })
               .count(),
           );
-          for (const path of ['reports', 'audit-logs', 'recommender'])
+          for (const path of ['users','categories','comments','recipes','reports','audit-logs']) {
+            await adminPage.goto('/admin/'+path);
+            await expect(adminPage.getByRole('table')).toBeVisible();
+            const idSort=adminPage.getByRole('button',{name:/^Sắp xếp ID:/});
+            await idSort.focus();await idSort.press('Enter');
+            await expect(adminPage.locator('.admin-table-box[aria-busy="true"]')).toHaveCount(0);
+            await expect(idSort).toBeFocused();
+            await expect(adminPage.getByLabel('Sắp xếp',{exact:true})).toHaveValue('id_asc');
+            const field=adminPage.locator('.admin-list-toolbar input[name="search"]');
+            await field.fill('no_matching_fixture_987654321');
+            await expect(adminPage.getByText('Không có dữ liệu phù hợp.',{exact:true})).toBeVisible();
+            await adminPage.getByRole('button',{name:'Đặt lại bộ lọc',exact:true}).click();
+            await expect(field).toHaveValue('');
+            await expect(adminPage.locator('.admin-table-box[aria-busy="true"]')).toHaveCount(0);
+            assert.equal(new URL(adminPage.url()).searchParams.has('page'),false);
+            assert.equal(new URL(adminPage.url()).searchParams.has('sort'),false);
+          }
+          for (const path of ['users','categories','comments','recipes','reports', 'audit-logs', 'recommender'])
             for (const width of [390, 768, 1440]) {
               await adminPage.setViewportSize({ width, height: 900 });
               await adminPage.goto('/admin/' + path);

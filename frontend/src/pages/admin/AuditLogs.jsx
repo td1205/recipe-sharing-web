@@ -1,3 +1,6 @@
+import AdminListToolbar from '../../components/AdminListToolbar';
+import { AdminSortHeader } from '../../components/AdminSort';
+import { moderationSortOptions } from '../../utils/adminSorting';
 import React, { useState } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import AdminPageHeader from '../../components/AdminPageHeader';
@@ -22,6 +25,7 @@ export default function AuditLogs() {
     action: '',
     type: '',
     page: 1,
+    sort: 'newest',
   });
   const [revision, setRevision] = useState(0);
   const resource = useAdminResource(
@@ -36,45 +40,48 @@ export default function AuditLogs() {
           title="Nhật ký quản trị"
           subtitle="Lịch sử thao tác đã thực hiện. ID được giữ lại ngay cả khi tài khoản hoặc nội dung đã bị xóa."
         />
-        <div className="admin-toolbar">
-          <input
-            className="admin-search"
-            aria-label="Tìm nhật ký"
-            placeholder="ID admin, ID đối tượng hoặc mã hành động…"
-            maxLength={100}
-            value={filters.search}
-            onChange={(event) =>
-              update({ search: event.target.value }, { replace: true })
-            }
-          />
-          <div className="admin-toolbar-filters">
-            <select
-              className="admin-select"
-              aria-label="Lọc hành động"
-              value={filters.action}
-              onChange={(event) => update({ action: event.target.value })}
-            >
-              <option value="">Tất cả hành động</option>
-              {Object.entries(actions).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <select
-              className="admin-select"
-              aria-label="Lọc đối tượng"
-              value={filters.type}
-              onChange={(event) => update({ type: event.target.value })}
-            >
-              <option value="">Tất cả đối tượng</option>
-              <option value="user">Tài khoản</option>
-              <option value="recipe">Công thức</option>
-              <option value="comment">Bình luận</option>
-              <option value="report">Báo cáo</option>
-            </select>
-          </div>
-        </div>
+        <AdminListToolbar
+          searchLabel="Tìm kiếm nhật ký"
+          placeholder="Mã hành động, ID admin hoặc ID đối tượng…"
+          search={filters.search}
+          onSearch={(search) => update({ search }, { replace: true })}
+          filters={[
+            {
+              key: 'action',
+              label: 'Hành động',
+              ariaLabel: 'Lọc hành động',
+              value: filters.action,
+              onChange: (action) => update({ action }),
+              options: [['', 'Tất cả hành động'], ...Object.entries(actions)],
+            },
+            {
+              key: 'type',
+              label: 'Loại đối tượng',
+              ariaLabel: 'Lọc đối tượng',
+              value: filters.type,
+              onChange: (type) => update({ type }),
+              options: [
+                ['', 'Tất cả đối tượng'],
+                ['user', 'Tài khoản'],
+                ['recipe', 'Công thức'],
+                ['comment', 'Bình luận'],
+                ['report', 'Báo cáo'],
+              ],
+            },
+          ]}
+          sort={filters.sort}
+          onSort={(sort) => update({ sort })}
+          sortOptions={moderationSortOptions}
+          onReset={() =>
+            update({
+              search: '',
+              action: '',
+              type: '',
+              sort: 'newest',
+              page: 1,
+            })
+          }
+        />
         <AdminDataPanel
           resource={resource}
           onRetry={() => setRevision((value) => value + 1)}
@@ -87,11 +94,22 @@ export default function AuditLogs() {
             <thead>
               <tr>
                 {['ID', 'Admin', 'Hành động', 'Đối tượng', 'Thời gian'].map(
-                  (label) => (
-                    <th scope="col" key={label}>
-                      {label}
-                    </th>
-                  ),
+                  (label) =>
+                    label === 'ID' || label === 'Thời gian' ? (
+                      <AdminSortHeader
+                        key={label}
+                        value={filters.sort}
+                        onChange={(sort) => update({ sort })}
+                        ascending={label === 'ID' ? 'id_asc' : 'oldest'}
+                        descending={label === 'ID' ? 'id_desc' : 'newest'}
+                      >
+                        {label}
+                      </AdminSortHeader>
+                    ) : (
+                      <th scope="col" key={label}>
+                        {label}
+                      </th>
+                    ),
                 )}
               </tr>
             </thead>

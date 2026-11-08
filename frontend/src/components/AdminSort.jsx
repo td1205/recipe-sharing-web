@@ -2,18 +2,21 @@ import React from 'react';
 
 export function AdminSortSelect({ value, onChange, options, label }) {
   return (
-    <select
-      className="admin-select"
-      aria-label={label}
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-    >
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
+    <label className="admin-list-field">
+      <span>Sắp xếp</span>
+      <select
+        className="admin-select"
+        aria-label={label}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 

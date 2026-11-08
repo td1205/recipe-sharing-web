@@ -18,7 +18,7 @@
     "db:ratings-unique": "node scripts/migrate-ratings-unique.js",
     "postinstall": "prisma generate",
     "start": "node app.js",
-    "test:safe": "node --test tests/recipeValidation.test.js tests/rateLimit.test.js tests/recommenderFeedback.test.js tests/recommenderStrategy.test.js tests/recommenderLifecycle.test.js tests/adminInvariant.test.js tests/finalFixes.test.js tests/remainingWork.test.js tests/adminSorting.test.js",
+    "test:safe": "node --test tests/recipeValidation.test.js tests/rateLimit.test.js tests/recommenderFeedback.test.js tests/recommenderStrategy.test.js tests/recommenderLifecycle.test.js tests/adminInvariant.test.js tests/finalFixes.test.js tests/remainingWork.test.js tests/adminSorting.test.js tests/adminAvailability.test.js tests/adminLists.test.js tests/adminResponse.test.js",
     "test:database": "node --test --test-concurrency=1 tests/databaseConstraints.test.js tests/databaseFlows.test.js",
     "test:e2e": "node --test tests/browserDatabase.test.js",
     "test:admin": "node --test tests/adminModeration.database.test.js",

@@ -36,6 +36,7 @@ const dates = [
   },
 ];
 const ids = pair('id_asc', 'id_desc', 'ID', (row) => row.id);
+export const moderationSortOptions = [...dates, ...ids];
 export const userSortOptions = [
   ...dates,
   ...ids,

@@ -159,6 +159,10 @@ async function showRecipeDetail(req, res) {
 
 async function adminComments(req, res) {
   try {
+    if (req.query?.page !== undefined || req.query?.limit !== undefined) {
+      const result = await require('../repositories/adminListingRepository').getPage('comments', req.query);
+      return res.json({ success: true, ...result, comments: result.items });
+    }
     const comments = await interactionModel.getAllComments();
     res.json({ success: true, comments });
   } catch (err) {

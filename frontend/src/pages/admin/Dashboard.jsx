@@ -5,6 +5,7 @@ import './admin.css';
 import AdminLayout from '../../components/AdminLayout';
 import SkeletonLoader from '../../components/SkeletonLoader';
 import ErrorState from '../../components/ErrorState';
+import { apiErrorMessage } from '../../utils/apiError';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -32,7 +33,7 @@ ChartJS.register(
 const StatCard = ({ title, value }) => (
     <div className="admin-kpi">
       <div className="admin-kpi-label">{title}</div>
-      <div className="admin-kpi-value">{value.toLocaleString('vi-VN')}</div>
+      <div className="admin-kpi-value">{value == null ? '—' : value.toLocaleString('vi-VN')}</div>
     </div>
   );
 
@@ -45,6 +46,7 @@ const AdminDashboard = () => {
   const [recent, setRecent] = useState(null);
   const [days, setDays] = useState(7);
   const [lastFetched, setLastFetched] = useState(null);
+  const [warnings, setWarnings] = useState([]);
 
   const fetchDashboard = useCallback(async (rangeDays = 7) => {
     setLoading(true);
@@ -55,6 +57,7 @@ const AdminDashboard = () => {
         throw new Error('Invalid dashboard response');
       }
       setStats(res.data.stats);
+      setWarnings(res.data.warnings || []);
       setServerChartData(res.data.chartData);
       setRecent(res.data.recent || null);
       setLastFetched(res.data.stats.lastFetched || new Date().toISOString());
@@ -62,7 +65,7 @@ const AdminDashboard = () => {
       if (requestError.response?.status === 401 || requestError.response?.status === 403) {
         setError('Phiên đăng nhập không còn quyền truy cập trang quản trị.');
       } else {
-        setError('Không thể tải trang Dashboard.');
+        setError(apiErrorMessage(requestError, 'Không thể tải trang Dashboard.'));
       }
     } finally {
       setLoading(false);
@@ -75,7 +78,7 @@ const AdminDashboard = () => {
   }, [fetchDashboard]);
 
   if (loading) return <AdminLayout title="Bảng điều khiển"><SkeletonLoader /></AdminLayout>;
-  if (error) return <AdminLayout title="Bảng điều khiển"><ErrorState message={error} onRetry={fetchDashboard} /></AdminLayout>;
+  if (error) return <AdminLayout title="Bảng điều khiển"><ErrorState message={error} onRetry={() => fetchDashboard(days)} /></AdminLayout>;
 
   const labels = serverChartData ? Object.keys(serverChartData.users) : [];
   const usersData = serverChartData ? Object.values(serverChartData.users) : [];
@@ -192,12 +195,13 @@ const AdminDashboard = () => {
         </div>
 
         {/* 4 Thẻ chỉ số tổng quan */}
+        {warnings.map(message => <p key={message} className="admin-alert-error" role="status">{message}</p>)}
         <div className="admin-kpi-grid">
           <StatCard title="Tổng người dùng" value={stats.users} />
           <StatCard title="Tổng công thức" value={stats.recipes} />
           <StatCard title="Danh mục món ăn" value={stats.categories} />
           <StatCard title="Bình luận" value={stats.comments} />
-          <StatCard title="Báo cáo chờ xử lý" value={stats.pendingReports ?? 0} />
+          <StatCard title="Báo cáo chờ xử lý" value={stats.pendingReports} />
         </div>
 
         {/* Khu vực Biểu đồ */}

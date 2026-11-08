@@ -2,6 +2,10 @@ const validation = require('../utils/apiValidation');
 const categoryModel = require('../repositories/categoryRepository');
 exports.showCategories = async (req, res) => {
   try {
+    if (req.query?.page !== undefined || req.query?.limit !== undefined) {
+      const result = await require('../repositories/adminListingRepository').getPage('categories', req.query);
+      return res.json({ success: true, ...result, categories: result.items });
+    }
     // Kèm số món thuộc danh mục để cảnh báo trước khi xoá dây chuyền
     const categories = await categoryModel.getAllWithRecipeCount();
     res.json({ success: true, categories });

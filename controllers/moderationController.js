@@ -1,6 +1,7 @@
 const validation = require('../utils/apiValidation');
 const moderation = require('../repositories/moderationRepository');
 const recommender = require('../services/recommender');
+const { adminListQuery } = require('../utils/adminListQuery');
 const actions = [
   'user.ban',
   'user.unban',
@@ -19,11 +20,7 @@ function choice(value, allowed, name, optional = false) {
   return result;
 }
 function paging(query) {
-  return {
-    page: validation.integer(query.page, 'page', 1, 1, 1000000),
-    limit: validation.integer(query.limit, 'limit', 20, 1, 100),
-    search: validation.text(query.search, 'search', 100, false),
-  };
+  return adminListQuery(query, ['newest', 'oldest', 'id_asc', 'id_desc']);
 }
 function id(value) {
   const result = validation.id(value);
@@ -35,6 +32,10 @@ const handle = (fn) => async (req, res) => {
   try {
     await fn(req, res);
   } catch (error) {
+    if (['P2021', 'P2022'].includes(error.code)) {
+      const message = 'Chức năng quản lý báo cáo và nhật ký chưa sẵn sàng. Cần hoàn tất cập nhật cơ sở dữ liệu trên môi trường này.';
+      return res.status(503).json({ success: false, code: 'MODERATION_SCHEMA_NOT_READY', error: message, message });
+    }
     if (error instanceof moderation.ModerationError) {
       if (error.status === 429) res.set('Retry-After', '3600');
       return res

@@ -42,6 +42,7 @@ function listingQuery(query = {}) {
     q.min_rating = Number(query.min_rating);
   }
   q.sort ||= 'newest';
+  q.search = q.search.normalize('NFC');
   const sorts = ['newest', 'oldest', 'popular', 'rating', 'rating_desc', 'time_asc', 'title', 'title_asc'];
   if (q.view === 'admin') sorts.push('id_asc', 'id_desc', 'title_desc', 'rating_asc', 'ratings_asc', 'views_asc', 'views_desc');
   if (!sorts.includes(q.sort)

@@ -1,3 +1,6 @@
+import AdminListToolbar from '../../components/AdminListToolbar';
+import { AdminSortHeader } from '../../components/AdminSort';
+import { moderationSortOptions } from '../../utils/adminSorting';
 import React, { useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
@@ -21,6 +24,7 @@ export default function Reports() {
     status: 'Pending',
     type: '',
     page: 1,
+    sort: 'newest',
   });
   const [revision, setRevision] = useState(0);
   const [confirm, setConfirm] = useState(null);
@@ -55,43 +59,46 @@ export default function Reports() {
           title="Báo cáo vi phạm"
           subtitle="Rà soát nội dung được thành viên báo cáo. Xử lý trạng thái không tự xóa nội dung."
         />
-        <div className="admin-toolbar">
-          <input
-            className="admin-search"
-            aria-label="Tìm báo cáo"
-            placeholder="Lý do, ID báo cáo hoặc nội dung…"
-            maxLength={100}
-            value={filters.search}
-            onChange={(event) =>
-              update({ search: event.target.value }, { replace: true })
-            }
-          />
-          <div className="admin-toolbar-filters">
-            <select
-              className="admin-select"
-              aria-label="Trạng thái báo cáo"
-              value={filters.status}
-              onChange={(event) => update({ status: event.target.value })}
-            >
-              <option value="">Tất cả trạng thái</option>
-              {Object.entries(labels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <select
-              className="admin-select"
-              aria-label="Loại báo cáo"
-              value={filters.type}
-              onChange={(event) => update({ type: event.target.value })}
-            >
-              <option value="">Tất cả nội dung</option>
-              <option value="recipe">Công thức</option>
-              <option value="comment">Bình luận</option>
-            </select>
-          </div>
-        </div>
+        <AdminListToolbar
+          searchLabel="Tìm kiếm báo cáo"
+          placeholder="Lý do, ID báo cáo hoặc ID nội dung…"
+          search={filters.search}
+          onSearch={(search) => update({ search }, { replace: true })}
+          filters={[
+            {
+              key: 'status',
+              label: 'Trạng thái',
+              ariaLabel: 'Trạng thái báo cáo',
+              value: filters.status,
+              onChange: (status) => update({ status }),
+              options: [['', 'Tất cả trạng thái'], ...Object.entries(labels)],
+            },
+            {
+              key: 'type',
+              label: 'Loại nội dung',
+              ariaLabel: 'Loại báo cáo',
+              value: filters.type,
+              onChange: (type) => update({ type }),
+              options: [
+                ['', 'Tất cả nội dung'],
+                ['recipe', 'Công thức'],
+                ['comment', 'Bình luận'],
+              ],
+            },
+          ]}
+          sort={filters.sort}
+          onSort={(sort) => update({ sort })}
+          sortOptions={moderationSortOptions}
+          onReset={() =>
+            update({
+              search: '',
+              status: 'Pending',
+              type: '',
+              sort: 'newest',
+              page: 1,
+            })
+          }
+        />
         <AdminDataPanel
           resource={resource}
           onRetry={refresh}
@@ -111,11 +118,23 @@ export default function Reports() {
                   'Trạng thái',
                   'Thời gian',
                   'Hành động',
-                ].map((label) => (
-                  <th scope="col" key={label}>
-                    {label}
-                  </th>
-                ))}
+                ].map((label) =>
+                  label === 'ID' || label === 'Thời gian' ? (
+                    <AdminSortHeader
+                      key={label}
+                      value={filters.sort}
+                      onChange={(sort) => update({ sort })}
+                      ascending={label === 'ID' ? 'id_asc' : 'oldest'}
+                      descending={label === 'ID' ? 'id_desc' : 'newest'}
+                    >
+                      {label}
+                    </AdminSortHeader>
+                  ) : (
+                    <th scope="col" key={label}>
+                      {label}
+                    </th>
+                  ),
+                )}
               </tr>
             </thead>
             <tbody>

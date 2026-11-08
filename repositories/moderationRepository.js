@@ -1,4 +1,5 @@
 const prisma = require('../config/prisma');
+const { escapeLike, listOrder } = require('../utils/adminListQuery');
 
 class ModerationError extends Error {
   constructor(status, message) {
@@ -94,14 +95,14 @@ async function resolveReport(id, status, adminId) {
   );
 }
 
-async function listReports({ page, limit, search, status, type }) {
+async function listReports({ page, limit, search, status, type, sort = 'newest' }) {
   const numeric = /^\d+$/.test(search) && Number(search) <= 2147483647;
   const where = {
     ...(status && { status }),
     ...(type && { target_type: type }),
     ...(search && {
       OR: [
-        { reason: { contains: search } },
+        { reason: { contains: escapeLike(search) } },
         ...(numeric
           ? [{ target_id: Number(search) }, { id: Number(search) }]
           : []),
@@ -114,7 +115,7 @@ async function listReports({ page, limit, search, status, type }) {
       page = Math.min(page, Math.max(1, Math.ceil(total / limit)));
       const items = await tx.content_reports.findMany({
         where,
-        orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
+        orderBy: listOrder(sort),
         skip: (page - 1) * limit,
         take: limit,
         include: {
@@ -130,7 +131,7 @@ async function listReports({ page, limit, search, status, type }) {
   );
 }
 
-async function listLogs({ page, limit, search, action, type, adminId }) {
+async function listLogs({ page, limit, search, action, type, adminId, sort = 'newest' }) {
   const numeric = /^\d+$/.test(search) && Number(search) <= 2147483647;
   const where = {
     ...(action && { action }),
@@ -138,7 +139,7 @@ async function listLogs({ page, limit, search, action, type, adminId }) {
     ...(adminId && { admin_id: adminId }),
     ...(search && {
       OR: [
-        { action: { contains: search } },
+        { action: { contains: escapeLike(search) } },
         ...(numeric
           ? [{ target_id: Number(search) }, { admin_id: Number(search) }]
           : []),
@@ -151,7 +152,7 @@ async function listLogs({ page, limit, search, action, type, adminId }) {
       page = Math.min(page, Math.max(1, Math.ceil(total / limit)));
       const items = await tx.admin_audit_logs.findMany({
         where,
-        orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
+        orderBy: listOrder(sort),
         skip: (page - 1) * limit,
         take: limit,
       });

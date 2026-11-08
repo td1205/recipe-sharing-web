@@ -23,6 +23,7 @@ export default function Recommender() {
     '/api/admin/recommender',
     {},
     revision,
+    'model',
   );
   const model = data?.model;
   return (
