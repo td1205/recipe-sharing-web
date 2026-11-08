@@ -12,6 +12,7 @@ test('isolated MySQL HTTP journeys and rollback', { skip: process.env.RUN_DATABA
   const prisma = require('../config/prisma');
   const mysql = require('mysql2/promise');
   let probe, app, server, category, fixtures = [];
+  let verifiedEmpty=false,originalTagIds=[];
   const jars = [];
   try {
     probe = await mysql.createConnection(config.sessions.url);
@@ -22,6 +23,8 @@ test('isolated MySQL HTTP journeys and rollback', { skip: process.env.RUN_DATABA
     assert.equal(await prisma.users.count(), 0, 'Test DB must have no pre-existing users');
     const [[sessionCount]] = await probe.query('SELECT COUNT(*) count FROM sessions');
     assert.equal(Number(sessionCount.count), 0, 'Session test store must be empty');
+    verifiedEmpty=true;
+    originalTagIds=(await prisma.tags.findMany({select:{id:true}})).map(tag=>tag.id);
     const bcrypt = require('bcrypt');
     const password = 'Fixture-Only!123';
     const hash = await bcrypt.hash(password, 4);
@@ -30,16 +33,10 @@ test('isolated MySQL HTTP journeys and rollback', { skip: process.env.RUN_DATABA
       password: hash, role: n < 2 ? 'admin' : 'user', is_banned: false,
     } }));
     category = await prisma.categories.create({ data: { name: 'Integration Fixture' } });
-    // Forbid paid/email adapters even if unrelated routes are accidentally exercised.
-    const Module = require('node:module');
-    const originalLoad = Module._load;
-    Module._load = function(id, parent, main) {
-      if (id.endsWith('/mailHelper')) return { sendMail: async () => { throw new Error('External email forbidden'); }, isMailConfigured: () => false, MailError: class extends Error {} };
-      if (id.endsWith('/geminiService')) return { recognizeDish: async () => { throw new Error('Paid AI forbidden'); } };
-      if (/cloudinary/.test(id)) throw new Error('Cloudinary forbidden');
-      return originalLoad.call(this, id, parent, main);
-    };
-    try { app = require('../app'); } finally { Module._load = originalLoad; }
+    // Real application modules. External integrations remain unconfigured and are
+    // outside these journeys; no controller/repository/database mock is installed.
+    Object.assign(process.env,{EMAIL_USER:'',EMAIL_APP_PASSWORD:'',GEMINI_API_KEY:''});
+    app = require('../app');
     server = require('node:http').createServer(app);
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     const base = `http://127.0.0.1:${server.address().port}/api`;
@@ -169,9 +166,11 @@ test('isolated MySQL HTTP journeys and rollback', { skip: process.env.RUN_DATABA
     }
     // Delete only IDs created above, in the verified test database, never existing data.
     try {
-      await probe.query('DELETE FROM sessions');
+      if(probe&&verifiedEmpty)await probe.query('DELETE FROM sessions');
+      if(fixtures.length)await prisma.recipes.deleteMany({where:{user_id:{in:fixtures.map(user=>user.id)}}});
       if (fixtures.length) await prisma.users.deleteMany({ where: { id: { in: fixtures.map(user => user.id) } } });
       if (category) await prisma.categories.delete({ where: { id: category.id } });
+      if(verifiedEmpty)await prisma.tags.deleteMany({where:{id:{notIn:originalTagIds},name:'fixture',recipe_tags:{none:{}},user_tag_votes:{none:{}}}});
     } finally {
       if (probe) await probe.end();
       if (app) await app.locals.closeResources(); else await prisma.$disconnect();

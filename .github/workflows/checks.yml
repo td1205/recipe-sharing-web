@@ -20,3 +20,41 @@ jobs:
       - run: npm audit --prefix frontend --audit-level=high
       - run: npm run lint --prefix frontend
       - run: npm run build --prefix frontend
+  database-e2e:
+    runs-on: ubuntu-latest
+    needs: checks
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root-fixture-ci-only
+          MYSQL_DATABASE: recipe_test_ci
+          MYSQL_USER: recipe_ci
+          MYSQL_PASSWORD: fixture-ci-only
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -proot-fixture-ci-only"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      DATABASE_URL: mysql://recipe_ci:fixture-ci-only@127.0.0.1:3306/recipe_test_ci
+      TEST_DATABASE_URL: mysql://recipe_ci:fixture-ci-only@127.0.0.1:3306/recipe_test_ci
+      TEST_SESSION_DATABASE_URL: mysql://recipe_ci:fixture-ci-only@127.0.0.1:3306/recipe_test_ci
+      RUN_DATABASE_TESTS: 'yes'
+      TEST_DB_CONFIRMED: 'yes'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm ci --prefix frontend
+      - run: npx --no-install prisma migrate deploy
+      - run: npx --no-install prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --exit-code
+      - run: npm run test:database
+      - run: npm run build --prefix frontend
+      - run: npx --no-install playwright install --with-deps chromium
+      - run: npm run test:e2e
+        env:
+          RUN_BROWSER_DATABASE_TESTS: 'yes'

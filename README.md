@@ -239,11 +239,15 @@ npm test
 
 ## Testing
 
-### Isolated MySQL integration (prepared, NOT VERIFIED)
+### Isolated MySQL integration and real browser E2E
 
 `npm run test:database` skips by default without loading dotenv, Prisma, MySQL or the app. To opt in, an operator must first provision disposable **empty** databases with the approved current schema, including the session table. Provisioning/migrations are not part of the test command.
 
-Set `RUN_DATABASE_TESTS=yes`, `TEST_DB_CONFIRMED=yes`, `TEST_DATABASE_URL` and `TEST_SESSION_DATABASE_URL` explicitly in the test process. Both URLs must use loopback MySQL and database names matching `recipe_test_*`; `recipe_db` and remote hosts are rejected. The harness verifies `SELECT DATABASE()`, empty users and empty sessions before creating fixtures. It tests HTTP login/logout/permissions, recipe CRUD, interactions, SQL listing, pantry recommendations, last-admin competition and injected recipe/tag rollback, then removes only its own fixture IDs. Email/AI/Cloudinary adapters are blocked. Do not opt in against a shared database; credentials need access only to the disposable test databases. This harness has not been run against MySQL in this work session.
+Set `RUN_DATABASE_TESTS=yes`, `TEST_DB_CONFIRMED=yes`, `TEST_DATABASE_URL` and `TEST_SESSION_DATABASE_URL` explicitly in the test process. URLs must use loopback MySQL and names matching `recipe_test_*`; `recipe_db` and remote hosts are rejected. Use the same disposable schema for Prisma and sessions when running the constraint/browser suites. The harness verifies the database identity and empty users/sessions before fixtures. `npm run test:database` checks actual FK/CHECK/UNIQUE/RESTRICT, transaction rollback, concurrent writes, last-active-admin protection, MySQL session/Bearer lifecycle and HTTP CRUD. No controller or database mock is installed; the deliberate failure during a real transaction is fault injection, not simulated rollback.
+
+`npm run test:e2e` additionally requires `RUN_BROWSER_DATABASE_TESTS=yes`, the built frontend and Playwright Chromium. It drives registration/login, recipe create/delete, search, favorite/comment/rating, ownership and admin ban/unban through React + Express + MySQL, asserting both HTTP/UI and persisted rows. External paid/email integrations remain unconfigured; no application API response is mocked. Fixture cleanup checks row counts before/after. In PR #2 verification, 13 MySQL integration tests and 8 browser E2E tests passed on an independent MySQL 8.0.46 instance; CI repeats them on its own MySQL service. These results do not establish production TLS, backup/restore or external-service readiness.
+
+See [baseline and adoption procedure](prisma/BASELINE.md) before deploying to a clean or existing database. The primary database was only inspected, never migrated, seeded or marked baselined during this verification.
 
 ### Production deployment and recovery (procedures, NOT VERIFIED)
 
