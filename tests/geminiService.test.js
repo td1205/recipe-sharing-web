@@ -60,6 +60,44 @@ test('key sai (403) -> INVALID_KEY, dừng ngay', async () => {
   assert.equal(client.calls.length, 1);
 });
 
+test('quota riêng theo model (429) -> dùng model dự phòng khác', async () => {
+  const [first, second] = gemini.getModels();
+  const quotaError = Object.assign(httpError(429, 'quota exhausted'), {
+    details: [{ quotaDimensions: { model: first }, retryDelay: '120s' }],
+  });
+  const client = fakeClient({ [first]: quotaError, [second]: 'Bún chả' });
+  const result = await gemini.recognizeDish(image, 'image/jpeg', { client });
+  assert.equal(result.keyword, 'Bún chả');
+  assert.deepEqual(client.calls, [first, second]);
+});
+
+test('quota toàn dự án (429) -> trả thời điểm thử lại, không gọi fallback vô ích', async () => {
+  const [first] = gemini.getModels();
+  const quotaError = Object.assign(httpError(429, 'quota exhausted'), {
+    details: [{ retryDelay: '3600s' }],
+  });
+  const client = fakeClient({ [first]: quotaError });
+  await assert.rejects(
+    gemini.recognizeDish(image, 'image/jpeg', { client }),
+    (error) => error.code === 'QUOTA_EXCEEDED' && error.retryAfterSeconds === 3600,
+  );
+  assert.deepEqual(client.calls, [first]);
+});
+
+test('tất cả quota theo model (429) -> vẫn trả thời điểm thử lại', async () => {
+  const models = gemini.getModels();
+  const client = fakeClient(Object.fromEntries(models.map((model) => [model,
+    Object.assign(httpError(429, 'quota exhausted'), {
+      details: [{ quotaDimensions: { model }, retryDelay: '90s' }],
+    }),
+  ])));
+  await assert.rejects(
+    gemini.recognizeDish(image, 'image/jpeg', { client }),
+    (error) => error.code === 'QUOTA_EXCEEDED' && error.retryAfterSeconds === 90,
+  );
+  assert.deepEqual(client.calls, models);
+});
+
 test('GEMINI_MODELS ghi đè danh sách model', () => {
   process.env.GEMINI_MODELS = 'model-a, model-b';
   try {

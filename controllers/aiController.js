@@ -17,6 +17,7 @@ const STATUS_BY_CODE = {
   NOT_CONFIGURED: 503,
   NOT_FOOD: 422,
   INVALID_KEY: 502,
+  QUOTA_EXCEEDED: 429,
   OVERLOADED: 503,
   FAILED: 502,
 };
@@ -38,11 +39,16 @@ function handleScanImage(req, res) {
       return res.json({ success: true, keyword });
     } catch (error) {
       const status = STATUS_BY_CODE[error.code] || 500;
+      const retryAfterSeconds = Number.isSafeInteger(error.retryAfterSeconds)
+        ? error.retryAfterSeconds
+        : undefined;
       if (status === 500) console.error('Lỗi nhận diện ảnh:', error);
+      if (retryAfterSeconds) res.set('Retry-After', String(retryAfterSeconds));
       return res.status(status).json({
         success: false,
         code: error.code || 'FAILED',
         error: error.code ? error.message : 'Lỗi hệ thống khi nhận diện ảnh.',
+        ...(retryAfterSeconds ? { retryAfterSeconds } : {}),
       });
     }
   });
