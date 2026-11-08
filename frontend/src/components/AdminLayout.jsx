@@ -10,6 +10,9 @@ const ADMIN_NAV_ITEMS = [
   { route: '/admin/categories', icon: 'fa-layer-group', label: 'Quản lý Danh mục' },
   { route: '/admin/users', icon: 'fa-users', label: 'Quản lý Người dùng' },
   { route: '/admin/comments', icon: 'fa-comments', label: 'Quản lý Bình luận' },
+  { route: '/admin/reports', icon: 'fa-flag', label: 'Báo cáo vi phạm' },
+  { route: '/admin/audit-logs', icon: 'fa-clock-rotate-left', label: 'Nhật ký quản trị' },
+  { route: '/admin/recommender', icon: 'fa-lightbulb', label: 'Hệ thống gợi ý' },
 ];
 
 const AdminLayout = ({ children, title = 'Admin Panel', className }) => {

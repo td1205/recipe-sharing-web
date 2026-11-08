@@ -29,12 +29,21 @@ async function renderDashboard(req, res) {
         adminModel.getExtraStats(),
       ]);
     const totalRatings = await prisma.ratings.count();
+    let pendingReports = null;
+    const warnings = [];
+    try {
+      pendingReports = await prisma.content_reports.count({ where: { status: 'Pending' } });
+    } catch (error) {
+      if (!['P2021', 'P2022'].includes(error.code)) throw error;
+      warnings.push('Chức năng báo cáo chưa sẵn sàng trên môi trường này. Cần hoàn tất cập nhật cơ sở dữ liệu để xem số liệu báo cáo.');
+    }
     const stats = {
       users: totalUsers,
       recipes: totalRecipes,
       categories: totalCategories,
       comments: totalComments,
       ratings: totalRatings,
+      pendingReports,
       totalViews: extra.totalViews,
       totalFavorites: extra.totalFavorites,
       bannedUsers: extra.bannedUsers,
@@ -42,7 +51,7 @@ async function renderDashboard(req, res) {
       days,
       lastFetched: new Date().toISOString(),
     };
-    res.json({ success: true, stats, chartData, recent, extra });
+    res.json({ success: true, stats, chartData, recent, extra, warnings });
   } catch (error) {
     console.error('Lỗi khi lấy dữ liệu thống kê:', error.code || error.name);
     return validation.apiError(res, error);
@@ -50,6 +59,10 @@ async function renderDashboard(req, res) {
 }
 async function renderUserManagement(req, res) {
   try {
+    if (req.query?.page !== undefined || req.query?.limit !== undefined) {
+      const result = await require('../repositories/adminListingRepository').getPage('users', req.query);
+      return res.json({ success: true, ...result, users: result.items });
+    }
     const users = await adminModel.getAllUsers();
     res.json({ success: true, users });
   } catch (error) {

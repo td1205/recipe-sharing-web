@@ -20,6 +20,7 @@ model categories {
 }
 
 model comments {
+  reports    content_reports[]
   id         Int       @id @default(autoincrement())
   user_id    Int
   recipe_id  Int
@@ -71,6 +72,7 @@ model ratings {
 }
 
 model recipes {
+  reports        content_reports[]
   id             Int            @id @default(autoincrement())
   user_id        Int
   category_id    Int
@@ -141,6 +143,8 @@ model steps {
 }
 
 model users {
+  reports      content_reports[] @relation("reporter")
+  resolutions  content_reports[] @relation("resolver")
   id           Int         @id @default(autoincrement())
   username     String      @unique(map: "username") @db.VarChar(100)
   password     String      @db.VarChar(255)
@@ -230,4 +234,55 @@ model user_tag_votes {
   @@id([user_id, recipe_id, tag_id])
   @@index([recipe_id])
   @@index([tag_id])
+}
+
+enum report_target {
+  recipe
+  comment
+}
+
+enum report_status {
+  Pending
+  Resolved
+  Rejected
+}
+
+model content_reports {
+  id           Int           @id @default(autoincrement())
+  reporter_id  Int?
+  target_type  report_target
+  target_id    Int
+  recipe_id    Int?
+  comment_id   Int?
+  reason       String        @db.VarChar(1000)
+  status       report_status @default(Pending)
+  created_at   DateTime      @default(now()) @db.DateTime(3)
+  resolved_at  DateTime?     @db.DateTime(3)
+  resolved_by  Int?
+  reporter     users?        @relation("reporter", fields: [reporter_id], references: [id], onDelete: SetNull)
+  resolver     users?        @relation("resolver", fields: [resolved_by], references: [id], onDelete: SetNull)
+  recipe       recipes?      @relation(fields: [recipe_id], references: [id], onDelete: SetNull)
+  comment      comments?     @relation(fields: [comment_id], references: [id], onDelete: SetNull)
+
+  @@unique([reporter_id, target_type, target_id], map: "report_once_per_member_target")
+  @@index([status, created_at])
+  @@index([reporter_id, created_at])
+  @@index([recipe_id])
+  @@index([comment_id])
+  @@index([resolved_by])
+}
+
+// IDs deliberately survive account/content deletion. No payload or credentials are stored.
+model admin_audit_logs {
+  id          Int      @id @default(autoincrement())
+  admin_id    Int
+  action      String   @db.VarChar(50)
+  target_type String   @db.VarChar(20)
+  target_id   Int
+  created_at  DateTime @default(now()) @db.DateTime(3)
+
+  @@index([created_at])
+  @@index([admin_id, created_at])
+  @@index([action, created_at])
+  @@index([target_type, target_id])
 }

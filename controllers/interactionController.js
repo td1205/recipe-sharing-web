@@ -22,8 +22,8 @@ async function addComment(req, res) {
     if (content.length > 2000) {
       return res.status(400).json({ success: false, message: 'Bình luận tối đa 2000 ký tự!' });
     }
-    await commentModel.createComment(userId, recipeId, content);
-    res.json({ success: true, message: 'Comment added' });
+    const comment = await commentModel.createComment(userId, recipeId, content);
+    res.json({ success: true, message: 'Comment added', commentId: comment.id });
   } catch (err) {
     console.error('Yêu cầu thất bại:', err.code || err.name);
     return validation.apiError(res, err, 'Server Error');
@@ -159,6 +159,10 @@ async function showRecipeDetail(req, res) {
 
 async function adminComments(req, res) {
   try {
+    if (req.query?.page !== undefined || req.query?.limit !== undefined) {
+      const result = await require('../repositories/adminListingRepository').getPage('comments', req.query);
+      return res.json({ success: true, ...result, comments: result.items });
+    }
     const comments = await interactionModel.getAllComments();
     res.json({ success: true, comments });
   } catch (err) {
@@ -169,7 +173,7 @@ async function adminComments(req, res) {
 
 async function deleteComment(req, res) {
   try {
-    await interactionModel.deleteComment(validation.id(req.params.id));
+    await require('../repositories/moderationRepository').deleteContent('comment', validation.id(req.params.id), req.session.user.id);
     res.json({ success: true, message: 'Comment deleted' });
   } catch (err) {
     console.error('Yêu cầu thất bại:', err.code || err.name);

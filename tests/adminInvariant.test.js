@@ -16,6 +16,10 @@ function fixture(initial, conflict = false) {
         if (conflict) throw Object.assign(new Error('fixture conflict'), { code: 'P2034' });
         let locked = false;
         const tx = {
+          admin_audit_logs: { async create({ data }) {
+            assert.equal(data.target_type, 'user');
+            assert.ok(!('password' in data));
+          } },
           async $queryRaw(sql, ...ids) {
             assert.match(sql.join('?'), /ORDER BY id FOR UPDATE/);
             assert.deepEqual(ids, [Number(ids[0]), Number(ids[1])]);

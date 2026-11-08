@@ -1,0 +1,41 @@
+.report-button {
+  padding: var(--space-2) 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--home-text-ui);
+  text-decoration: underline;
+  text-underline-offset: var(--space-1);
+  cursor: pointer;
+}
+.report-button:hover {
+  color: var(--color-text-main);
+}
+.report-button:focus-visible {
+  outline: 2px solid var(--color-text-main);
+  outline-offset: var(--space-1);
+}
+.report-form {
+  display: grid;
+  gap: var(--space-3);
+}
+.report-form textarea {
+  width: 100%;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-card);
+  color: var(--color-text-main);
+  font: inherit;
+  resize: vertical;
+}
+.report-form textarea:focus-visible {
+  outline: 2px solid var(--color-text-main);
+}
+.report-form p {
+  font-size: var(--home-text-ui);
+  color: var(--color-text-muted);
+}
+.report-form [role='alert'] {
+  color: var(--color-danger);
+}
