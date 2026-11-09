@@ -305,7 +305,12 @@ const Home = () => {
                 <Link to={`/recipes/${topRecipe.id}`} className="mag-hero-main-img-wrapper">
                   <HeroMedia key={topRecipe.id} recipe={topRecipe} />
                 </Link>
-                <div className="mag-hero-main-category">{topRecipe.category_name || topRecipe.categories?.name || 'MÓN NỔI BẬT HÔM NAY'}</div>
+                <div className="home-hero-context">
+                  <p className="home-hero-label">Công thức mới nhất</p>
+                  {(topRecipe.category_name || topRecipe.categories?.name) && (
+                    <span className="mag-hero-main-category">{topRecipe.category_name || topRecipe.categories?.name}</span>
+                  )}
+                </div>
                 <Link to={`/recipes/${topRecipe.id}`} className="home-title-link">
                   <h1 className="mag-hero-main-title">{topRecipe.title}</h1>
                 </Link>

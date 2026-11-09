@@ -2,6 +2,7 @@ require('dotenv').config();
 // Fail before creating database/session clients. Importing does not start a listener.
 if (require.main === module) require('./config/runtime').validateRuntime(process.env);
 const express = require('express');
+const http = require('http');
 const path = require('path');
 const helmet = require('helmet');
 const session = require('express-session');
@@ -15,6 +16,7 @@ const aiRoutes = require('./routes/aiRoutes.js');
 
 const { refreshSessionUser } = require('./middlewares/sessionUserMiddleware');
 const tokenAuth = require('./middlewares/tokenAuth');
+const { createCookingSocket } = require('./services/cookingSocket');
 const app = express();
 // Không tiết lộ framework/phiên bản qua response header
 app.disable('x-powered-by');
@@ -62,8 +64,7 @@ app.get('/readyz', require('./config/operations').readiness({
   probeSessions: () => sessionStore.query('SELECT session_id FROM sessions LIMIT 0'),
   isDraining: () => draining,
 }));
-app.use(
-  session({
+const sessionMiddleware = session({
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
@@ -75,8 +76,8 @@ app.use(
       sameSite: 'lax',
       maxAge: 1000 * 60 * 60 * 24,
     },
-  }),
-);
+});
+app.use(sessionMiddleware);
 app.use((req, res, next) => {
   res.locals.user = req.session.user || null;
   next();
@@ -90,8 +91,19 @@ app.use('/api', (req, res, next) => {
   // Same-origin browser writes; requests without Origin (non-browser clients) remain compatible.
   if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && req.headers.origin) {
     const expected = process.env.APP_ORIGIN || `${req.protocol}://${req.get('host')}`;
-    const developmentOrigin = process.env.NODE_ENV !== 'production' && !process.env.APP_ORIGIN
-      && ['http://localhost:5173', 'http://127.0.0.1:5173'].includes(req.headers.origin);
+    let developmentOrigin = false;
+    if (process.env.NODE_ENV !== 'production' && !process.env.APP_ORIGIN) {
+      try {
+        const origin = new URL(req.headers.origin);
+        const viteDevPorts = new Set(['5173', '5174', '5175']);
+        // Cho phép Vite dev server (localhost hoặc IP LAN, vd 192.168.x.x:5173) gọi API qua proxy.
+        developmentOrigin =
+          ['localhost', '127.0.0.1'].includes(origin.hostname) ||
+          ((origin.protocol === 'http:' || origin.protocol === 'https:') && viteDevPorts.has(origin.port));
+      } catch {
+        developmentOrigin = false;
+      }
+    }
     if (req.headers.origin !== expected && !developmentOrigin) return res.status(403).json({ success: false, error: 'Nguồn yêu cầu không hợp lệ' });
   }
   next();
@@ -124,7 +136,11 @@ app.use((error, _req, res, _next) => {
 module.exports = app;
 if (require.main === module) {
   const PORT = Number(process.env.PORT || 3000);
-  const server = app.listen(PORT, () => console.log(`Server đang chạy tại cổng ${PORT}`));
+  const server = http.createServer(app);
+  const cookingSync = createCookingSocket(server, { sessionMiddleware });
+  app.locals.io = cookingSync.io;
+  app.locals.cookingSync = cookingSync;
+  server.listen(PORT, () => console.log(`Server đang chạy tại cổng ${PORT}`));
   let stopping = false;
   const shutdown = () => {
     if (stopping) return;
@@ -132,6 +148,7 @@ if (require.main === module) {
     draining = true;
     const deadline = setTimeout(() => process.exit(1), 10000);
     deadline.unref();
+    cookingSync.io.close();
     server.close(async () => {
       try {
         await app.locals.closeResources();

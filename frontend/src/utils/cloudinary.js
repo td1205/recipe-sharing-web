@@ -16,7 +16,7 @@ const shortId = () =>
 // Trả về { url, mediaType }. Ném Error kèm thông báo tiếng Việt khi lỗi.
 export async function uploadToCloudinary(file) {
   if (!isCloudinaryConfigured) {
-    throw new Error('Chưa cấu hình Cloudinary (thiếu VITE_CLOUDINARY_CLOUD_NAME / VITE_CLOUDINARY_UPLOAD_PRESET trong frontend/.env)');
+    throw new Error('Chưa cấu hình tải ảnh Cloudinary. Điền VITE_CLOUDINARY_CLOUD_NAME và VITE_CLOUDINARY_UPLOAD_PRESET trong frontend/.env, rồi khởi động lại Vite (npm run client).');
   }
   const mediaType = file.type.startsWith('video/') ? 'video' : 'image';
   const formData = new FormData();

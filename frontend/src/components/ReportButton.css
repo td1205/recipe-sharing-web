@@ -1,3 +1,15 @@
+.app-modal.report-modal {
+  width: min(30rem, calc(100vw - var(--space-3) * 2));
+  max-height: calc(100dvh - var(--space-3) * 2);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+.report-modal .app-modal-header h2,
+.report-modal .report-form,
+.report-modal .report-form button {
+  font-family: var(--font-home);
+}
 .report-button {
   padding: var(--space-2) 0;
   border: 0;
@@ -19,23 +31,63 @@
 .report-form {
   display: grid;
   gap: var(--space-3);
+  text-align: left;
+}
+.report-form label {
+  margin: 0;
+  font-size: var(--home-text-ui);
+  font-weight: 600;
+  color: var(--color-text-main);
 }
 .report-form textarea {
+  box-sizing: border-box;
   width: 100%;
-  padding: var(--space-2);
+  min-height: 7.5rem;
+  padding: var(--space-3);
   border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
   background: var(--color-bg-card);
   color: var(--color-text-main);
   font: inherit;
+  line-height: 1.5;
   resize: vertical;
+  max-height: 40dvh;
 }
 .report-form textarea:focus-visible {
   outline: 2px solid var(--color-text-main);
+  outline-offset: 1px;
 }
 .report-form p {
+  margin: 0;
   font-size: var(--home-text-ui);
+  line-height: 1.5;
   color: var(--color-text-muted);
 }
 .report-form [role='alert'] {
   color: var(--color-danger);
+}
+.report-form .app-modal-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+.report-form .app-modal-actions button {
+  min-height: 2.75rem;
+  min-width: 7.5rem;
+  justify-content: center;
+  margin: 0;
+}
+@media (max-width: 30rem) {
+  .report-form .app-modal-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+  .report-form .app-modal-actions button {
+    min-width: 0;
+    width: 100%;
+    padding-inline: var(--space-2);
+  }
 }

@@ -6,6 +6,33 @@ const favoriteModel = require('../repositories/favoriteRepository');
 const interactionModel = require('../repositories/interactionRepository');
 const tagModel = require('../repositories/tagRepository');
 const recipeViewModel = require('../repositories/recipeViewRepository');
+const shoppingListModel = require('../repositories/shoppingListRepository');
+
+async function getShoppingList(req, res) {
+  try {
+    if (!req.session.user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+    const recipeId = validation.id(req.params.id);
+    const recipe = await recipeModel.getRecipeById(recipeId);
+    if (!recipe) return res.status(404).json({ success: false, message: 'Recipe not found' });
+    const data = await shoppingListModel.getCheckedIngredientIds(req.session.user.id, recipeId);
+    return res.json({ success: true, ...data });
+  } catch (err) { return validation.apiError(res, err, 'Server Error'); }
+}
+
+async function setShoppingListServings(req, res) { try { if (!req.session.user) return res.status(401).json({ success:false }); const recipeId = validation.id(req.params.id); const servings = Number(req.body?.servings); if (!Number.isInteger(servings) || servings < 1 || servings > 100) return res.status(400).json({ success:false, message:'Khẩu phần không hợp lệ' }); await shoppingListModel.setServings(req.session.user.id, recipeId, servings); req.app.locals.cookingSync?.emitShoppingListChanged(req.session.user.id, { recipeId, servings }); return res.json({ success:true, servings }); } catch (err) { return validation.apiError(res, err); } }
+
+async function setShoppingListItem(req, res) {
+  try {
+    if (!req.session.user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+    const recipeId = validation.id(req.params.id);
+    const ingredientId = validation.id(req.params.ingredientId);
+    if (typeof req.body?.checked !== 'boolean') return res.status(400).json({ success: false, message: 'checked phải là boolean' });
+    const checked = await shoppingListModel.setChecked(req.session.user.id, recipeId, ingredientId, req.body.checked);
+    if (checked === null) return res.status(404).json({ success: false, message: 'Ingredient not found' });
+    req.app.locals.cookingSync?.emitShoppingListChanged(req.session.user.id, { recipeId, ingredientId, checked });
+    return res.json({ success: true, checked });
+  } catch (err) { return validation.apiError(res, err, 'Server Error'); }
+}
 
 async function addComment(req, res) {
   try {
@@ -91,6 +118,8 @@ async function toggleFavorite(req, res) {
       return res.status(400).json({ success: false, message: 'isFav phải là boolean' });
     }
     const isFav = await favoriteModel.setFavorite(userId, recipeId, desired);
+    // MySQL đã hoàn tất trước khi báo các thiết bị khác tải lại dữ liệu chuẩn qua REST.
+    req.app.locals.cookingSync?.emitFavoritesChanged(userId);
     res.json({ success: true, message: 'Favorite updated', isFav });
   } catch (err) {
     console.error('Yêu cầu thất bại:', err.code || err.name);
@@ -189,5 +218,8 @@ module.exports = {
   addTag,
   showRecipeDetail,
   adminComments,
-  deleteComment
+  deleteComment,
+  getShoppingList,
+  setShoppingListItem,
+  setShoppingListServings,
 };

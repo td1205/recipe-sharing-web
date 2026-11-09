@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import AdminPageHeader from '../../components/AdminPageHeader';
 import SkeletonLoader from '../../components/SkeletonLoader';
 import useAdminResource from '../../hooks/useAdminResource';
+import AdminEvaluationSummary from '../../components/AdminEvaluationSummary';
 
 const descriptions = {
   Popularity:
@@ -95,6 +97,39 @@ export default function Recommender() {
                   thống giữ mô hình cũ nếu có.
                 </p>
               )}
+              <section className="admin-ranking" aria-labelledby="ranking-title">
+                <h2 id="ranking-title" className="admin-section-title">Top 10 món theo điểm phổ biến</h2>
+                <p className="admin-page-sub">
+                  Kết quả xếp hạng từ lần dựng mô hình gần nhất, trước bước đa dạng hóa danh mục.
+                  Điểm từ 0 đến 1 kết hợp đánh giá sao (40%), yêu thích (30%) và lượt xem (30%).
+                  Đây là điểm xếp hạng, không phải tỷ lệ dự đoán đúng.
+                </p>
+                {model.topPopular == null ? (
+                  <p role="status">Chưa có kết quả xếp hạng trong bộ nhớ. Trang này không tự dựng mô hình.</p>
+                ) : model.topPopular.length === 0 ? (
+                  <p role="status">Mô hình chưa có công thức để xếp hạng.</p>
+                ) : (
+                  <ol className="admin-ranking-list">
+                    {model.topPopular.map((recipe, index) => (
+                      <li key={recipe.id}>
+                        <span className="admin-ranking-position" aria-hidden="true">{index + 1}</span>
+                        <div className="admin-ranking-item">
+                          <div className="admin-ranking-heading">
+                            <Link to={`/recipes/${recipe.id}`}>{recipe.title}</Link>
+                            <span className="admin-ranking-score">{recipe.score.toLocaleString('vi-VN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</span>
+                          </div>
+                          <div className="admin-ranking-track" aria-hidden="true">
+                            <span style={{ width: `${Math.max(0, Math.min(1, recipe.score)) * 100}%` }} />
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </section>
+              <AdminEvaluationSummary evaluation={data?.evaluation} />
+              <details className="admin-model-details">
+                <summary>Chi tiết kỹ thuật và thông số</summary>
               <div className="admin-table-box">
                 <table className="admin-card-table">
                   <caption className="admin-sr-only">
@@ -127,10 +162,10 @@ export default function Recommender() {
                   </div>
                 ))}
               </dl>
+              </details>
               <p className="admin-page-sub">
                 Số lượng phản ánh dữ liệu tại lần dựng thành công gần nhất.
-                Trang này không cung cấp Precision/NDCG vì chưa có kết quả đánh
-                giá gắn với mô hình hiện tại.
+                Chỉ số thực nghiệm được tính riêng trên snapshot đánh giá, không phải đo trực tiếp từng yêu cầu gợi ý.
               </p>
             </>
           )

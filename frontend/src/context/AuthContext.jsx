@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useLayoutEffect, useRef } from 'react';
 import axios from 'axios';
+import { disconnectCookingSocket, subscribeToFavoriteChanges } from '../services/cookingSocket';
 
 // Cấu hình axios để luôn gửi cookie
 axios.defaults.withCredentials = true;
@@ -28,6 +29,21 @@ export const AuthProvider = ({ children }) => {
     refresh();
     window.addEventListener('focus', refresh);
     return () => { controller.abort(); window.removeEventListener('focus', refresh); };
+  }, [user?.id]);
+  useEffect(() => {
+    if (!user?.id) {
+      disconnectCookingSocket();
+      return undefined;
+    }
+    const refreshFavorites = () => {
+      const owner = user.id;
+      return axios.get('/api/profile').then(({ data }) => {
+        if (ownerRef.current === owner && data.success) {
+          setFavoriteState({ owner, ids: (data.favouriteRecipes || []).map((recipe) => recipe.id) });
+        }
+      }).catch(() => {});
+    };
+    return subscribeToFavoriteChanges(refreshFavorites);
   }, [user?.id]);
   const setFavorite = async (id, isFav) => {
     const owner = ownerRef.current;
@@ -95,6 +111,7 @@ export const AuthProvider = ({ children }) => {
     await axios.post('/api/logout');
     favoriteVersion.current++;
     setFavoriteState({ owner: null, ids: [] });
+    disconnectCookingSocket();
     setUser(null);
   };
 

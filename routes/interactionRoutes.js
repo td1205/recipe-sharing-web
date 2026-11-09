@@ -6,4 +6,7 @@ router.post('/recipes/:id/comments', interactionLimiter, interactionController.a
 router.post('/recipes/:id/rate', interactionLimiter, interactionController.addRating);
 router.post('/recipes/:id/view', interactionController.recordRecipeView);
 router.post('/recipes/:id/favorite', interactionLimiter, interactionController.toggleFavorite);
+router.get('/recipes/:id/shopping-list', interactionController.getShoppingList);
+router.post('/recipes/:id/shopping-list/servings', interactionLimiter, interactionController.setShoppingListServings);
+router.post('/recipes/:id/shopping-list/:ingredientId', interactionLimiter, interactionController.setShoppingListItem);
 module.exports = router;

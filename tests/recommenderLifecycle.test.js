@@ -4,6 +4,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const scenarios = [
+  'admin-ranking-preview',
   'stale-failure-retry',
   'cold-failure-retry',
   'force-failure-retains-cache',

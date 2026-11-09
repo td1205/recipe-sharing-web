@@ -1,14 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import { subscribeToRecipeChanges } from '../services/cookingSocket';
 import MainLayout from '../components/MainLayout';
 import SkeletonLoader from '../components/SkeletonLoader';
+import Pagination from '../components/Pagination';
 import MagazineCard from '../components/MagazineCard';
 import './profile.css';
 
 const DEFAULT_AVATAR = '/default-avatar.svg';
+const PAGE_SIZE = 16;
 
 const Profile = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedPage = Math.max(1, Number(searchParams.get('page')) || 1);
   const [profileUser, setProfileUser] = useState(null);
   const [favouriteRecipes, setFavouriteRecipes] = useState([]);
   const [myRecipes, setMyRecipes] = useState([]);
@@ -36,7 +41,8 @@ const Profile = () => {
       }
     };
     fetchProfile();
-    return () => { active = false; };
+    const unsubscribe = subscribeToRecipeChanges(fetchProfile);
+    return () => { active = false; unsubscribe(); };
   }, []);
 
   if (loading) return <MainLayout hideSidebar className="home-typography"><SkeletonLoader /></MainLayout>;
@@ -51,6 +57,20 @@ const Profile = () => {
     );
   }
   if (!profileUser) return null;
+
+  const totalPages = Math.max(1, Math.ceil(myRecipes.length / PAGE_SIZE));
+  const page = Math.min(requestedPage, totalPages);
+  const visibleRecipes = myRecipes.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const handlePageChange = (nextPage) => {
+    const next = new URLSearchParams(searchParams);
+    if (nextPage > 1) next.set('page', String(nextPage));
+    else next.delete('page');
+    setSearchParams(next);
+
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+  };
 
   return (
     <MainLayout hideSidebar className="home-typography">
@@ -99,11 +119,16 @@ const Profile = () => {
               <Link to="/recipes/create" className="profile-empty-cta">Đăng công thức</Link>
             </div>
           ) : (
-            <div className="profile-grid">
-              {myRecipes.map((recipe) => (
-                <MagazineCard key={recipe.id} recipe={recipe} />
-              ))}
-            </div>
+            <>
+              <div className="profile-grid">
+                {visibleRecipes.map((recipe) => (
+                  <MagazineCard key={recipe.id} recipe={recipe} />
+                ))}
+              </div>
+              <div className="public-profile-pager">
+                <Pagination currentPage={page} totalPages={totalPages} onPageChange={handlePageChange} />
+              </div>
+            </>
           )}
         </section>
       </div>

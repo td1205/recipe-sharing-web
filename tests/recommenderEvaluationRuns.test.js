@@ -1,0 +1,40 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const runs = require('../services/recommender/evaluationRuns');
+test('offline job publishes real computed fixture results, detects changes and retains history', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'recipe-evaluation-test-'));
+  const input = path.join(directory, 'fixture.json');
+  const options = { directory, input };
+  try {
+    assert.equal(runs.readStatus({ directory, input: null }).status, 'not_configured');
+    assert.equal(runs.readStatus(options).status, 'not_run');
+    const recipes = Array.from({ length: 12 }, (_, i) => ({ id: i + 1, title: `TEST ONLY ${i}`, ingredients: ['Fixture'], tags: [] }));
+    const interactions = Array.from({ length: 18 }, (_, i) => ({ userId: Math.floor(i / 6) + 1, recipeId: i % 6 + 1, type: 'favorite' }));
+    fs.writeFileSync(input, JSON.stringify({ kind: 'simulated', label: 'Validator test fixture only, never production evidence', recipes, interactions }));
+    assert.equal(runs.runEvaluation(options).status, 'published');
+    const state = runs.readStatus(options);
+    assert.equal(state.status, 'current');
+    assert.equal(state.result.report.userCount, 3);
+    assert.equal(state.result.dataset.recipes, 12);
+    assert.equal(runs.runEvaluation(options).status, 'unchanged');
+    assert.equal(runs.readStatus(options, '0'.repeat(64)).status, 'stale');
+    assert.equal(runs.readStatus(options, runs.modelFingerprint(), Date.parse(state.result.generatedAt) + runs.DAY_MS).status, 'stale');
+    fs.appendFileSync(input, ' ');
+    assert.equal(runs.readStatus(options).status, 'stale');
+    assert.equal(runs.runEvaluation(options).status, 'published');
+    assert.notEqual(runs.readStatus(options).result.runId, state.result.runId);
+    assert.ok(fs.existsSync(path.join(directory, state.result.runId + '.json')));
+    const previous = fs.readFileSync(path.join(directory, 'latest.json'), 'utf8');
+    fs.writeFileSync(input, '{}');
+    assert.throws(() => runs.runEvaluation(options));
+    assert.equal(fs.readFileSync(path.join(directory, 'latest.json'), 'utf8'), previous);
+    fs.writeFileSync(path.join(directory, 'running.lock'), 'test');
+    assert.equal(runs.runEvaluation(options).status, 'already_running');
+    fs.unlinkSync(path.join(directory, 'running.lock'));
+    fs.writeFileSync(path.join(directory, 'latest.json'), '{}');
+    assert.equal(runs.readStatus(options).status, 'unavailable');
+  } finally { fs.rmSync(directory, { recursive: true, force: true }); }
+});

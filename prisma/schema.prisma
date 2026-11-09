@@ -52,6 +52,7 @@ model ingredients {
   amount    String? @db.VarChar(50)
   unit      String? @db.VarChar(50)
   recipes   recipes @relation(fields: [recipe_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "ingredients_ibfk_1")
+  shopping_list_items shopping_list_items[]
 
   @@index([recipe_id], map: "recipe_id")
 }
@@ -90,6 +91,7 @@ model recipes {
   comments       comments[]
   favorites      favorites[]
   ingredients    ingredients[]
+  shopping_list_items shopping_list_items[]
   ratings        ratings[]
   recipe_media   recipe_media[]
   recipe_views   recipe_views[]
@@ -165,8 +167,25 @@ model users {
   recipes      recipes[]
   recipe_views recipe_views[]
   user_tag_votes user_tag_votes[]
+  shopping_list_items shopping_list_items[]
 
   @@index([created_at], map: "users_created_at_idx")
+}
+
+model shopping_list_items {
+  id            Int         @id @default(autoincrement())
+  user_id       Int
+  recipe_id     Int
+  ingredient_id Int
+  is_checked    Boolean     @default(false)
+  created_at    DateTime    @default(now()) @db.Timestamp(0)
+  updated_at    DateTime    @updatedAt @db.Timestamp(0)
+  users         users       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  recipes       recipes     @relation(fields: [recipe_id], references: [id], onDelete: Cascade)
+  ingredients   ingredients @relation(fields: [ingredient_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, recipe_id, ingredient_id], map: "shopping_list_item_once")
+  @@index([user_id, recipe_id])
 }
 
 model recipe_views {

@@ -137,6 +137,11 @@ module.exports = {
     builtAt: state.builtAt ? new Date(state.builtAt).toISOString() : null,
     lastFailedAt, rebuildIntervalMs: REBUILD_INTERVAL_MS,
     counts: sourceCounts ? { ...sourceCounts } : null,
+    // Read cached output only: admin inspection must never trigger a rebuild.
+    topPopular: state.models ? state.models.popularRanking.slice(0, 10).map((id) => ({
+      id, title: state.models.recipeById.get(id).title,
+      score: state.models.popularity.get(id),
+    })) : null,
     algorithms: ['Popularity', 'CBF', 'Item-CF', 'Hybrid'], settings: { ...hybrid.SETTINGS },
   }),
   getModels,

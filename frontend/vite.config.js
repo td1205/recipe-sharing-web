@@ -13,6 +13,12 @@ export default defineConfig({
       '/avatars': {
         target: 'http://localhost:3000',
         changeOrigin: true
+      },
+      // Socket.IO dùng cùng backend với REST API khi phát triển qua Vite (:5173).
+      '/socket.io': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        ws: true
       }
     }
   }

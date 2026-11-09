@@ -49,6 +49,7 @@ async function sandbox(t) {
     const module = { exports: {} };
     const dependencies = {
       express: relative === 'app.js' ? expressFixture : express,
+      http,
       path,
       fs: { mkdirSync() {} },
       multer,
@@ -63,6 +64,7 @@ async function sandbox(t) {
       './config/prisma': { $queryRaw: async () => [{ healthy: 1 }], $disconnect: async () => {} },
       './config/sessionStore': sessionStoreFixtureModule,
       '../config/sessionStore': sessionStoreFixtureModule,
+      './services/cookingSocket': { createCookingSocket: () => { throw new Error('Socket listener forbidden in sandbox'); } },
       'crypto': require('node:crypto'),
       '../utils/sessionAuth': require('../utils/sessionAuth'),
       '../middlewares/rateLimit': relative === 'middlewares/rateLimit.js' ? null : undefined,

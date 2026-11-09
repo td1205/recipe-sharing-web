@@ -326,6 +326,7 @@ async function handleCreateRecipe(req, res) {
       input.tags,
     );
 
+    req.app.locals.cookingSync?.emitRecipesChanged(req.session.user.id, { recipeId, action: 'created' });
     res.status(201).json({ success: true, message: 'Recipe created', recipeId });
   } catch (err) {
     console.error('Lỗi đăng công thức:', err.code || err.name);
@@ -397,6 +398,7 @@ async function handleUpdateRecipe(req, res) {
     if (!input) return;
 
     await recipeModel.updateRecipe(recipeId, input.recipe, input.ingredients, input.steps, input.media, input.tags);
+    req.app.locals.cookingSync?.emitRecipesChanged(recipe.user_id, { recipeId, action: 'updated' });
     res.json({ success: true, message: 'Recipe updated', recipeId });
   } catch (err) {
     console.error('Lỗi cập nhật công thức:', err.code || err.name);
@@ -424,6 +426,7 @@ async function handleDeleteRecipe(req, res) {
     } else {
       await recipeModel.deleteRecipe(recipeId);
     }
+    req.app.locals.cookingSync?.emitRecipesChanged(recipe.user_id, { recipeId, action: 'deleted' });
     res.json({ success: true, message: 'Recipe deleted' });
   } catch (err) {
     console.error('Yêu cầu thất bại:', err.code || err.name);

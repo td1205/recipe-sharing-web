@@ -1,7 +1,12 @@
 .app-modal {
+  position: fixed;
+  inset: 0;
+  box-sizing: border-box;
+  margin: auto;
   width: min(36rem, calc(100vw - var(--space-5) * 2));
   max-height: calc(100dvh - var(--space-5) * 2);
   overflow: auto;
+  overscroll-behavior: contain;
   padding: var(--space-5);
   background: var(--color-bg-card);
   color: var(--color-text-main);
@@ -15,3 +20,29 @@
 .app-modal input, .app-modal textarea { width: 100%; box-sizing: border-box; }
 .app-modal-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-5); }
 .app-modal-message { color: var(--color-text-muted); }
+.app-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.app-modal-header h2 { margin: 0; min-width: 0; line-height: 1.4; }
+.app-modal-close {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+.app-modal-close:hover:not(:disabled) { background: var(--color-bg-hover); color: var(--color-text-main); }
+.app-modal-close:focus-visible { outline: 2px solid var(--color-text-main); outline-offset: 2px; }
+.app-modal-close:disabled { opacity: .5; cursor: wait; }
