@@ -339,7 +339,6 @@ The project includes a **4-tier automated testing and evaluation suite**:
 
 - **[td1205](https://github.com/td1205)** — Project Lead
 - **[TuanHara](https://github.com/TuanHara)** — Core Developer
-- **[23010710-duy](https://github.com/23010710-duy)** — Contributor (v1)
 
 ## License
 
