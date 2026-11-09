@@ -1,134 +1,287 @@
 # Recipe Sharing Web
 
-A web application for discovering, creating, and interacting with cooking recipes.
+A full-stack web platform for discovering, publishing, and interacting with Vietnamese cooking recipes—featuring a **Multi-Scenario Hybrid Recommendation System** (`Popularity Bayes`, `TF-IDF Content-Based`, `Item-Based Collaborative Filtering`, `Ingredient Matching`) and **AI-Powered Dish Recognition** via Google Gemini.
 
-## Overview
+---
 
-Recipe Sharing Web is a platform where users can browse a catalog of recipes, register accounts, and publish their own cooking instructions. Users can interact with existing recipes by commenting, rating, and bookmarking their favorites. Administrators have access to a dashboard to monitor platform statistics and manage user accounts.
+## Key Features
+
+- **Recipe Discovery & Multi-Criteria Filtering:** Browse 1,180+ cleaned Vietnamese recipes (from the ViFoodRec dataset), search with real-time keyword suggestions, and filter by category, meal time (Breakfast, Lunch, Dinner, Vegetarian, Quick $\le 30$ min), tags, cooking time, and ratings with server-side two-phase pagination.
+- **Multi-Scenario Hybrid Recommendation Engine (`services/recommender/`):**
+  - **Context-Aware Switching & Weighted Hybrid:** Dynamically adapts to user interaction history:
+    - *Cold-start / Guest ($n = 0$):* **Bayesian Popularity** ($m = 5$) combining ratings, log-favorites, and log-views.
+    - *Light history ($1 \le n \le 2$):* **Domain-Weighted TF-IDF Content-Based Filtering** (`tag` $1.5\times$, `ingredient` $1.0\times$, `category` $1.0\times$, `title word` $0.5\times$) with Vietnamese staple-condiment filtering.
+    - *Rich history ($n \ge 3$):* **Weighted Hybrid ($0.3 \times \text{CBF} + 0.7 \times \text{Item-CF}$)** with positive-only similarity and shrinkage ($\lambda = 5$).
+    - *Recipe Detail Page:* **Similar Recipes ($0.7 \times \text{CBF} + 0.3 \times \text{CF}$)** with automatic $100\%$ CBF fallback for newly published recipes.
+    - *"What's in your fridge?" ($1\text{–}15$ ingredients):* **Knowledge-Based Ingredient Matching** ($0.5 \times \text{coverage} + 0.5 \times \text{utilization}$) excluding common pantry condiments.
+  - **Negative Feedback & Category Diversification:** Hard-excludes already-interacted or $1\text{–}2$ star recipes, applies a soft penalty ($-0.35 \cdot S_{\text{content}}^-$) to recipes similar to disliked items, caps each category at 4 items per list, and provides **human-readable explanations** on every recommended card.
+  - **In-Memory Snapshot & Non-Blocking Background Rebuild:** Serves recommendations in $< 30\text{ ms}$ from RAM while rebuilding asynchronously in the background (10-minute TTL, 30-second retry cooldown).
+- **AI Dish Recognition from Photos:** Upload a food image (`JPEG`, `PNG`, `WEBP`, `GIF` $\le 5\text{ MB}$, verified via Magic Bytes) to identify the dish using Google Gemini Vision with automatic multi-model fallback.
+- **Interactive Cooking Mode & Mobile Companion:** Step-by-step interactive cooking checklist, dynamic serving-size ingredient scaling, printable recipe cards, and QR/link sharing to mobile devices.
+- **Community Engagement:** Atomic 1–5 star ratings (`ON DUPLICATE KEY UPDATE`), idempotent favorites, comments, user-contributed tags, violation reporting, and 24-hour deduplicated view counting (`viewer_hash` HMAC-SHA256).
+- **Administration, Moderation & Observability:** Dashboard analytics with growth charts, user & role management (with serialized transaction protection for the last active administrator), recipe/category/comment moderation, violation report workflow, immutable admin audit logs, recommender model inspector, and `/healthz` + `/readyz` probes.
+
+---
 
 ## Screenshots
+
+### 1. Discovery, Filtering & Personalized Recommendations
 
 <table align="center">
   <tr>
     <td align="center" width="50%">
-      <strong>Home Page</strong><br>
-      <img src="./public/images/home-page.png" alt="Home Page" />
+      <strong>Recipe Catalog & Multi-Criteria Filter</strong><br>
+      <img src="./public/images/Hinh_5.5.png" alt="Recipe Catalog and Filtering" />
     </td>
     <td align="center" width="50%">
-      <strong>Recipe Detail Page</strong><br>
-      <img src="./public/images/recipe-detail-page.png" alt="Recipe Detail Page" />
-    </td>
-  </tr>
-  <tr>
-    <td align="center" width="50%">
-      <strong>Create Recipe Form</strong><br>
-      <img src="./public/images/recipes-create.png" alt="Create Recipe Form" />
-    </td>
-    <td align="center" width="50%">
-      <strong>Admin Dashboard</strong><br>
-      <img src="./public/images/admin-dashboard.png" alt="Admin Dashboard" />
-    </td>
-  </tr>
-  <tr>
-    <td align="center" colspan="2">
-      <strong>Login</strong><br>
-      <img src="./public/images/login.png" alt="Login" width="50%" />
+      <strong>Personalized Recommendations ("Dành riêng cho bạn")</strong><br>
+      <img src="./public/images/Hinh_5.4.jpg" alt="Personalized Recommendations" />
+      <br><br>
+      <strong>Filter Bar & Pagination Controls</strong><br>
+      <img src="./public/images/Hinh_5.6_a.png" alt="Filter Bar" /><br>
+      <img src="./public/images/Hinh_5.6_b.png" alt="Pagination Controls" />
     </td>
   </tr>
 </table>
 
+### 2. Recipe Detail, Interactive Cooking & Mobile Companion
+
+<table align="center">
+  <tr>
+    <td align="center" width="50%">
+      <strong>Recipe Detail Page</strong><br>
+      <img src="./public/images/Hinh_5.7.png" alt="Recipe Detail Page" />
+    </td>
+    <td align="center" width="50%">
+      <strong>Ratings, Comments & Similar Recipes ("Gợi ý cho bạn")</strong><br>
+      <img src="./public/images/Hinh_5.8.png" alt="Ratings, Comments and Similar Recipes" />
+      <br><br>
+      <strong>Quick Actions (Save, Share, Send to Phone, Print)</strong><br>
+      <img src="./public/images/Hinh_5.22.png" alt="Recipe Quick Actions" />
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <strong>Interactive Step-by-Step Progress (Web & Mobile)</strong><br>
+      <img src="./public/images/Hinh_5.23_a.png" alt="Interactive Steps Web" width="48%" />
+      <img src="./public/images/Hinh_5.23_b.png" alt="Interactive Steps Mobile" width="48%" />
+    </td>
+    <td align="center" width="50%">
+      <strong>Mobile Shopping List (Serving Scaling) & Completion</strong><br>
+      <img src="./public/images/Hinh_5.24_a.png" alt="Mobile Shopping List" width="48%" />
+      <img src="./public/images/Hinh_5.24_b.png" alt="Mobile Cooking Completed" width="48%" />
+    </td>
+  </tr>
+</table>
+
+### 3. Recipe Publishing & AI Photo Search (Google Gemini)
+
+<table align="center">
+  <tr>
+    <td align="center" width="50%">
+      <strong>Create Recipe Form</strong><br>
+      <img src="./public/images/Hinh_5.9.png" alt="Create Recipe Form" />
+    </td>
+    <td align="center" width="50%">
+      <strong>Media Upload & Preview</strong><br>
+      <img src="./public/images/Hinh_5.10.png" alt="Media Upload and Preview" />
+      <br><br>
+      <strong>AI Photo Search Modal</strong><br>
+      <img src="./public/images/Hinh_5.11.png" alt="AI Photo Search Modal" />
+      <br><br>
+      <strong>AI Dish Recognition Results</strong><br>
+      <img src="./public/images/Hinh_5.12.jpg" alt="AI Dish Recognition Results" />
+    </td>
+  </tr>
+</table>
+
+### 4. Authentication, OTP Recovery & User Profiles
+
+<table align="center">
+  <tr>
+    <td align="center" width="50%">
+      <strong>Login Page</strong><br>
+      <img src="./public/images/Hinh_5.1_a.png" alt="Login Page" />
+    </td>
+    <td align="center" width="50%">
+      <strong>Registration & Password Policy Check</strong><br>
+      <img src="./public/images/Hinh_5.1_b.png" alt="Register Page" />
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <strong>OTP Verification & Recovery Email</strong><br>
+      <img src="./public/images/Hinh_5.2.png" alt="OTP Verification Screen" /><br>
+      <img src="./public/images/Hinh_5.3.jpg" alt="OTP Email" />
+    </td>
+    <td align="center" width="50%">
+      <strong>Member Profile, Edit Profile & Public Author Page</strong><br>
+      <img src="./public/images/Hinh_5.13_a.png" alt="User Profile" width="48%" />
+      <img src="./public/images/Hinh_5.13_b.png" alt="Edit Profile" width="48%" /><br>
+      <img src="./public/images/Hinh_5.14.jpg" alt="Public Author Profile" width="85%" />
+    </td>
+  </tr>
+</table>
+
+### 5. Administration, Moderation & Audit Logging
+
+<table align="center">
+  <tr>
+    <td align="center" width="50%">
+      <strong>Admin Dashboard & Growth Analytics</strong><br>
+      <img src="./public/images/Hinh_5.15.png" alt="Admin Dashboard" />
+    </td>
+    <td align="center" width="50%">
+      <strong>User & Role Management</strong><br>
+      <img src="./public/images/Hinh_5.16.png" alt="Admin User Management" />
+      <br><br>
+      <strong>Recipe Management</strong><br>
+      <img src="./public/images/Hinh_5.17.png" alt="Admin Recipe Management" />
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <strong>Category Management</strong><br>
+      <img src="./public/images/Hinh_5.18.png" alt="Admin Category Management" />
+      <br><br>
+      <strong>Comment Moderation</strong><br>
+      <img src="./public/images/Hinh_5.19.png" alt="Admin Comment Moderation" />
+    </td>
+    <td align="center" width="50%">
+      <strong>Violation Reports Review</strong><br>
+      <img src="./public/images/Hinh_5.20.png" alt="Admin Violation Reports" />
+      <br><br>
+      <strong>Admin Audit Logs</strong><br>
+      <img src="./public/images/Hinh_5.21.png" alt="Admin Audit Logs" />
+    </td>
+  </tr>
+</table>
+
+---
+
 ## Tech Stack
 
-### Frontend
+| Layer | Technology |
+| :--- | :--- |
+| **Frontend** | React 19 + Vite SPA (`frontend/`), React Router, Axios, `react-hot-toast`, Cloudinary direct uploads |
+| **Backend** | Node.js ($\ge 22.12$), Express 5 (`express@5.2.1`) |
+| **Database & ORM** | MySQL 8.0, Prisma ORM (`@prisma/client@5.22.0`), `mysql2` |
+| **Authentication & Security** | Dual Auth: `express-session` + `express-mysql-session` (`httpOnly` cookie) & SHA-256 `Bearer` tokens, `bcrypt`, `helmet`, custom multi-tier Rate Limiters, Magic-Bytes file validation |
+| **AI & Recommendation** | Google Gemini (`@google/genai`), In-house Hybrid Recommender (`services/recommender/`) |
+| **Email & Tooling** | Nodemailer (Gmail App Password OTP), Node.js built-in test runner (`node --test`), Playwright Chromium (`@playwright/test`) |
 
-- React 19 + Vite (SPA in `frontend/`)
-- React Router, Axios, react-hot-toast
-- Cloudinary (direct browser uploads for recipe photos/videos)
+---
 
-### Backend
+## Architecture & Project Structure
 
-- Node.js
-- Express.js
-
-### Database
-
-- MySQL
-- Prisma ORM
-
-### Authentication & Security
-
-- bcrypt
-- express-session
-- express-mysql-session
-
-### Other
-
-- Nodemailer (OTP emails via Gmail)
-- Google Gemini (`@google/genai`) – find a dish from a photo
-- Hybrid recommender (popularity, TF-IDF content-based, item-based CF) in `services/recommender/`
-
-## Architecture
-
-The application uses a layered structure that partially implements the Service-Repository pattern, separating request handling, business logic (for authentication), and data access.
-
-- Routes: Define application endpoints.
-- Controllers: Handle HTTP requests and responses.
-- Services: Implement business logic.
-- Repositories: Handle database access.
-- Frontend: React SPA (`frontend/`) calling the REST API under `/api`.
-
-## Project Structure
+The backend follows a strict **4-layer Service–Repository architecture** (`Routes -> Controllers -> Services -> Repositories`), completely decoupling the pure mathematical recommendation engine (`services/recommender/`) from HTTP transport and Prisma data access.
 
 ```text
 recipe-sharing-web/
-├── config/            # Prisma client
-├── controllers/       # HTTP handlers
-├── data/vifoodrec/    # ViFoodRec dataset (import script input)
-├── docs/              # Recommender algorithm notes & evaluation results
-├── frontend/          # React + Vite SPA
-├── middlewares/       # auth, session refresh, rate limiting
-├── prisma/
+├── config/            # Shared Prisma client & database configuration
+├── controllers/       # HTTP request/response handlers (auth, recipes, interactions, admin, AI)
+├── data/vifoodrec/    # ViFoodRec dataset source & import artifacts
+├── docs/              # Recommender algorithm notes & evaluation reports
+├── frontend/          # React 19 + Vite Single Page Application
+├── middlewares/       # Dual auth (session + Bearer token), RBAC, CSRF/Origin check, rate limiters
+├── prisma/            # Prisma schema (16 domain models + session store) & baseline guide
 │   └── schema.prisma
-├── public/images/     # README screenshots
-├── repositories/      # Data access (Prisma)
-├── routes/
-├── scripts/           # data import, simulation, evaluation, DB migrations
-├── services/          # auth, Gemini, recommender
-├── tests/             # node:test unit tests (npm test)
-├── utils/             # mail, validation helpers
-├── init_db.sql        # base tables + seed data
-├── package.json
-└── README.md
+├── public/images/     # UI screenshots & static assets
+├── repositories/      # Data access layer (Prisma queries, transactions, safe projections)
+├── routes/            # Express route definitions (/api/*, /healthz, /readyz)
+├── scripts/           # Data import, interaction simulation, offline evaluation, DB migrations
+├── services/          # Business logic (auth, admin moderation, Gemini AI, hybrid recommender)
+│   └── recommender/   # Modular recommender (contentModel, cfModel, popularity, hybrid, textUtils)
+├── tests/             # 4-tier automated test suite (Unit, HTTP Sandbox, MySQL Integration, E2E)
+├── utils/             # Input/recipe validators, password policy, HTML sanitizer, mail helper
+├── app.js             # Express application factory & graceful shutdown lifecycle
+├── init_db.sql        # Base SQL bootstrap & seed schema
+└── package.json
 ```
 
-## Requirements
+---
 
-- Node.js
-- npm
-- MySQL
+## Database Schema (17 Tables)
 
-## Installation
+The MySQL database comprises **16 domain tables** managed via Prisma ORM plus the `sessions` table managed by `express-mysql-session`:
 
-### 1. Clone the repository
+- **Identity & Access:** `users`, `api_tokens`, `password_reset_otps`, `sessions`
+- **Recipes & Taxonomy:** `recipes`, `categories`, `ingredients`, `steps`, `recipe_media`, `tags`, `recipe_tags`, `meal_times`, `recipe_meal_times`
+- **Community & Telemetry:** `comments`, `ratings` (`UNIQUE(user_id, recipe_id)`), `favorites` (`UNIQUE(user_id, recipe_id)`), `recipe_views` (24h `viewer_hash` deduplication)
+- **Moderation & Governance:** `reports`, `admin_audit_logs`, `articles`
+
+```mermaid
+erDiagram
+    users ||--o{ recipes : "creates"
+    users ||--o{ comments : "writes"
+    users ||--o{ ratings : "rates (1..5)"
+    users ||--o{ favorites : "bookmarks"
+    users ||--o{ api_tokens : "authenticates"
+    users ||--o{ reports : "submits"
+    users ||--o{ admin_audit_logs : "executes"
+    categories ||--o{ recipes : "classifies"
+    recipes ||--o{ ingredients : "requires"
+    recipes ||--o{ steps : "includes"
+    recipes ||--o{ recipe_media : "displays"
+    recipes ||--o{ recipe_tags : "tagged_with"
+    tags ||--o{ recipe_tags : "applies_to"
+    recipes ||--o{ recipe_meal_times : "scheduled_for"
+    meal_times ||--o{ recipe_meal_times : "groups"
+    recipes ||--o{ comments : "receives"
+    recipes ||--o{ ratings : "receives"
+    recipes ||--o{ favorites : "saved_in"
+    recipes ||--o{ recipe_views : "tracks"
+```
+
+---
+
+## Security Architecture (Defense-in-Depth)
+
+Designed with reference to **OWASP ASVS 5.0.0**, the platform enforces 6 defense layers:
+
+1. **Authentication & Password Protection:** Passwords hashed with `bcrypt` (`cost = 10`); generic error responses prevent account enumeration.
+2. **Dual Session & Token Lifecycle:** `httpOnly`, `SameSite` session cookies with `req.session.regenerate()` on login to prevent Session Fixation; SHA-256 hashed Bearer tokens; real-time user status synchronization on every request (`refreshSessionUser`) immediately revokes banned accounts or invalidated password versions.
+3. **Atomic Single-Use OTP Recovery:** 6-digit OTPs expire after 5 minutes (`OTP_TTL_MS`), allow at most 5 failed attempts (`OTP_MAX_ATTEMPTS`), and are atomically consumed upon verification.
+4. **Access Control & Admin Invariants:** Strict server-side RBAC (`isAuthenticated`, `isAdmin`), IDOR ownership checks on recipe mutations, and serialized transactions protecting the **last active administrator** from self-ban, self-demotion, or deletion.
+5. **Multi-Tier Rate Limiting:** Sliding-window limiters across login (`5 failed / 15 min` per IP+account and `20 / 15 min` per IP), OTP (`3 / 10 min`), registration (`10 / hr`), community interactions (`30 / min`), and AI image scanning, returning `429 Too Many Requests` with `Retry-After`.
+6. **Input Validation, Upload Verification & Safe Projections:** 100% parameterized queries via Prisma, server-side HTML sanitization against XSS, Magic-Bytes file signature verification (`JPEG/PNG/WEBP/GIF` $\le 5\text{ MB}$), `Origin` verification on state-changing requests, `Helmet` headers, and `SAFE_USER_SELECT` / `PUBLIC_USER_SELECT` projections that strip `password_hash` and OTP fields from all API responses.
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- **Node.js** $\ge 22.12$ and **npm**
+- **MySQL** $8.0+$
+
+### 1. Clone & Install Dependencies
 
 ```bash
 git clone https://github.com/td1205/recipe-sharing-web.git
 cd recipe-sharing-web
-```
-
-### 2. Install dependencies
-
-```bash
 npm install
+npm install --prefix frontend
 ```
 
-### 3. Configure environment variables
+### 2. Configure Environment Variables
 
-Copy `.env.example` to `.env` (backend) and `frontend/.env.example` to `frontend/.env` (Cloudinary), then fill in the values (see the Environment Variables section below).
+Copy `.env.example` to `.env` in the project root and `frontend/.env.example` to `frontend/.env`:
 
-### 4. Configure the database
+| Variable | Location | Required | Description |
+| :--- | :--- | :---: | :--- |
+| `DATABASE_URL` | `.env` | Yes | Prisma MySQL connection URL (`mysql://user:pass@localhost:3306/recipe_db`) |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | `.env` | Yes | MySQL connection settings for `express-mysql-session` |
+| `SESSION_SECRET` | `.env` | Yes | Secret key ($\ge 32$ random chars in production) for signing session cookies |
+| `EMAIL_USER`, `EMAIL_APP_PASSWORD` | `.env` | Yes | Gmail address and 16-char App Password for sending OTP emails |
+| `GEMINI_API_KEY` | `.env` | For AI Search | Google Gemini API key ([get one at Google AI Studio](https://aistudio.google.com/apikey)) |
+| `GEMINI_MODELS` | `.env` | No | Optional comma-separated fallback chain of Gemini models |
+| `PORT`, `TRUST_PROXY`, `APP_ORIGIN` | `.env` | Production | Server port (`3000`), trusted reverse-proxy subnet, and canonical HTTPS origin |
+| `VITE_CLOUDINARY_CLOUD_NAME`, `VITE_CLOUDINARY_UPLOAD_PRESET` | `frontend/.env` | Yes | Cloudinary cloud name and unsigned upload preset for media uploads |
 
-Legacy local bootstrap below creates seed data and changes schema. Use it ONLY for a newly provisioned disposable database after explicit approval; never run it against an existing development/production database or as part of tests. For deployment use the reviewed schema/migration procedure, not this bootstrap:
+### 3. Database Initialization
+
+> **Note:** Only run `init_db.sql` against a newly created, disposable local database. For existing or production environments, follow the [Prisma Baseline & Adoption Procedure](prisma/BASELINE.md).
 
 ```bash
 mysql -u root -p < init_db.sql
@@ -136,167 +289,58 @@ npx prisma db push
 npx prisma generate
 ```
 
-Upgrading an existing database: run `npm run db:ratings-unique` once to remove duplicate ratings and add the `UNIQUE(user_id, recipe_id)` constraint on `ratings`.
-
-### 5. Start the application
+### 4. Start Development Servers
 
 ```bash
 npm run dev
 ```
 
-## Environment Variables
+- **Frontend (Vite SPA):** `http://localhost:5173` (proxies `/api` to port `3000`)
+- **Backend (Express API):** `http://localhost:3000`
 
-| Variable             | Description                                | Required |
-| -------------------- | ------------------------------------------ | -------- |
-| `DATABASE_URL`       | Prisma database connection string          | Yes      |
-| `DB_HOST`            | MySQL database host                        | Yes      |
-| `DB_PORT`            | MySQL database port                        | Yes      |
-| `DB_USER`            | MySQL database user                        | Yes      |
-| `DB_PASSWORD`        | MySQL database password                    | Yes      |
-| `DB_NAME`            | MySQL database name                        | Yes      |
-| `SESSION_SECRET`     | Secret string for securing sessions        | Yes      |
-| `EMAIL_USER`         | Email address for sending OTPs             | Yes      |
-| `EMAIL_APP_PASSWORD` | Application password for the email account | Yes      |
-| `GEMINI_API_KEY`     | Google Gemini key for photo search ([get one](https://aistudio.google.com/apikey)) | For photo search |
-| `GEMINI_MODELS`      | Optional comma-separated model list to try in order | No |
-| `VITE_CLOUDINARY_CLOUD_NAME` (in `frontend/.env`) | Cloudinary cloud name | Yes |
-| `VITE_CLOUDINARY_UPLOAD_PRESET` (in `frontend/.env`) | Unsigned upload preset | Yes |
+---
 
-## Database Setup
+## Testing & Quantitative Evaluation
 
-The application uses MySQL as the primary database. Prisma ORM is used for database access across the application, while direct MySQL configuration is used for session management (`express-mysql-session`). The schema includes the following entities:
+The project includes a **4-tier automated testing and evaluation suite**:
 
-- User
-- Recipe
-- Category
-- Comment
-- Rating
-- Favorite
-- Ingredient
-- Step
-- Session
+| Command | Scope | Description |
+| :--- | :--- | :--- |
+| `npm run test:safe` | **Tier 1: Unit & Domain Logic** | Runs 12 in-memory test suites (**65/65 tests PASS** in ~1s) covering input/recipe validation, rate limiters, admin invariants, sorting/pagination, and recommender strategy/feedback/lifecycle. |
+| `node --test tests/rateLimitRoutes.test.js tests/geminiService.test.js tests/tokenAuth.test.js` | **Tier 2: HTTP Sandbox & Service Mocks** | Runs **18/18 tests** against an ephemeral loopback Express server to verify middleware ordering, `429 Retry-After` headers, SHA-256 Bearer auth, and Gemini multi-model fallback. |
+| `npm run test:database` & `npm run test:admin` | **Tier 3: Isolated MySQL Integration** | Verifies real MySQL `FK/CASCADE/UNIQUE/CHECK` constraints, atomic transactions, concurrent rating/favorite upserts, and `SELECT ... FOR UPDATE` last-admin protection on an isolated `recipe_test_*` database (requires `RUN_DATABASE_TESTS=yes` and `TEST_DB_CONFIRMED=yes`). |
+| `npm run test:e2e` | **Tier 4: Browser End-to-End (Playwright)** | Drives Chromium through registration, login, recipe CRUD, search, favorites/ratings, and admin moderation across React + Express + MySQL (requires `RUN_BROWSER_DATABASE_TESTS=yes`). |
+| `npm run recommend:evaluate` | **Recommender Evaluation (Multi-seed LOO)** | Evaluates `Popularity`, `Content-Based`, `Item-CF`, `Hybrid`, and `Switching` strategies (`HitRate@10`, `Precision@10`, `NDCG@10`). |
+| `npm run recommend:evaluate:offline -- IN.json OUT.json` | **Offline Reproducible Benchmark** | Evaluates local JSON interaction datasets without database connectivity and outputs a full metric & provenance report. |
 
-### Entity-Relationship Diagram (ERD)
+---
 
-```mermaid
-erDiagram
-    users ||--o{ recipes : "creates"
-    users ||--o{ comments : "writes"
-    users ||--o{ ratings : "gives"
-    users ||--o{ favorites : "saves"
-    categories ||--o{ recipes : "contains"
-    recipes ||--o{ comments : "receives"
-    recipes ||--o{ ratings : "receives"
-    recipes ||--o{ favorites : "is bookmarked as"
-    recipes ||--o{ ingredients : "requires"
-    recipes ||--o{ steps : "includes"
-```
+## Production Deployment & Readiness
 
-## Security
+1. Build the frontend bundle and verify the safe test suite:
+   ```bash
+   npm ci && npm ci --prefix frontend
+   npm run test:safe
+   npm run lint --prefix frontend
+   npm run build --prefix frontend
+   ```
+2. Configure `NODE_ENV=production`, a strong `SESSION_SECRET` ($\ge 32$ chars), `APP_ORIGIN`, `TRUST_PROXY`, and database credentials, then start the server:
+   ```bash
+   npm start
+   ```
+3. **Health Probes & Graceful Shutdown:**
+   - `GET /healthz`: Process liveness probe.
+   - `GET /readyz`: Readiness probe checking both Prisma MySQL connectivity and the session store (returns `503` on timeout, failure, or shutdown drain).
+   - Handles `SIGTERM` / `SIGINT` with connection draining and clean teardown of HTTP, session pool, and Prisma client.
 
-The application implements the following security measures:
+---
 
-- **Password Hashing:** Passwords are encrypted using bcrypt before being stored in the database.
-- **Session Management:** Sessions are securely stored in the MySQL database using `express-mysql-session`, preventing in-memory leaks.
-- **Role-based Access Control:** Middleware is used to restrict access to admin-only routes.
-- **OTP Verification:** Password recovery requires a one-time password (OTP) delivered via email; it expires after 5 minutes, allows at most 5 wrong attempts and is single-use.
-- **Rate Limiting:** Login (5 failed attempts / 15 min per account), OTP requests (3 / 10 min per email) and registration (10 / hour per IP) are throttled.
-- **Input Validation:** Recipe create/update requests are validated server-side and return `400` with a Vietnamese message instead of a generic `500`.
-- **XSS Protection:** Article HTML is sanitized before rendering.
+## Authors & Contributors
 
-## Running the Application
-
-To start the application in development mode with auto-reloading:
-
-```bash
-npm run dev
-```
-
-The frontend runs at `http://localhost:5173` (Vite, proxying `/api` to the backend on port 3000).
-
-Run the unit tests (no database needed):
-
-```bash
-npm test
-```
-
-## Usage
-
-### User
-
-1. Register an account and log in.
-2. Browse recipes on the homepage.
-3. Use the navigation bar to add a new recipe with ingredients and steps.
-4. Open a recipe to comment, rate, or save it to your bookmarks.
-5. View and manage your created or saved recipes.
-
-### Admin
-
-1. Log in with an administrator account.
-2. Open the Admin Dashboard from the navigation menu.
-3. View platform statistics.
-4. Manage users and update roles.
-
-## Testing
-
-### Isolated MySQL integration and real browser E2E
-
-`npm run test:database` skips by default without loading dotenv, Prisma, MySQL or the app. To opt in, an operator must first provision disposable **empty** databases with the approved current schema, including the session table. Provisioning/migrations are not part of the test command.
-
-Set `RUN_DATABASE_TESTS=yes`, `TEST_DB_CONFIRMED=yes`, `TEST_DATABASE_URL` and `TEST_SESSION_DATABASE_URL` explicitly in the test process. URLs must use loopback MySQL and names matching `recipe_test_*`; `recipe_db` and remote hosts are rejected. Use the same disposable schema for Prisma and sessions when running the constraint/browser suites. The harness verifies the database identity and empty users/sessions before fixtures. `npm run test:database` checks actual FK/CHECK/UNIQUE/RESTRICT, transaction rollback, concurrent writes, last-active-admin protection, MySQL session/Bearer lifecycle and HTTP CRUD. No controller or database mock is installed; the deliberate failure during a real transaction is fault injection, not simulated rollback.
-
-`npm run test:e2e` additionally requires `RUN_BROWSER_DATABASE_TESTS=yes`, the built frontend and Playwright Chromium. It drives registration/login, recipe create/delete, search, favorite/comment/rating, ownership and admin ban/unban through React + Express + MySQL, asserting both HTTP/UI and persisted rows. External paid/email integrations remain unconfigured; no application API response is mocked. Fixture cleanup checks row counts before/after. In PR #2 verification, 13 MySQL integration tests and 8 browser E2E tests passed on an independent MySQL 8.0.46 instance; CI repeats them on its own MySQL service. These results do not establish production TLS, backup/restore or external-service readiness.
-
-See [baseline and adoption procedure](prisma/BASELINE.md) before deploying to a clean or existing database. The primary database was only inspected, never migrated, seeded or marked baselined during this verification.
-
-### Production deployment and recovery (procedures, NOT VERIFIED)
-
-Use a pinned release artifact and Node >=22.12. Run `npm ci`, `npm ci --prefix frontend`, `npm run test:safe`, `npm run lint --prefix frontend`, and `npm run build --prefix frontend` in the build environment. CI also executes the isolated loopback router and Gemini mock tests; no CI database mutation job is enabled.
-
-Set `NODE_ENV=production`, a random `SESSION_SECRET` of at least 32 characters, a canonical HTTPS `APP_ORIGIN` without trailing slash, a MySQL `DATABASE_URL`, and the independent `DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME` session-store configuration. Behind TLS termination, allow only the actual proxy IP/subnets in `TRUST_PROXY`. Verify HTTPS cookie Secure/HttpOnly/SameSite behavior and rejection of forged forwarded headers on staging. Persist `uploads/avatars` outside release replacement and protect backup access. Startup does not create session tables or run migrations.
-
-`npm start` starts the release. `/healthz` is process liveness; `/readyz` probes both Prisma and the session table and returns 503 on timeout, failure or drain without revealing connection details. SIGTERM/SIGINT stop admission through readiness, drain HTTP, close idle connections, session pool and the shared Prisma client; a ten-second deadline terminates a stuck shutdown. Probe timeout does not cancel a driver query, so driver connection timeouts must also be bounded in deployment configuration.
-
-Before any approved deployment, take a consistent backup using a restricted backup account (for example `mysqldump --login-path=recipe-backup --single-transaction --routines --triggers --result-file=backup.sql recipe_db`). Encrypt and restrict access to the dump: it can contain personal data, password hashes and sessions. Do not store it in Git. Record the release/schema versions and checksum outside public logs.
-
-Rehearse restore only into a separately verified disposable `recipe_test_restore` database with a test-only login path. Inspect the dump for `USE`, `CREATE DATABASE`, qualified production names, and definers before import; never import a dump blindly through a production account. Verify table counts, constraints, session isolation and critical journeys after restore. No backup or restore command was executed here.
-
-For rollback, redeploy the previous validated artifact only after checking schema compatibility. If a data/schema rollback is necessary, stop writes and follow a reviewed restore/migration plan with an approved backup; do not use code rollback as proof that data was restored. Migration history, clean-clone deployment, remote CI execution, live outage recovery, reverse-proxy TLS and restore rehearsal remain NOT VERIFIED until staging and permission are provided.
-
-### Offline recommendation evaluation
-
-`npm run recommend:evaluate:offline -- INPUT.json OUTPUT.json` reads only a local dataset and never connects to a database or external service. Output must not already exist. Input requires `kind` (`real` or `simulated`), a provenance `label`, `recipes` with unique IDs/title/ingredients/tags, and `interactions` with pseudonymous integer user IDs, recipe IDs and favorite/rating/comment/view types (ratings 1–5). Do not export names, emails, session IDs or credentials. A single file must represent one verified source kind; the operator must confirm provenance because the validator cannot establish it independently.
-
-The report compares popularity, content, CF, hybrid and switching on the same seeded leave-one-out split, K=10 and production diversification; it records Precision@10, Recall@10, NDCG@10, seeds, settings and model/dataset hashes. Cold-start histories use the same protocol. Recall equals HitRate with one held-out positive. No eligible users produces an error rather than a misleading all-zero quality report. The local ViFoodRec archive supplies recipes only; no approved interaction dataset was found, so no relevance scores were generated in this work session. Fixture tests verify protocol mechanics only. Temporal evaluation and real-user A/B remain separate work requiring suitable data/permission.
-
-Run `npm run test:safe` for the explicitly selected memory-only suite. Route sandbox: `node --test tests/rateLimitRoutes.test.js` uses ephemeral loopback HTTP and mocked controllers/session store, not the live server. Tests do not establish real database atomicity or E2E coverage.
-
-Production: build with `npm run build --prefix frontend`, then `npm start` (Node >=22.12). Required configuration: DATABASE_URL, DB_HOST, DB_USER, DB_NAME, SESSION_SECRET; DB_PASSWORD/DB_PORT must point to the intended session store. Use an independent test database for BOTH Prisma and sessions. No migration or seed runs automatically at startup. `/healthz` reports process liveness only, not database readiness.
-
-Set PORT as needed. Behind TLS termination, explicitly set TRUST_PROXY to trusted proxy IPs/subnets and APP_ORIGIN to the public origin; do not trust arbitrary forwarded headers. Existing sessions created before password fingerprinting require login again. All old logged-in sessions are rejected on their next API request after a password change. OTP/reset grants expire after five minutes and successful reset consumes the previous password version atomically.
-
-Before release: verify schema parity and migrations on a permitted database copy, rehearse backup/restore and rollback, confirm session-store isolation/TLS/proxy, persistent uploads and environment secrets. These deployment checks have not been executed on the real database.
-
-## Future Improvements
-
-- Extend isolated database integration and browser E2E tests
-- Implement image upload functionality
-- Improve recipe search and filtering
-- Enhance input validation and error handling
+- **[td1205](https://github.com/td1205)** — Project Lead
+- **[TuanHara](https://github.com/TuanHara)** — Core Developer
+- **[23010710-duy](https://github.com/23010710-duy)** — Contributor (v1)
 
 ## License
 
-This project is licensed under the ISC License.
-
-## Author
-
-### Original Version
-
-[td1205](https://github.com/td1205) - Project Lead <br>
-[TuanHara](https://github.com/TuanHara) <br>
-[23010710-duy](https://github.com/23010710-duy) <br>
-
-### Version 2 — Current Development
-
-[td1205](https://github.com/td1205) - Project Lead <br>
-[TuanHara](https://github.com/TuanHara) <br>
+This project is licensed under the **ISC License**.
