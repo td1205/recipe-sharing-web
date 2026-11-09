@@ -5,7 +5,7 @@ const { evaluateAveraged, evaluateByHistorySize } = require('../services/recomme
 const { SETTINGS } = require('../services/recommender/hybrid');
 
 function validateDataset(data) {
-  if (!['real', 'simulated'].includes(data.kind) || typeof data.label !== 'string' || !data.label.trim()) throw new Error('Dataset cần kind real/simulated và label; không trộn hai loại');
+  if (!['real', 'simulated', 'unverified'].includes(data.kind) || typeof data.label !== 'string' || !data.label.trim()) throw new Error('Dataset cần kind real/simulated/unverified và label; không tự gán dữ liệu chưa xác minh thành dữ liệu thật');
   if (!Array.isArray(data.recipes) || !data.recipes.length || !Array.isArray(data.interactions) || !data.interactions.length) throw new Error('Thiếu recipes hoặc interactions; không thể đo relevance');
   const ids = new Set();
   for (const recipe of data.recipes) {
@@ -34,7 +34,7 @@ function evaluateFile(input) {
   const modules = ['hybrid.js', 'contentModel.js', 'cfModel.js', 'popularity.js', 'interactions.js', 'text.js', 'evaluation.js'];
   const version = crypto.createHash('sha256');
   for (const file of modules) version.update(file).update(fs.readFileSync(path.join(__dirname, '../services/recommender', file)));
-  return { dataset: { kind: data.kind, label: data.label, sha256: crypto.createHash('sha256').update(bytes).digest('hex') },
+  return { dataset: { kind: data.kind, label: data.label, recipes: data.recipes.length, interactions: data.interactions.length, sha256: crypto.createHash('sha256').update(bytes).digest('hex') },
     model: { sha256: version.digest('hex'), settings: SETTINGS }, generatedAt: new Date().toISOString(),
     report, coldStart: evaluateByHistorySize(options), limitations: ['Seeded random leave-one-out, chưa phải temporal hoặc A/B test', 'Recall bằng HitRate vì mỗi user giữ lại đúng một positive', 'Nguồn/provenance phải được người cung cấp dataset xác nhận'] };
 }

@@ -78,6 +78,20 @@
 .admin-settings > div { padding: var(--space-3); border: 1px solid var(--color-border); background: var(--color-bg-card); }
 .admin-settings dt { overflow-wrap: anywhere; color: var(--color-text-muted); }
 .admin-settings dd { margin: 0; font-weight: 700; }
+.admin-ranking { margin-block: var(--space-4); padding: var(--space-4); border: 1px solid var(--color-border); background: var(--color-bg-card); }
+.admin-ranking-list { list-style: none; margin: var(--space-4) 0 0; padding: 0; display: grid; gap: var(--space-3); }
+.admin-ranking-list li { display: flex; align-items: baseline; gap: var(--space-3); }
+.admin-ranking-position { flex: 0 0 1.5rem; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+.admin-ranking-item { flex: 1; min-width: 0; }
+.admin-ranking-heading { display: flex; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-2); }
+.admin-ranking-heading a { color: var(--color-text-main); overflow-wrap: anywhere; text-underline-offset: var(--space-1); }
+.admin-ranking-heading a:focus-visible, .admin-model-details summary:focus-visible { outline: 2px solid var(--color-text-main); outline-offset: var(--space-1); }
+.admin-ranking-score { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.admin-ranking-track { height: var(--space-2); background: var(--color-bg-hover); overflow: hidden; border-radius: var(--radius-sm); }
+.admin-ranking-track span { display: block; height: 100%; background: var(--color-primary); }
+.admin-model-details { margin-block: var(--space-4); }
+.admin-model-details summary { cursor: pointer; font-weight: 600; padding-block: var(--space-3); }
+@media (max-width: 30rem) { .admin-ranking { padding: var(--space-3); } }
 .admin-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .admin-table-box:focus-visible { outline: 2px solid var(--color-text-main); outline-offset: var(--space-1); }
 .admin-sort-button {
@@ -452,6 +466,66 @@
 .admin-cell-sub {
   color: var(--color-text-muted);
   font-size: 12.5px;
+}
+
+/* Report content cell: balanced layout for recipe vs comment rows */
+.admin-report-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.admin-report-type {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  background: var(--color-bg-hover);
+  white-space: nowrap;
+}
+
+.admin-report-type--recipe {
+  color: #9a3412;
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.admin-report-type--comment {
+  color: #1d4ed8;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.admin-report-excerpt {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.admin-report-reason {
+  margin: 0;
+  color: var(--color-text-main);
+  font-size: 13px;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
 .admin-empty-cell {

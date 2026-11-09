@@ -142,21 +142,33 @@ export default function Reports() {
                 <tr key={row.id}>
                   <td>#{row.id}</td>
                   <td className="admin-text-wrap">
-                    {row.recipe || row.comment ? (
-                      <Link
-                        to={`/recipes/${row.recipe_id || row.comment.recipe_id}`}
-                      >
-                        {row.target_type === 'recipe'
-                          ? row.recipe.title
-                          : `Bình luận #${row.target_id}`}
-                      </Link>
-                    ) : (
-                      `Nội dung đã xóa (#${row.target_id})`
-                    )}
-                    {row.comment && <p>{row.comment.content}</p>}
+                    <div className="admin-report-content">
+                      <span className={`admin-report-type admin-report-type--${row.target_type}`}>
+                        {row.target_type === 'recipe' ? 'Công thức' : 'Bình luận'}
+                      </span>
+                      {row.recipe || row.comment ? (
+                        <Link
+                          className="admin-cell-title"
+                          to={`/recipes/${row.recipe_id || row.comment.recipe_id}`}
+                        >
+                          {row.target_type === 'recipe'
+                            ? row.recipe.title
+                            : `Bình luận #${row.target_id}`}
+                        </Link>
+                      ) : (
+                        <span className="admin-cell-sub">
+                          Nội dung đã xóa (#{row.target_id})
+                        </span>
+                      )}
+                      {row.target_type === 'comment' && row.comment && (
+                        <p className="admin-report-excerpt">{row.comment.content}</p>
+                      )}
+                    </div>
                   </td>
                   <td>{row.reporter?.username || 'Tài khoản đã xóa'}</td>
-                  <td className="admin-text-wrap">{row.reason}</td>
+                  <td className="admin-text-wrap">
+                    <p className="admin-report-reason">{row.reason}</p>
+                  </td>
                   <td>
                     {labels[row.status]}
                     {row.resolved_at && (

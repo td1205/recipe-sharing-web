@@ -1,11 +1,13 @@
-import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import useRecipeSearch from '../hooks/useRecipeSearch';
+import RecipeSearchSuggestions from '../components/RecipeSearchSuggestions';
 import MainLayout from '../components/MainLayout';
 import SkeletonLoader from '../components/SkeletonLoader';
 import LoginRequiredModal from '../components/LoginRequiredModal';
 import Pagination from '../components/Pagination';
-import { DEFAULT_RECIPE_IMAGE, RecipeImage } from '../components/MagazineCard';
+import { RecipeImage } from '../components/MagazineCard';
 import { AuthContext } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import ErrorState from '../components/ErrorState';
@@ -31,7 +33,7 @@ const getRatingInfo = (recipe) => {
 const formatCount = (value) => Number(value || 0).toLocaleString('vi-VN');
 
 const PopularRecipes = () => {
-  const navigate = useNavigate();
+  const search = useRecipeSearch();
   const { user, favoriteIds: savedRecipeIds, setFavorite } = useContext(AuthContext);
   const [recipes, setRecipes] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -42,68 +44,38 @@ const PopularRecipes = () => {
   // Filter states
   const [timeFilter, setTimeFilter] = useState('all'); // 'all', 'month', 'week'
   const [activeCategory, setActiveCategory] = useState('Tất cả');
-  const [searchKeyword, setSearchKeyword] = useState('');
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 16;
+  const requestSequence = useRef(0);
 
   // Bookmarks
   const fetchPopularData = useCallback(async () => {
+    const sequence = ++requestSequence.current;
     setLoading(true);
     setError('');
     try {
       const res = await axios.get(`/api/recipes/popular?limit=50&period=${timeFilter}`);
-      if (!res.data.success) {
+      if (sequence !== requestSequence.current) return;
+      if (!res.data.success || !Array.isArray(res.data.recipes) || !Array.isArray(res.data.categories)) {
         throw new Error('Popular endpoint returned an invalid response');
       }
       setRecipes(res.data.recipes || []);
       setCategories(res.data.categories || []);
     } catch (primaryError) {
       console.error('Lỗi khi tải công thức phổ biến:', primaryError);
-      try {
-        const homeRes = await axios.get('/api/');
-        if (!homeRes.data.success) {
-          throw new Error('Home fallback returned an invalid response');
-        }
-        setRecipes(homeRes.data.popularRecipes || homeRes.data.latestRecipes || []);
-        setCategories(homeRes.data.categories || []);
-      } catch (fallbackError) {
-        console.error('Lỗi khi tải dữ liệu dự phòng:', fallbackError);
-        setError('Không thể tải danh sách công thức phổ biến lúc này.');
-      }
+      if (sequence === requestSequence.current) setError('Không thể tải danh sách công thức phổ biến lúc này.');
     } finally {
-      setLoading(false);
+      if (sequence === requestSequence.current) setLoading(false);
     }
   }, [timeFilter]);
 
   useEffect(() => {
     // eslint-disable-next-line react/set-state-in-effect -- Fetching starts when the selected period changes.
     fetchPopularData();
+    return () => { requestSequence.current++; };
   }, [fetchPopularData]);
-
-  // Collections are derived from the loaded recipes: real category names,
-  // real counts and real cover images. Nothing is invented here.
-  const curatedCollections = useMemo(() => {
-    const byCategory = new Map();
-
-    recipes.forEach((recipe) => {
-      const name = recipe.category_name || recipe.categories?.name;
-      if (!name) return;
-      if (!byCategory.has(name)) byCategory.set(name, []);
-      byCategory.get(name).push(recipe);
-    });
-
-    return Array.from(byCategory.entries())
-      .map(([name, list]) => ({
-        title: name,
-        count: list.length,
-        link: `/?category=${encodeURIComponent(name)}`,
-        images: list.slice(0, 4).map((recipe) => recipe.image_url || DEFAULT_RECIPE_IMAGE),
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 4);
-  }, [recipes]);
 
   // Real headline figures instead of a hardcoded "50".
   const popularStats = useMemo(() => {
@@ -147,28 +119,15 @@ const PopularRecipes = () => {
       catch (error) { toast.error(error.response?.data?.message || error.message || 'Không thể lưu công thức'); }
     });
   };
-  const handleShare = async () => {
-    try {
-      if (!navigator.clipboard) throw new Error('Clipboard unavailable');
-      await navigator.clipboard.writeText(window.location.href);
-      toast.success('Đã sao chép liên kết');
-    } catch { toast.error('Không thể sao chép. Vui lòng sao chép địa chỉ từ trình duyệt.'); }
-  };
 
   // Handle search inside banner
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    if (searchKeyword.trim()) {
-      navigate(`/?search=${encodeURIComponent(searchKeyword.trim())}`);
-    }
-  };
 
   // Filter recipes based on category and time horizon
   const filteredRecipes = useMemo(() => {
     let result = [...recipes];
 
     if (activeCategory === 'Dưới 30 phút') {
-      result = result.filter(r => getTotalRecipeTime(r) <= 30);
+      result = result.filter(r => getTotalRecipeTime(r) > 0 && getTotalRecipeTime(r) < 30);
     } else if (activeCategory === 'Ăn chay') {
       result = result.filter(r =>
         (r.category_name || '').toLowerCase().includes('chay') ||
@@ -241,27 +200,16 @@ const PopularRecipes = () => {
             </h1>
 
             <p className="nyt-hero-deck">
-              Bảng xếp hạng được tính từ dữ liệu thật của cộng đồng: lượt xem, số lượt lưu,
-              bình luận và điểm đánh giá. Công thức chưa có lượt tương tác nào sẽ không được tính điểm.
+              Tối đa 50 công thức được xếp hạng theo lượt xem, lượt lưu, bình luận và điểm đánh giá.
+              Các bộ lọc nhanh áp dụng trong danh sách đã tải.
             </p>
 
             {/* Byline & Share/Bookmark Bar */}
             <div className="nyt-hero-byline-bar">
               <div className="nyt-hero-byline">
                 {formatCount(popularStats.recipeCount)} công thức · {formatCount(popularStats.authorCount)} tác giả
-                {popularStats.lastUpdated ? ` · Cập nhật ${popularStats.lastUpdated}` : ''}
               </div>
 
-              <div className="nyt-hero-actions">
-                <button
-                  type="button"
-                  className="nyt-action-circle-btn"
-                  title="Chia sẻ bộ sưu tập"
-                  onClick={handleShare}
-                >
-                  <i className="fa-solid fa-arrow-up-from-bracket"></i>
-                </button>
-              </div>
             </div>
 
             {/* Time Horizon Filter Tabs & Quick Category Pills */}
@@ -270,6 +218,7 @@ const PopularRecipes = () => {
                 <button
                   type="button"
                   className={`nyt-time-tab ${timeFilter === 'all' ? 'active' : ''}`}
+                  aria-pressed={timeFilter === 'all'}
                   onClick={() => { setTimeFilter('all'); setCurrentPage(1); }}
                 >
                   Mọi thời đại
@@ -277,16 +226,18 @@ const PopularRecipes = () => {
                 <button
                   type="button"
                   className={`nyt-time-tab ${timeFilter === 'month' ? 'active' : ''}`}
+                  aria-pressed={timeFilter === 'month'}
                   onClick={() => { setTimeFilter('month'); setCurrentPage(1); }}
                 >
-                  Tháng này
+                  30 ngày qua
                 </button>
                 <button
                   type="button"
                   className={`nyt-time-tab ${timeFilter === 'week' ? 'active' : ''}`}
+                  aria-pressed={timeFilter === 'week'}
                   onClick={() => { setTimeFilter('week'); setCurrentPage(1); }}
                 >
-                  Tuần này
+                  7 ngày qua
                 </button>
               </div>
 
@@ -296,6 +247,7 @@ const PopularRecipes = () => {
                     key={cat}
                     type="button"
                     className={`nyt-pill-btn ${activeCategory === cat ? 'active' : ''}`}
+                    aria-pressed={activeCategory === cat}
                     onClick={() => { setActiveCategory(cat); setCurrentPage(1); }}
                   >
                     {cat}
@@ -316,7 +268,7 @@ const PopularRecipes = () => {
                     alt={heroRecipe.title}
                   />
                   <span className="nyt-featured-badge gold">
-                    <i className="fa-solid fa-crown"></i> TOP 1 PHỔ BIẾN
+                    <i className="fa-solid fa-crown" aria-hidden="true"></i> {activeCategory === 'Tất cả' ? 'TOP 1 PHỔ BIẾN' : 'ĐỨNG ĐẦU BỘ LỌC'}
                   </span>
                 </div>
 
@@ -370,6 +322,7 @@ const PopularRecipes = () => {
             2. MAIN RECIPE GRID
            ======================================================== */}
         <section>
+          {gridRecipes.length === 0 && <p role="status">Chưa có công thức phù hợp với bộ lọc hiện tại.</p>}
           <div className="nyt-popular-grid-4">
             {paginatedRecipes.map((recipe, index) => {
               // Calculate actual global rank
@@ -475,70 +428,49 @@ const PopularRecipes = () => {
           <div className="nyt-search-banner-inner">
             <div className="nyt-search-banner-brand">
               <i className="fa-solid fa-book-open" aria-hidden="true"></i>
-              <span>Recipe Sharing</span>
+              <span>Chưa tìm được món phù hợp?</span>
             </div>
 
-            <form onSubmit={handleSearchSubmit} className="nyt-search-banner-form">
+            <form onSubmit={search.handleSearchSubmit} className="nyt-search-banner-form" role="search" aria-label="Tìm thêm công thức"
+              ref={search.searchRef} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) search.closeSuggest(); }}>
+              <div className="home-banner-search-field">
               <input
-                type="text"
+                type="search"
                 className="nyt-search-banner-input"
-                placeholder="Bạn muốn tìm công thức hoặc nguyên liệu gì hôm nay?"
-                value={searchKeyword}
-                onChange={(e) => setSearchKeyword(e.target.value)}
+                placeholder="Tìm trong tất cả công thức…"
+                aria-label="Tìm trong tất cả công thức"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={search.showSuggest}
+                aria-controls={search.showSuggest ? search.listId : undefined}
+                aria-activedescendant={search.showSuggest && search.activeIdx >= 0 ? `${search.listId}-${search.activeIdx}` : undefined}
+                maxLength={200}
+                autoComplete="off"
+                value={search.searchQuery}
+                onChange={event => search.setSearchQuery(event.target.value)}
+                onKeyDown={search.handleSuggestKeyDown}
+                onFocus={() => { search.loadTitles(); search.setShowSuggest(true); }}
               />
+              <RecipeSearchSuggestions search={search} />
+              </div>
               <button type="submit" className="nyt-search-banner-submit">
-                Tìm kiếm
+                Tìm công thức
               </button>
             </form>
 
             <div className="nyt-search-banner-links">
-              <Link to="/">Tất cả công thức</Link>
+              <Link to="/recipes">Tất cả công thức</Link>
               {categories.slice(0, 4).map((cat) => (
                 <React.Fragment key={cat.id || cat.name}>
                   <span>•</span>
-                  <Link to={`/?category=${encodeURIComponent(cat.name)}`}>{cat.name}</Link>
+                  <Link to={`/recipes?category=${encodeURIComponent(cat.id)}`}>{cat.name}</Link>
                 </React.Fragment>
               ))}
               <span>•</span>
-              <Link to="/new-recipes">Công thức mới</Link>
-              <span>•</span>
-
+              <Link to="/recipes?sort=newest">Công thức mới</Link>
             </div>
           </div>
         </section>
-
-
-        {/* ========================================================
-            5. CATEGORY COLLECTIONS (real names, counts and covers)
-           ======================================================== */}
-        {curatedCollections.length > 0 && (
-          <section className="nyt-collections-section">
-            <h2 className="nyt-collections-title">
-              Khám Phá Theo Danh Mục
-            </h2>
-
-            <div className="nyt-collections-grid">
-              {curatedCollections.map((col) => (
-                <Link key={col.title} to={col.link} className="nyt-collection-card">
-                  <div className="nyt-collection-collage">
-                    {col.images.map((imgSrc, imgIdx) => (
-                      <img key={imgIdx} src={imgSrc} alt={col.title} loading="lazy" />
-                    ))}
-                  </div>
-                  <h3 className="nyt-collection-card-title">{col.title}</h3>
-                  <div className="nyt-collection-card-count">
-                    {formatCount(col.count)} công thức
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
-
-
-        {/* ========================================================
-            6. NEWSLETTER SUBSCRIPTION BLOCK
-           ======================================================== */}
 
 
       </div>

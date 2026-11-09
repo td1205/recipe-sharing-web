@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useId, useState } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
@@ -12,6 +12,7 @@ export default function ReportButton({ targetType, targetId }) {
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const helpId = useId();
   if (!user) return null;
   const label = targetType === 'recipe' ? 'công thức' : 'bình luận';
   const close = () => {
@@ -54,8 +55,8 @@ export default function ReportButton({ targetType, targetId }) {
         Báo cáo {label}
       </button>
       {open && (
-        <Modal title={`Báo cáo ${label}`} busy={busy} onClose={close}>
-          <form className="report-form" onSubmit={submit}>
+        <Modal title={`Báo cáo ${label}`} busy={busy} onClose={close} dismissible className="report-modal" describedBy={helpId}>
+          <form className="report-form" onSubmit={submit} aria-busy={busy}>
             <label htmlFor={`report-${targetType}-${targetId}`}>
               Lý do báo cáo
             </label>
@@ -67,11 +68,11 @@ export default function ReportButton({ targetType, targetId }) {
               required
               disabled={busy}
               rows={4}
-              aria-describedby="report-help"
+              data-modal-initial-focus
+              aria-describedby={helpId}
             />
-            <p id="report-help">
-              Nêu rõ nội dung vi phạm. Không gửi mật khẩu, OTP hoặc thông tin
-              riêng tư. Mỗi nội dung chỉ được báo cáo một lần cho mỗi tài khoản.
+            <p id={helpId}>
+              Nêu rõ vi phạm, không gửi thông tin riêng tư. Mỗi tài khoản chỉ báo cáo nội dung này một lần.
             </p>
             {error && <p role="alert">{error}</p>}
             <div className="app-modal-actions">

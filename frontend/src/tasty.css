@@ -1470,6 +1470,40 @@ body, .container-full {
   flex-direction: column;
   gap: 25px;
 }
+.nyt-steps-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.nyt-steps-heading .nyt-section-title { margin-bottom: 0; }
+.nyt-cooking-progress {
+  color: #365314;
+  font-size: 0.875rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.nyt-step-item {
+  border-radius: 14px;
+  padding: 16px 18px;
+  transition: background-color 180ms ease-out, box-shadow 180ms ease-out;
+}
+.nyt-step-item.nyt-step-done {
+  background: #dcfce7;
+  box-shadow: 0 8px 22px rgba(22, 101, 52, 0.08);
+}
+.nyt-step-item.nyt-step-current {
+  background: #fef3c7;
+  box-shadow: 0 8px 22px rgba(146, 64, 14, 0.08);
+}
+.nyt-step-item.nyt-step-done h4,
+.nyt-step-item.nyt-step-done p { color: #166534; }
+.nyt-step-item.nyt-step-current h4,
+.nyt-step-item.nyt-step-current p { color: #92400e; }
+@media (max-width: 640px) {
+  .nyt-steps-heading { align-items: flex-start; flex-direction: column; gap: 6px; }
+}
 .nyt-step-item h4 {
   font-family: var(--font-sans);
   font-size: 1.0625rem;

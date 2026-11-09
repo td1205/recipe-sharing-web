@@ -1,4 +1,5 @@
 import { apiErrorMessage } from '../utils/apiError';
+import { sendRecipeToPhone, subscribeToCookingProgress, subscribeToShoppingListChanges } from '../services/cookingSocket';
 import toast from 'react-hot-toast';
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import axios from 'axios';
@@ -54,6 +55,7 @@ const navPantry = Array.isArray(location.state?.pantry) ? location.state.pantry 
 
   const [currentServings, setCurrentServings] = useState(1);
   const [checkedIngs, setCheckedIngs] = useState({});
+  const [cookingProgress, setCookingProgress] = useState(null);
 
   // States cho comment và rating
   const [commentLimit, setCommentLimit] = useState(5);
@@ -86,7 +88,7 @@ const navPantry = Array.isArray(location.state?.pantry) ? location.state.pantry 
         if (navPantry.length > 0) {
           const seeds = {};
           fetchedIngredients.forEach((ing, idx) => {
-            if (matchesPantry(ing.name, navPantry)) seeds[idx] = true;
+            if (matchesPantry(ing.name, navPantry)) seeds[ing.id] = true;
           });
           setCheckedIngs(seeds);
         } else {
@@ -136,9 +138,28 @@ const navPantry = Array.isArray(location.state?.pantry) ? location.state.pantry 
   };
 
   useEffect(() => {
+    if (!user || !id) return;
+    axios.get(`/api/recipes/${id}/shopping-list`).then(({ data }) => {
+      if (data.success) setCheckedIngs(Object.fromEntries((data.checkedIngredientIds || []).map((ingredientId) => [ingredientId, true])));
+    }).catch(() => {});
+  }, [id, user?.id]);
+  useEffect(() => {
+    if (!user) return undefined;
+    return subscribeToShoppingListChanges((event) => {
+      if (Number(event?.recipeId) === Number(id) && Number.isInteger(event?.servings)) setCurrentServings(event.servings);
+    });
+  }, [id, user?.id]);
+
+  useEffect(() => {
     fetchDetail();
     window.scrollTo(0, 0);
   }, [id]);
+
+  useEffect(() => {
+    setCookingProgress(null);
+    if (!user || !id) return undefined;
+    return subscribeToCookingProgress(id, setCookingProgress);
+  }, [id, user]);
 
   useEffect(() => {
     if (!recipe || String(recipe.id) !== String(id)) return undefined;
@@ -291,13 +312,24 @@ const navPantry = Array.isArray(location.state?.pantry) ? location.state.pantry 
     });
   };
 
-  const toggleIng = (idx) => setCheckedIngs(prev => ({...prev, [idx]: !prev[idx]}));
+  const toggleIng = (ingredient) => handleRequireLogin(async () => {
+    const key = ingredient.id;
+    const nextChecked = !checkedIngs[key];
+    setCheckedIngs((previous) => ({ ...previous, [key]: nextChecked }));
+    try {
+      await axios.post(`/api/recipes/${id}/shopping-list/${key}`, { checked: nextChecked });
+    } catch (error) {
+      setCheckedIngs((previous) => ({ ...previous, [key]: !nextChecked }));
+      toast.error(apiErrorMessage(error, 'Không thể cập nhật danh sách mua sắm'));
+    }
+  });
   const handlePrint = () => window.print();
 
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
 
   // "Đã sao chép" confirmation on the share button.
   const [isLinkCopied, setIsLinkCopied] = useState(false);
+  const [isSendingToPhone, setIsSendingToPhone] = useState(false);
   const copyResetTimer = useRef(null);
 
   useEffect(() => () => clearTimeout(copyResetTimer.current), []);
@@ -333,6 +365,18 @@ const navPantry = Array.isArray(location.state?.pantry) ? location.state.pantry 
       toast.error('Không thể sao chép liên kết');
     }
   };
+
+  const handleSendToPhone = () => handleRequireLogin(async () => {
+    setIsSendingToPhone(true);
+    try {
+      await sendRecipeToPhone(Number(id));
+      toast.success('Đã gửi công thức sang điện thoại');
+    } catch (error) {
+      toast.error(error.message || 'Không thể gửi công thức sang điện thoại');
+    } finally {
+      setIsSendingToPhone(false);
+    }
+  });
 
   const suggestedRecipes = relatedRecipes
     .filter((item) => item && item.id !== Number(id))
@@ -430,6 +474,10 @@ const navPantry = Array.isArray(location.state?.pantry) ? location.state.pantry 
                   aria-label={isLinkCopied ? 'Đã sao chép liên kết' : 'Sao chép liên kết'}
                   onClick={handleCopyLink}
                 ><i className={isLinkCopied ? 'fa-solid fa-check' : 'fa-solid fa-share'} aria-hidden="true"></i></button>
+                <button className="nyt-btn nyt-btn-outline" title="Gửi sang điện thoại" onClick={handleSendToPhone} disabled={isSendingToPhone}>
+                  <i className={isSendingToPhone ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-mobile-screen-button'} aria-hidden="true"></i>
+                  {isSendingToPhone ? 'Đang gửi...' : 'Gửi sang điện thoại'}
+                </button>
                 <button className="nyt-btn-circle" title="In công thức" aria-label="In công thức" onClick={handlePrint}><i className="fa-solid fa-print"></i></button>
                 
                 {canManage && (
@@ -445,15 +493,15 @@ const navPantry = Array.isArray(location.state?.pantry) ? location.state.pantry 
                 <div className="nyt-yield-row">
                   <p className="nyt-yield"><strong>Khẩu phần:</strong> {currentServings} người</p>
                   <div className="nyt-servings-ctrl">
-                    <button onClick={() => setCurrentServings(Math.max(1, currentServings - 1))}><i className="fa-solid fa-minus"></i></button>
-                    <button onClick={() => setCurrentServings(currentServings + 1)}><i className="fa-solid fa-plus"></i></button>
+                    <button onClick={() => { const servings = Math.max(1, currentServings - 1); setCurrentServings(servings); if (user) axios.post(`/api/recipes/${id}/shopping-list/servings`, { servings }).catch(() => {}); }}><i className="fa-solid fa-minus"></i></button>
+                    <button onClick={() => { const servings = currentServings + 1; setCurrentServings(servings); if (user) axios.post(`/api/recipes/${id}/shopping-list/servings`, { servings }).catch(() => {}); }}><i className="fa-solid fa-plus"></i></button>
                   </div>
                 </div>
                 
                 <ul className="nyt-ing-list">
                   {ingredients.length > 0 ? ingredients.map((ing, idx) => {
                     const displayAmount = scaleAmount(ing.amount, ratio);
-                    const isChecked = Boolean(checkedIngs[idx]);
+                    const isChecked = Boolean(checkedIngs[ing.id]);
                     return (
                       <li key={idx} className={isChecked ? 'nyt-ing-checked' : ''}>
                         {/* Label wraps the whole row so clicking anywhere toggles the box natively. */}
@@ -462,7 +510,7 @@ const navPantry = Array.isArray(location.state?.pantry) ? location.state.pantry 
                             type="checkbox"
                             className="nyt-ing-check"
                             checked={isChecked}
-                            onChange={() => toggleIng(idx)}
+                            onChange={() => toggleIng(ing)}
                           />
                           <span className="nyt-ing-amount">{displayAmount} {ing.unit}</span>
                           <span className="nyt-ing-name">{ing.name}</span>
@@ -509,14 +557,25 @@ const navPantry = Array.isArray(location.state?.pantry) ? location.state.pantry 
               </div>
 
               <div className="nyt-section" style={{ marginTop: '40px' }}>
-                <h3 className="nyt-section-title">Thực hiện</h3>
+                <div className="nyt-steps-heading">
+                  <h3 className="nyt-section-title">Thực hiện</h3>
+                  {cookingProgress && (
+                    <span className="nyt-cooking-progress" role="status" aria-live="polite">
+                      {cookingProgress.completedSteps}/{cookingProgress.totalSteps} bước đã xong
+                    </span>
+                  )}
+                </div>
                 <div className="nyt-step-list">
-                  {steps.length > 0 ? steps.map((step, idx) => (
-                    <div key={idx} className="nyt-step-item">
+                  {steps.length > 0 ? steps.map((step, idx) => {
+                    const stepNumber = Number(step.step_number || idx + 1);
+                    const isDone = cookingProgress && stepNumber <= cookingProgress.completedSteps;
+                    const isCurrent = cookingProgress && stepNumber === cookingProgress.currentStep;
+                    return (
+                    <div key={idx} className={`nyt-step-item${isDone ? ' nyt-step-done' : ''}${isCurrent ? ' nyt-step-current' : ''}`}>
                       <h4>Bước {step.step_number}</h4>
                       <p>{step.instruction}</p>
                     </div>
-                  )) : <p>Chưa có hướng dẫn</p>}
+                  );}) : <p>Chưa có hướng dẫn</p>}
                 </div>
               </div>
             </div>

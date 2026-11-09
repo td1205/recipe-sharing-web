@@ -49,6 +49,22 @@ const checkLoggedFailure = () => {
 
 async function run(scenario) {
   switch (scenario) {
+    case 'admin-ranking-preview': {
+      assert.equal(service.getStatus().topPopular, null);
+      assert.equal(featureCalls, 0, 'inspection does not load data');
+      loadFeatures = async () => Array.from({ length: 12 }, (_, i) => ({ id: i + 1, title: `Fixture ${i + 1}`, ingredients: [], tags: [] }));
+      const models = await service.getModels();
+      const status = service.getStatus();
+      assert.equal(status.topPopular.length, 10);
+      assert.deepEqual(status.topPopular.map(item => item.id), models.popularRanking.slice(0, 10));
+      status.topPopular.forEach(item => {
+        assert.equal(item.score, models.popularity.get(item.id));
+        assert.equal(item.title, models.recipeById.get(item.id).title);
+        assert.deepEqual(Object.keys(item).sort(), ['id', 'score', 'title']);
+      });
+      assert.equal(featureCalls, 1, 'preview never rebuilds');
+      break;
+    }
     case 'stale-failure-retry': {
       const old = await service.getModels();
       stale(); fail();

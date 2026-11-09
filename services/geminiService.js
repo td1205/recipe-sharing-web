@@ -4,10 +4,10 @@ const { GoogleGenAI } = require('@google/genai');
 // Tách riêng khỏi controller để controller chỉ lo HTTP, còn phần gọi API ngoài
 // (chọn model, thử lại khi quá tải, chuẩn hoá kết quả) nằm ở đây.
 
-// Danh sách model thử lần lượt. Có thể ghi đè bằng biến môi trường GEMINI_MODELS
-// (nhiều model cách nhau bởi dấu phẩy), vd: GEMINI_MODELS=gemini-3.7-flash,gemini-3.6-flash
-// Tên model tham khảo: https://ai.google.dev/gemini-api/docs/models
-const DEFAULT_MODELS = ['gemini-3.8-flash', 'gemini-flash-latest'];
+// Danh sách model cố định thử lần lượt. Không dùng alias `*-latest`: alias có thể
+// trỏ lại model chính nên không tạo ra một đường dự phòng thực sự.
+// Có thể ghi đè bằng GEMINI_MODELS (các tên cách nhau bởi dấu phẩy).
+const DEFAULT_MODELS = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'];
 
 const PROMPT =
   'Bạn là một chuyên gia ẩm thực. Hãy nhìn hình ảnh này và trả về ĐÚNG MỘT TỪ KHÓA ngắn gọn ' +
@@ -15,18 +15,31 @@ const PROMPT =
   'Nếu ảnh không phải món ăn, trả về đúng chữ: KHONG_PHAI_MON_AN';
 
 const NOT_FOOD = 'KHONG_PHAI_MON_AN';
-const RETRY_DELAY_MS = 2000;
+const RETRY_DELAY_MS = 500;
+// Bốn model dự phòng phải vừa trong thời gian chờ 35 giây của UI.
+const MODEL_TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS) > 0 ? Number(process.env.GEMINI_TIMEOUT_MS) : 6000;
 
 // Lỗi có mã để controller đổi thành HTTP status phù hợp
 class GeminiError extends Error {
-  constructor(code, message) {
+  constructor(code, message, { retryAfterSeconds } = {}) {
     super(message);
     this.name = 'GeminiError';
-    this.code = code; // NOT_CONFIGURED | NOT_FOOD | OVERLOADED | INVALID_KEY | FAILED
+    this.code = code;
+    if (Number.isSafeInteger(retryAfterSeconds) && retryAfterSeconds > 0) {
+      this.retryAfterSeconds = retryAfterSeconds;
+    }
   }
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function withTimeout(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(Object.assign(new Error(`${label} quá thời gian chờ`), { status: 504 })), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
 
 function getModels() {
   const fromEnv = String(process.env.GEMINI_MODELS || '')
@@ -38,6 +51,36 @@ function getModels() {
 
 function isConfigured() {
   return Boolean(String(process.env.GEMINI_API_KEY || '').trim());
+}
+
+function parseRetryAfterSeconds(error) {
+  const visited = new Set();
+  const visit = (value) => {
+    if (!value || typeof value !== 'object' || visited.has(value)) return null;
+    visited.add(value);
+    if (typeof value.retryDelay === 'string') {
+      const match = value.retryDelay.match(/^(\d+(?:\.\d+)?)s$/);
+      if (match) return Math.max(1, Math.ceil(Number(match[1])));
+    }
+    for (const nested of Object.values(value)) {
+      const result = visit(nested);
+      if (result) return result;
+    }
+    return null;
+  };
+
+  const structuredDelay = visit(error);
+  if (structuredDelay) return structuredDelay;
+  const message = String(error?.message || '');
+  const match = message.match(/retry in\s+(?:(\d+)h)?(?:(\d+)m)?(?:(\d+(?:\.\d+)?)s)?/i);
+  if (!match) return undefined;
+  const seconds = (Number(match[1] || 0) * 3600) + (Number(match[2] || 0) * 60) + Number(match[3] || 0);
+  return seconds > 0 ? Math.ceil(seconds) : undefined;
+}
+
+function hasModelSpecificQuota(error) {
+  const detail = `${JSON.stringify(error || '')} ${String(error?.message || '')}`;
+  return /quotaDimensions[^}]*"model"|per[- ]model/i.test(detail);
 }
 
 // Chuẩn hoá câu trả lời của model thành một từ khoá tìm kiếm
@@ -64,7 +107,11 @@ async function recognizeDish(buffer, mimeType, { client } = {}) {
 
   for (const model of getModels()) {
     try {
-      const response = await ai.models.generateContent({ model, contents });
+      const response = await withTimeout(
+        ai.models.generateContent({ model, contents }),
+        MODEL_TIMEOUT_MS,
+        `Nhận diện ảnh (${model})`,
+      );
       const keyword = cleanKeyword(response.text);
       if (!keyword) {
         lastError = new Error(`Model ${model} trả về rỗng`);
@@ -85,17 +132,47 @@ async function recognizeDish(buffer, mimeType, { client } = {}) {
       if (status === 401 || status === 403) {
         throw new GeminiError('INVALID_KEY', 'GEMINI_API_KEY không hợp lệ hoặc chưa được cấp quyền.');
       }
-      if (status === 429 || status === 503) {
+      if (status === 429) {
+        const retryAfterSeconds = parseRetryAfterSeconds(err);
+        // Quota toàn dự án/billing không thể được giải quyết bằng model khác.
+        // Chỉ thử fallback nếu Gemini nói rõ quota áp dụng riêng theo model.
+        if (!hasModelSpecificQuota(err)) {
+          throw new GeminiError(
+            'QUOTA_EXCEEDED',
+            'Hạn mức nhận diện hình ảnh đã hết. Vui lòng thử lại sau.',
+            { retryAfterSeconds },
+          );
+        }
+        continue;
+      }
+      // 503/504 có thể là sự cố tạm thời trên riêng model đó, nên thử model kế tiếp.
+      if (status === 503 || status === 504) {
         await sleep(RETRY_DELAY_MS);
-        continue; // quá tải -> thử model tiếp theo
+        continue;
       }
       if (status === 404) continue; // model không còn -> thử model tiếp theo
       throw new GeminiError('FAILED', 'Không gọi được dịch vụ nhận diện ảnh.');
     }
   }
 
+  if ((lastError?.status || lastError?.code) === 429) {
+    throw new GeminiError(
+      'QUOTA_EXCEEDED',
+      'Hạn mức nhận diện hình ảnh đã hết. Vui lòng thử lại sau.',
+      { retryAfterSeconds: parseRetryAfterSeconds(lastError) },
+    );
+  }
   console.error('[gemini] Tất cả model đều lỗi:', lastError?.message || lastError);
   throw new GeminiError('OVERLOADED', 'Hệ thống AI đang quá tải, vui lòng thử lại sau.');
 }
 
-module.exports = { recognizeDish, isConfigured, getModels, cleanKeyword, GeminiError, DEFAULT_MODELS };
+module.exports = {
+  recognizeDish,
+  isConfigured,
+  getModels,
+  cleanKeyword,
+  parseRetryAfterSeconds,
+  hasModelSpecificQuota,
+  GeminiError,
+  DEFAULT_MODELS,
+};

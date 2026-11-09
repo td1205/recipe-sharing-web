@@ -103,3 +103,16 @@ test('model responses use their own contract and preserve unknown counts as null
     );
   }
 });
+
+test('cached ranking validates scores, ordering, unique IDs and size', async () => {
+  const { validateAdminResponse, AdminResponseError } = await response;
+  const withRanking = topPopular => { const data = model(); return { ...data, model: { ...data.model, topPopular } }; };
+  for (const rows of [null, [], [{ id: 1, title: 'Fixture', score: 0.8 }]]) {
+    assert.doesNotThrow(() => validateAdminResponse(withRanking(rows), 'model'));
+  }
+  for (const rows of [{}, [{ id: 1, title: 'Fixture', score: NaN }], [{ id: 1, title: 'Fixture', score: 1.1 }],
+    [{ id: 1, title: 'Fixture', score: 0.1 }, { id: 2, title: 'Fixture', score: 0.9 }],
+    [{ id: 1, title: 'Fixture', score: 0.8 }, { id: 1, title: 'Fixture', score: 0.7 }]]) {
+    assert.throws(() => validateAdminResponse(withRanking(rows), 'model'), AdminResponseError);
+  }
+});

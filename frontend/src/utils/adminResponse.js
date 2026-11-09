@@ -48,6 +48,28 @@ export function validateAdminResponse(data, kind = 'list') {
         ))
     )
       invalid();
+    if (model.topPopular != null && (
+      !Array.isArray(model.topPopular) || model.topPopular.length > 10 ||
+      !model.topPopular.every((item, index, items) => object(item) && integer(item.id) && item.id > 0 &&
+        typeof item.title === 'string' && item.title.trim() && Number.isFinite(item.score) &&
+        item.score >= 0 && item.score <= 1 && (index === 0 || items[index - 1].score >= item.score)) ||
+      new Set(model.topPopular.map(item => item.id)).size !== model.topPopular.length
+    )) invalid();
+    const evaluation = data.evaluation;
+    if (evaluation != null) {
+      if (!object(evaluation) || !['current', 'stale', 'not_run', 'not_configured', 'unavailable'].includes(evaluation.status) ||
+          !Array.isArray(evaluation.reasons) || !evaluation.reasons.every(text => typeof text === 'string')) invalid();
+      const result = evaluation.result;
+      if (result != null && (!object(result) || !object(result.dataset) || !['real', 'simulated', 'unverified'].includes(result.dataset.kind) ||
+          typeof result.dataset.label !== 'string' || !date(result.generatedAt) || result.generatedAt === null ||
+          typeof result.runId !== 'string' || !object(result.model) || !/^[a-f0-9]{64}$/.test(result.model.sha256) ||
+          !/^[a-f0-9]{64}$/.test(result.dataset.sha256) || !Array.isArray(result.limitations) || !result.limitations.every(text => typeof text === 'string') ||
+          !object(result.report) || !integer(result.report.userCount) || result.report.userCount < 1 || result.report.k !== 10 ||
+          !integer(result.report.runs) || result.report.runs < 1 || !Array.isArray(result.report.results) ||
+          !['popular', 'content', 'cf', 'hybrid'].every(key => result.report.results.filter(row => row?.key === key).length === 1) ||
+          !result.report.results.every(row => object(row) && ['hitRate', 'precision', 'recall', 'ndcg'].every(key => Number.isFinite(row[key]) && row[key] >= 0 && row[key] <= 1)))) invalid();
+      if (['current', 'stale'].includes(evaluation.status) && !result) invalid();
+    }
     return data;
   }
   const items = data.items ?? data.recipes;

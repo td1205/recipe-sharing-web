@@ -1,4 +1,8 @@
 /* The homepage font experiment includes its shared header and footer. */
+.home-banner-search-field { position: relative; flex: 1; min-width: 0; }
+.home-banner-search-field .nyt-search-banner-input { box-sizing: border-box; width: 100%; }
+.home-banner-search-field .nyt-suggest { text-align: left; }
+.home-banner-search-field .nyt-search-banner-input:focus-visible { outline: 2px solid var(--color-text-main); outline-offset: 2px; }
 .home-typography {
   --font-sans: var(--font-home);
   --font-serif: var(--font-home);
@@ -40,6 +44,27 @@
 .home-author-link {
   font-weight: 700;
   text-decoration: underline;
+}
+
+.home-hero-context {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin-bottom: var(--space-2);
+}
+.home-typography .home-hero-context .mag-hero-main-category {
+  margin: 0;
+  font-size: var(--home-text-meta);
+  overflow-wrap: anywhere;
+}
+.home-typography .home-hero-label {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--home-text-meta);
+  font-weight: 600;
+  line-height: var(--lh-body);
 }
 
 .home-typography .mag-hero-main-title {

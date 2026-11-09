@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
-import axios from 'axios';
+import useRecipeSearch from '../hooks/useRecipeSearch';
+import RecipeSearchSuggestions from './RecipeSearchSuggestions';
 import { Link, useNavigate } from 'react-router-dom';
 
 
@@ -145,7 +146,9 @@ const NAV_MENUS = [
 
 const Navbar = () => {
   const { user, logout } = useContext(AuthContext);
-  const [searchQuery, setSearchQuery] = useState('');
+  const search = useRecipeSearch();
+  const { searchRef, listId, searchQuery, setSearchQuery, showSuggest, setShowSuggest, activeIdx,
+    handleSuggestKeyDown, loadTitles, handleSearchSubmit } = search;
   const [isVisualSearchOpen, setIsVisualSearchOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -153,64 +156,6 @@ const Navbar = () => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const userMenuRef = useRef(null);
-  const searchRef = useRef(null);
-
-  // Typeahead gợi ý tìm kiếm: tải tiêu đề 1 lần, lọc thời gian thực theo từng ký tự
-  const [allTitles, setAllTitles] = useState(null); // null = chưa tải
-  const [titlesLoading, setTitlesLoading] = useState(false);
-  const [showSuggest, setShowSuggest] = useState(false);
-  const [activeIdx, setActiveIdx] = useState(-1);
-
-  // Bỏ dấu + lowercase: gõ "banh" vẫn khớp "Bánh"
-  const normVi = (value) => String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'D')
-    .trim()
-    .toLowerCase();
-
-  const loadTitles = () => {
-    if (allTitles || titlesLoading) return;
-    setTitlesLoading(true);
-    axios.get('/api/recipes/titles')
-      .then((res) => setAllTitles(res.data.titles || []))
-      .catch(() => setAllTitles([]))
-      .finally(() => setTitlesLoading(false));
-  };
-
-  const suggestions = (() => {
-    const q = normVi(searchQuery);
-    if (!allTitles || q.length < 1) return [];
-    return allTitles.filter((t) => normVi(t.title).includes(q)).slice(0, 8);
-  })();
-
-  const closeSuggest = () => {
-    setShowSuggest(false);
-    setActiveIdx(-1);
-  };
-
-  const goSuggestion = (recipe) => {
-    closeSuggest();
-    setSearchQuery('');
-    navigate(`/recipes/${recipe.id}`);
-  };
-
-  const handleSuggestKeyDown = (e) => {
-    if (!showSuggest || suggestions.length === 0) return;
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setActiveIdx((i) => (i + 1) % suggestions.length);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setActiveIdx((i) => (i <= 0 ? suggestions.length - 1 : i - 1));
-    } else if (e.key === 'Escape') {
-      closeSuggest();
-    } else if (e.key === 'Enter' && activeIdx >= 0) {
-      e.preventDefault();
-      goSuggestion(suggestions[activeIdx]);
-    }
-  };
 
 
   // Gated actions ask for a sign-in instead of silently bouncing to /login.
@@ -241,15 +186,6 @@ const Navbar = () => {
     navigate('/login');
   };
 
-
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      closeSuggest();
-      navigate(`/recipes?search=${encodeURIComponent(searchQuery)}`);
-      setSearchQuery('');
-    }
-  };
 
   const handleImageUpload = (keyword) => {
     if (!keyword) return;
@@ -286,6 +222,7 @@ const Navbar = () => {
             role="search"
             ref={searchRef}
             onSubmit={handleSearchSubmit}
+            onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setShowSuggest(false); }}
           >
             <i className="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
             <input
@@ -293,7 +230,8 @@ const Navbar = () => {
               placeholder="Bạn muốn nấu gì hôm nay?"
               aria-label="Tìm công thức"
               aria-expanded={showSuggest}
-              aria-controls="search-suggest-list"
+              aria-controls={showSuggest ? listId : undefined}
+              aria-activedescendant={showSuggest && activeIdx >= 0 ? `${listId}-${activeIdx}` : undefined}
               aria-autocomplete="list"
               role="combobox"
               maxLength={200}
@@ -302,29 +240,7 @@ const Navbar = () => {
               onKeyDown={handleSuggestKeyDown}
               onFocus={() => { loadTitles(); setShowSuggest(true); }}
             />
-            {showSuggest && (
-              <div className="nyt-suggest" id="search-suggest-list" role="listbox">
-                {titlesLoading && (
-                  <div className="nyt-suggest-empty">Đang tải gợi ý…</div>
-                )}
-                {!titlesLoading && searchQuery.trim().length >= 1 && suggestions.length === 0 && (
-                  <div className="nyt-suggest-empty">Không có món phù hợp</div>
-                )}
-                {suggestions.map((s, i) => (
-                  <button
-                    type="button"
-                    key={s.id}
-                    role="option"
-                    aria-selected={i === activeIdx}
-                    className={`nyt-suggest-item ${i === activeIdx ? 'active' : ''}`}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => goSuggestion(s)}
-                  >
-                    <span className="nyt-suggest-title">{s.title}</span>
-                  </button>
-                ))}
-              </div>
-            )}
+            <RecipeSearchSuggestions search={search} />
             <button
               type="button"
               className="nyt-scan-btn"

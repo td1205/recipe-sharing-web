@@ -105,6 +105,6 @@ module.exports = {
     }),
   ),
   model: handle(async (_req, res) =>
-    res.json({ success: true, model: recommender.getStatus() }),
+    res.json({ success: true, model: recommender.getStatus(), evaluation: require('../services/recommender/evaluationRuns').readStatus() }),
   ),
 };
